@@ -1,0 +1,11 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #F4B942;
+  --color-secondary: #5EC0D9;
+  --color-background: #F5F5F5;
+  --color-surface: #FFFFFF;
+
+  --font-display: "Fredoka", sans-serif;
+  --font-body: "Inter", sans-serif;
+}
