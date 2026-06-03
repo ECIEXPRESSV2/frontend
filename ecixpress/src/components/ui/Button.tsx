@@ -21,8 +21,8 @@ const Button = ({
     const baseClasses = "font-semibold rounded-xl transition duration-200 flex items-center justify-center gap-2 font-body";
 
     const variantClasses = {
-        primary: "bg-primary text-white hover:bg-yellow-500 active:scale-95",
-        secondary: "bg-secondary text-white hover:bg-cyan-500 active:scale-95",
+        primary: "bg-primary text-white hover:-translate-y-0.5 active:scale-95",
+        secondary: "bg-gradient-to-r from-blue-500 to-indigo-600 text-white",
         outline: "border-2 border-secondary text-secondary hover:bg-secondary hover:text-white active:scale-95",
     };
 

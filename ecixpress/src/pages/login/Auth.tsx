@@ -1,32 +1,27 @@
+import { useState } from "react";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import { useAuthNavigation } from "./hooks/useAuthNavigation";
-import { useLogin } from "./hooks/useLogin";
-import { useSignUp } from "./hooks/useSignUp";
-import AuthContainer from "./components/AuthContainer";
-import LoginForm from "./components/LoginForm";
-import SignUpForm from "./components/SignUpForm";
+import ModernSignIn from "../../components/ui/ModernSignIn";
+import ModernSignUp from "../../components/ui/ModernSignUp";
 
 const Auth = () => {
-  const { isLogin, switchToLogin, switchToSignup } = useAuthNavigation(true);
-  const loginProps = useLogin();
-  const signupProps = useSignUp();
+  const [isLogin, setIsLogin] = useState(true);
+
+  const handleSignUpClick = () => {
+    setIsLogin(false);
+  };
+
+  const handleSignInClick = () => {
+    setIsLogin(true);
+  };
 
   return (
     <>
-      <AuthContainer isLogin={isLogin}>
-        {isLogin ? (
-          <LoginForm
-            {...loginProps}
-            onSwitchToSignup={switchToSignup}
-          />
-        ) : (
-          <SignUpForm
-            {...signupProps}
-            onSwitchToLogin={switchToLogin}
-          />
-        )}
-      </AuthContainer>
+      {isLogin ? (
+        <ModernSignIn onSignUpClick={handleSignUpClick} />
+      ) : (
+        <ModernSignUp onSignInClick={handleSignInClick} />
+      )}
 
       <ToastContainer
         position="top-right"
