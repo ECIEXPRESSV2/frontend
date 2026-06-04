@@ -19,7 +19,6 @@ const images = [
   "https://images.unsplash.com/photo-1601924582975-7e1e89c5b45c", // pasta normal
   "https://images.unsplash.com/photo-1504674900247-0877df9cc836", // comida familiar
   "https://images.unsplash.com/photo-1528716321680-815a8cdb8cbe", // pollo
-// carne + arroz
 ];
 
 
@@ -32,7 +31,7 @@ const FoodCarousel = () => {
           {loopImages.map((src, i) => (
               <div
                   key={i}
-                  className="overflow-hidden rounded-xl shadow-lg hover:scale-105 transition-transform duration-300"
+                  className="overflow-hidden rounded-xl shadow-lg hover:scale-105 transition-transform duration-700"
               >
                 <img
                     src={`${src}?w=500&auto=format&fit=crop&q=80`}
