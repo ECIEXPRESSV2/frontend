@@ -7,59 +7,84 @@ interface CTAFinalProps {
 
 const CTAFinal: React.FC<CTAFinalProps> = ({ onSignUpClick }) => {
   return (
-    <section className="py-16 md:py-24 px-6 bg-gradient-to-br from-yellow-50 to-cyan-50">
-      <div className="max-w-4xl mx-auto text-center space-y-8">
-        {/* Badge */}
-        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-yellow-200 animate-fade-in-up">
-          <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-          <span className="text-sm font-semibold text-gray-800">Disponible ahora en tu campus</span>
-        </div>
+      <section className="relative py-20 px-6 overflow-hidden bg-gradient-to-br from-yellow-50 via-white to-cyan-50">
 
-        {/* Main Heading */}
-        <div className="space-y-4 animate-fade-in-up" style={{ animationDelay: '0.1s', opacity: 0 }}>
-          <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 leading-tight">
-            La forma inteligente de{' '}
-            <span className="bg-gradient-to-r from-yellow-400 to-yellow-600 bg-clip-text text-transparent animate-gradient-shift">
+        {/* ✅ glow decorativo */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-yellow-300/20 blur-[120px] rounded-full pointer-events-none" />
+
+        <div className="relative max-w-4xl mx-auto text-center space-y-10">
+
+          {/* Badge */}
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/80 backdrop-blur border border-yellow-200 shadow-sm">
+            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+            <span className="text-sm font-semibold text-gray-800">
+            Disponible ahora en tu campus
+          </span>
+          </div>
+
+          {/* Heading */}
+          <div className="space-y-4">
+            <h2 className="text-4xl md:text-6xl font-bold text-gray-900 leading-tight">
+              La forma inteligente de{' '}
+              <span className="bg-gradient-to-r from-yellow-400 to-yellow-600 bg-clip-text text-transparent">
               comprar en campus
             </span>
-          </h2>
-          <p className="text-xl text-gray-600 leading-relaxed max-w-2xl mx-auto">
-            Únete a miles de estudiantes que ya evitan filas, ahorran tiempo
-            y disfrutan de una mejor experiencia de compra.
-          </p>
-        </div>
+            </h2>
 
-        {/* Buttons */}
-        <div className="flex flex-col sm:flex-row gap-4 justify-center pt-8 animate-fade-in-up" style={{ animationDelay: '0.2s', opacity: 0 }}>
-          <button
-            onClick={onSignUpClick}
-            className="px-10 py-4 rounded-xl font-semibold text-white bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-2 group"
-          >
-            Crea tu cuenta gratis
-            <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
-          </button>
-          <button className="px-10 py-4 rounded-xl font-semibold text-gray-900 bg-white border-2 border-gray-200 hover:border-yellow-400 hover:bg-yellow-50 hover:shadow-md transition-all">
-            Ver demo
-          </button>
-        </div>
+            <p className="text-lg md:text-xl text-gray-600 max-w-2xl mx-auto">
+              Ahorra tiempo, evita filas y mejora tu experiencia diaria.
+            </p>
+          </div>
 
-        {/* Additional Info */}
-        <div className="pt-8 grid md:grid-cols-3 gap-8 border-t border-gray-200 animate-fade-in-up" style={{ animationDelay: '0.3s', opacity: 0 }}>
-          <div className="space-y-2">
-            <p className="text-3xl font-bold text-gray-900">0%</p>
-            <p className="text-sm text-gray-600">Comisión por transacción</p>
+          {/* CTA */}
+          <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
+
+            <button
+                onClick={onSignUpClick}
+                className="relative px-10 py-4 rounded-xl font-semibold text-white
+            bg-gradient-to-r from-yellow-400 to-yellow-500
+            shadow-lg hover:shadow-yellow-300/50
+            hover:scale-105 active:scale-95 transition-all duration-300
+            flex items-center justify-center gap-2 group overflow-hidden"
+            >
+
+              {/* glow hover */}
+              <span className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition" />
+
+              Crea tu cuenta gratis
+              <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
+            </button>
+
+            <button className="px-10 py-4 rounded-xl font-semibold text-gray-900 bg-white border border-gray-200 hover:border-yellow-400 hover:bg-yellow-50 hover:shadow-md transition-all duration-300">
+              Ver demo
+            </button>
+
           </div>
-          <div className="space-y-2">
-            <p className="text-3xl font-bold text-gray-900">24/7</p>
-            <p className="text-sm text-gray-600">Soporte al estudiante</p>
+
+          {/* ✅ Métricas rediseñadas */}
+          <div className="pt-10 grid md:grid-cols-3 gap-6">
+
+            {[
+              { value: '0%', label: 'Comisión por transacción' },
+              { value: '24/7', label: 'Soporte disponible' },
+              { value: 'SSL', label: 'Datos protegidos' },
+            ].map((item, index) => (
+                <div
+                    key={index}
+                    className="p-6 rounded-xl bg-white/70 backdrop-blur border border-gray-200
+              hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
+                >
+                  <p className="text-3xl font-bold text-gray-900">
+                    {item.value}
+                  </p>
+                  <p className="text-sm text-gray-600">{item.label}</p>
+                </div>
+            ))}
+
           </div>
-          <div className="space-y-2">
-            <p className="text-3xl font-bold text-gray-900">SSL</p>
-            <p className="text-sm text-gray-600">Encriptación de datos</p>
-          </div>
+
         </div>
-      </div>
-    </section>
+      </section>
   );
 };
 
@@ -71,8 +96,8 @@ const Footer: React.FC<FooterProps> = () => {
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer className="bg-white text-white px-6 py-12 md:py-16 animate-fade-in-up" style={{ animationDelay: '0.4s', opacity: 0 }}>
-      <div className="max-w-7xl mx-auto">
+    <footer className="bg-gray-950 text-gray-300 px-6 py-12 md:py-16 animate-fade-in-up" style={{ animationDelay: '0.4s', opacity: 0 }}>
+      <div className="max-w-7xl mx-auto ">
         {/* Main Footer Content */}
         <div className="grid md:grid-cols-5 gap-8 mb-12">
           {/* Brand */}
@@ -81,7 +106,7 @@ const Footer: React.FC<FooterProps> = () => {
               <img
                 src="/logotipoEcixpress.svg"
                 alt="Ecixpress"
-                className="h-8 w-auto brightness-0 invert"
+                className="h-8 w-auto brightness-0 invert hover:scale-[1.02]"
               />
             </div>
             <p className="text-sm text-gray-400">

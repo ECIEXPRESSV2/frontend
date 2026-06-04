@@ -1,118 +1,168 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Users, BookOpen, Utensils, TrendingUp } from 'lucide-react';
 
 const UniversityContextSection: React.FC = () => {
+  const sectionRef = useRef<HTMLDivElement | null>(null);
+  const [visible, setVisible] = useState(false);
+
+  // ✅ scroll reveal tipo Apple
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+        ([entry]) => {
+          if (entry.isIntersecting) {
+            setVisible(true);
+          }
+        },
+        { threshold: 0.2 }
+    );
+
+    if (sectionRef.current) observer.observe(sectionRef.current);
+
+    return () => observer.disconnect();
+  }, []);
+
   const stats = [
     {
       icon: Users,
       title: 'Para todos',
-      description: 'Estudiantes, docentes y personal administrativo en un mismo ecosistema.',
-      color: 'text-yellow-600',
-      bgColor: 'bg-yellow-50',
-      image: 'https://images.unsplash.com/photo-1453974336165-bf7476840e58?w=400&auto=format&fit=crop&q=80',
+      description: 'Un solo ecosistema para toda la comunidad.',
+      gradient: 'from-yellow-400 to-yellow-600',
+      image: '/FOTOELIZASEBASSOFI.JPG',
     },
     {
       icon: BookOpen,
       title: 'Entre clases',
-      description: 'Pide tu almuerzo entre lecciones. Tu pedido estará listo en 30 minutos.',
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-50',
-      image: 'https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=400&auto=format&fit=crop&q=80',
+      description: 'Pide rápido sin interrumpir tu día.',
+      gradient: 'from-blue-400 to-indigo-600',
+      image: '/FOTOESCUELA.jpg',
     },
     {
       icon: Utensils,
-      title: 'Menú completo',
-      description: 'Cafeterías, comedores, pequeños comercios. Todo en una app.',
-      color: 'text-orange-600',
-      bgColor: 'bg-orange-50',
-      image: 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=400&auto=format&fit=crop&q=80',
+      title: 'Todo en una app',
+      description: 'Comida, cafeterías y más.',
+      gradient: 'from-orange-400 to-red-500',
+      image: '/FOTOOSWALDO.JPG',
     },
     {
       icon: TrendingUp,
-      title: 'Crece con nosotros',
-      description: 'Cada semana nuevos vendedores, productos y oportunidades.',
-      color: 'text-green-600',
-      bgColor: 'bg-green-50',
-      image: 'https://images.unsplash.com/photo-1587829741301-dc798b91add1?w=400&auto=format&fit=crop&q=80',
+      title: 'Crece contigo',
+      description: 'Más opciones cada semana.',
+      gradient: 'from-green-400 to-emerald-600',
+      image: '/FOTOCAFETERIA.JPG',
     },
   ];
 
   return (
-    <section className="py-16 md:py-24 px-6 bg-gray-50">
-      <div className="max-w-7xl mx-auto">
-        {/* Hero Content - Left Text, Right Visual */}
-        <div className="grid md:grid-cols-2 gap-12 items-center mb-20">
-          {/* Left */}
-          <div className="space-y-6 animate-fade-in-left">
-            <h2 className="text-4xl md:text-5xl font-bold text-gray-900">
-              Hecho para la vida{' '}
-              <span className="bg-gradient-to-r from-yellow-400 to-yellow-600 bg-clip-text text-transparent animate-gradient-shift">
+      <section
+          ref={sectionRef}
+          className="relative py-24 px-6 bg-gradient-to-b from-white via-gray-50 to-white overflow-hidden"
+      >
+        {/* glow fondo */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[900px] bg-yellow-300/10 blur-[120px] rounded-full" />
+
+        <div className="relative max-w-7xl mx-auto">
+
+          {/* HERO */}
+          <div
+              className={`grid md:grid-cols-2 gap-16 items-center mb-24 transition-all duration-1000 ease-out
+          ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'}`}
+          >
+
+            {/* LEFT */}
+            <div className="space-y-6">
+              <h2 className="text-4xl md:text-5xl font-bold text-gray-900 leading-tight">
+                Hecho para la vida{' '}
+                <span className="bg-gradient-to-r from-yellow-400 to-yellow-600 bg-clip-text text-transparent">
                 en campus
               </span>
-            </h2>
-            <p className="text-lg text-gray-600 leading-relaxed">
-              ECIXPRESS entiende los desafíos universitarios. Largas filas entre clases,
-              tiempo limitado para comer, desorganización en compras. Por eso diseñamos
-              una solución que se adapta a tu ritmo.
-            </p>
-            <ul className="space-y-4">
-              {['Pide desde clase', 'Recoge en 5 minutos', 'Paga como prefieras', 'Sin complicaciones'].map((item, i) => (
-                <li key={i} className="flex items-center gap-3 group">
-                  <div className="w-2 h-2 rounded-full bg-yellow-500 group-hover:scale-150 transition-transform" />
-                  <span className="font-medium text-gray-800 group-hover:text-yellow-600 transition-colors">{item}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
+              </h2>
 
-          {/* Right - Visual */}
-          <div className="relative h-96 hidden md:flex items-center justify-center animate-fade-in-up">
-            <div className="absolute inset-0 bg-gradient-to-br from-yellow-100 to-cyan-50 rounded-3xl opacity-50 blur-2xl animate-float" />
-            <div className="relative z-10">
+              <p className="text-lg text-gray-600">
+                Diseñado para eliminar filas, optimizar tu tiempo y mejorar tu día.
+              </p>
+
+              <ul className="space-y-4">
+                {['Pide desde clase', 'Recoge en minutos', 'Paga como quieras', 'Sin fricción'].map((item, i) => (
+                    <li key={i} className="flex items-center gap-3 group">
+                      <div className="w-2.5 h-2.5 rounded-full bg-yellow-400 group-hover:scale-150 transition" />
+                      <span className="text-gray-800 group-hover:text-yellow-600 transition">
+                    {item}
+                  </span>
+                    </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* RIGHT VISUAL */}
+            <div
+                className={`relative hidden md:flex justify-center transition-all duration-1000 delay-200 ease-out
+            ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'}`}
+            >
+              {/* glow */}
+              <div className="absolute w-[450px] h-[450px] bg-yellow-300/20 blur-[80px] rounded-full" />
+
               <img
-                src="https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=600&auto=format&fit=crop&q=80"
-                alt="Campus universitario"
-                className="w-80 h-80 object-cover rounded-2xl shadow-2xl hover:scale-105 hover:rotate-1 transition-all duration-500"
+                  src= "/EDIFICIO-E-ESCUELA.JPG"
+                  className="relative w-[340px] h-[340px] object-cover rounded-2xl shadow-3xl
+              hover:scale-105 transition duration-500"
               />
-              <div className="text-center mt-4 space-y-2">
-                <h3 className="text-2xl font-bold text-gray-900">Campus inteligente</h3>
-                <p className="text-gray-600">Eficiencia, organización y comodidad</p>
-              </div>
             </div>
           </div>
-        </div>
 
-        {/* Stats Grid */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {stats.map((stat, index) => {
-            const Icon = stat.icon;
-            return (
-              <div
-                key={index}
-                className="group p-6 rounded-2xl bg-white border border-gray-200 hover:border-yellow-200 hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 animate-fade-in-up"
-                style={{ animationDelay: `${index * 0.1}s`, opacity: 0 }}
-              >
-                <div className="relative h-24 mb-4 rounded-xl overflow-hidden">
-                  <img
-                    src={stat.image}
-                    alt={stat.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
-                  <div className={`${stat.bgColor} p-3 rounded-lg absolute bottom-2 left-2`}>
-                    <Icon className={`w-5 h-5 ${stat.color}`} />
+          {/* GRID */}
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+
+            {stats.map((stat, index) => {
+              const Icon = stat.icon;
+
+              return (
+                  <div
+                      key={index}
+                      className={`group relative rounded-2xl overflow-hidden transition-all duration-700 ease-out
+                ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-16'}`}
+                      style={{ transitionDelay: `${index * 120}ms` }}
+                  >
+
+                    <img
+                        src={stat.image}
+                        className="absolute inset-0 w-full h-full object-cover scale-110 group-hover:scale-125 transition duration-700"
+                    />
+
+                    {/*  overlay para contraste */}
+                    <div className="absolute inset-0 bg-black/40 group-hover:bg-black/30 transition" />
+
+                    {/*  contenido */}
+                    <div className="relative z-10 p-6 space-y-4 text-white">
+
+                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center 
+                  bg-white/20 backdrop-blur-sm border border-white/30
+                  group-hover:scale-110 transition`}>
+                        <Icon className="w-5 h-5" />
+                      </div>
+
+                      <h3 className="font-bold text-lg">
+                        {stat.title}
+                      </h3>
+
+                      <p className="text-sm text-white/80">
+                        {stat.description}
+                      </p>
+
+                    </div>
+
+                    {/* glow hover */}
+                    <div className={`absolute inset-0 opacity-0 group-hover:opacity-30 transition duration-700 
+                bg-gradient-to-br ${stat.gradient}`} />
+
                   </div>
-                </div>
-                <h3 className="font-bold text-gray-900 mb-2 group-hover:text-yellow-600 transition-colors">{stat.title}</h3>
-                <p className="text-sm text-gray-600 leading-relaxed">{stat.description}</p>
-              </div>
-            );
-          })}
+              );
+            })}
+
+          </div>
+
         </div>
-      </div>
-    </section>
+      </section>
   );
 };
 
 export default UniversityContextSection;
-
