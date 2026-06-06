@@ -2,8 +2,9 @@ import React, { useState, useCallback } from 'react';
 import SignInForm from '../components/ui/SignInForm';
 import SignUpForm from '../components/ui/SignUpForm';
 import LandingPage from './landing/LandingPage';
+import Home from './home/Home';
 
-type PageType = 'landing' | 'signin' | 'signup';
+type PageType = 'landing' | 'signin' | 'signup' | 'home';
 
 const MainPage: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<PageType>('landing');
@@ -19,6 +20,14 @@ const MainPage: React.FC = () => {
 
   const handleBackClick = useCallback(() => {
     setCurrentPage('landing');
+  }, []);
+
+  const handleLoginSuccess = useCallback(() => {
+    setCurrentPage('home');
+  }, []);
+
+  const handleSignUpSuccess = useCallback(() => {
+    setCurrentPage('home');
   }, []);
 
   const handleSignInToSignUp = useCallback(() => {
@@ -52,7 +61,7 @@ const MainPage: React.FC = () => {
             >
               ← Volver
             </button>
-            <SignInForm onSignUpClick={handleSignInToSignUp} />
+            <SignInForm onSignUpClick={handleSignInToSignUp} onLoginSuccess={handleLoginSuccess} />
           </div>
         );
       case 'signup':
@@ -64,7 +73,7 @@ const MainPage: React.FC = () => {
             >
               ← Volver
             </button>
-            <SignUpForm onSignInClick={handleSignUpToSignIn} />
+            <SignUpForm onSignInClick={handleSignUpToSignIn} onSignUpSuccess={handleSignUpSuccess} />
           </div>
         );
       case 'landing':
@@ -75,6 +84,8 @@ const MainPage: React.FC = () => {
             onNavigateToSignUp={handleSignUpClick}
           />
         );
+      case 'home':
+        return <Home />;
     }
   };
 
@@ -119,6 +130,11 @@ const MainPage: React.FC = () => {
           className={`${isTransitioning ? 'absolute inset-0' : 'relative'} transition-all duration-500 ease-in-out ${getTransitionClasses('signup')}`}
         >
           {getPageContent('signup')}
+        </div>
+      ) : null}
+      {currentPage === 'home' ? (
+        <div className="relative">
+          {getPageContent('home')}
         </div>
       ) : null}
     </div>

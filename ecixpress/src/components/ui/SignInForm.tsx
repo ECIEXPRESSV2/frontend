@@ -6,9 +6,10 @@ import { validateEmail, validatePassword } from '../../lib/validation';
 
 interface SignInProps {
   onSignUpClick?: () => void;
+  onLoginSuccess?: () => void;
 }
 
-const SignInForm: React.FC<SignInProps> = ({ onSignUpClick }) => {
+const SignInForm: React.FC<SignInProps> = ({ onSignUpClick, onLoginSuccess }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -36,6 +37,7 @@ const SignInForm: React.FC<SignInProps> = ({ onSignUpClick }) => {
     setTimeout(() => {
       console.log('Sign in:', { email, password });
       setIsLoading(false);
+      onLoginSuccess?.();
     }, 1500);
   };
 

@@ -6,9 +6,10 @@ import { validateEmail, validatePassword, validateName, validateConfirmPassword 
 
 interface SignUpProps {
   onSignInClick?: () => void;
+  onSignUpSuccess?: () => void;
 }
 
-const SignUpForm: React.FC<SignUpProps> = ({ onSignInClick }) => {
+const SignUpForm: React.FC<SignUpProps> = ({ onSignInClick, onSignUpSuccess }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -76,6 +77,7 @@ const SignUpForm: React.FC<SignUpProps> = ({ onSignInClick }) => {
     setTimeout(() => {
       console.log('Sign up:', { name, email, password });
       setIsLoading(false);
+      onSignUpSuccess?.();
     }, 1500);
   };
 
