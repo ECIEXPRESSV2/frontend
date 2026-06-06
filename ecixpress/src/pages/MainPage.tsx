@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
-import ModernSignIn from '../components/ui/ModernSignIn';
-import ModernSignUp from '../components/ui/ModernSignUp';
+import SignInForm from '../components/ui/SignInForm';
+import SignUpForm from '../components/ui/SignUpForm';
 import LandingPage from './landing/LandingPage';
 
 type PageType = 'landing' | 'signin' | 'signup';
@@ -30,7 +30,7 @@ const MainPage: React.FC = () => {
           >
             ← Volver
           </button>
-          <ModernSignIn onSignUpClick={handleSignUpClick} />
+          <SignInForm onSignUpClick={handleSignUpClick} />
         </div>
       );
     case 'signup':
@@ -42,7 +42,7 @@ const MainPage: React.FC = () => {
           >
             ← Volver
           </button>
-          <ModernSignUp onSignInClick={handleLoginClick} />
+          <SignUpForm onSignInClick={handleLoginClick} />
         </div>
       );
     case 'landing':

@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import ModernSignIn from "../../components/ui/ModernSignIn";
-import ModernSignUp from "../../components/ui/ModernSignUp";
+import SignInForm from "../../components/ui/SignInForm";
+import SignUpForm from "../../components/ui/SignUpForm";
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -18,9 +18,9 @@ const Auth = () => {
   return (
     <>
       {isLogin ? (
-        <ModernSignIn onSignUpClick={handleSignUpClick} />
+        <SignInForm onSignUpClick={handleSignUpClick} />
       ) : (
-        <ModernSignUp onSignInClick={handleSignInClick} />
+        <SignUpForm onSignInClick={handleSignInClick} />
       )}
 
       <ToastContainer
