@@ -194,3 +194,12 @@
 .animate-gradient {
   animation: gradientMove 12s ease infinite;
 }
+@keyframes scroll-up {
+  from { transform: translateY(0); }
+  to   { transform: translateY(-50%); }
+}
+
+@keyframes scroll-down {
+  from { transform: translateY(-50%); }
+  to   { transform: translateY(0); }
+}

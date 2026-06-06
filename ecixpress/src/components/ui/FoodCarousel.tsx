@@ -1,48 +1,65 @@
+import React from 'react';
 
-const images = [
-  "https://images.unsplash.com/photo-1604908176997-4316c288032e", // arroz + pollo
-  "https://images.unsplash.com/photo-1600891964599-f61ba0e24092", // comida casera completa
-  "https://images.unsplash.com/photo-1617196034183-421b4917c92d", // arroz, carne, ensalada
-  "https://images.unsplash.com/photo-1594007654729-407eedc4be65", // almuerzo típico
-  "https://images.unsplash.com/photo-1625944196264-9b56cf2c82c5", // comida latina
-  "https://images.unsplash.com/photo-1627308595171-d1b5d67129c4", // plato con arroz
-  "https://images.unsplash.com/photo-1562967916-eb82221dfb92", // comida casera simple
-  "https://images.unsplash.com/photo-1505253716362-afaea1d3d1af",
-  "https://images.unsplash.com/photo-1604908176997-4316c288032e", // arroz pollo
-  "https://images.unsplash.com/photo-1600891964599-f61ba0e24092", // comida mesa
-  "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38", // pizza real
-  "https://images.unsplash.com/photo-1555939594-58d7cb561ad1", // hamburguesa
-  "https://images.unsplash.com/photo-1594007654729-407eedc4be65", // plato diario
-  "https://images.unsplash.com/photo-1627308595171-d1b5d67129c4", // arroz+proteína
-  "https://images.unsplash.com/photo-1617196034183-421b4917c92d", // almuerzo típico
-  "https://images.unsplash.com/photo-1550547660-d9450f859349", // burger casera
-  "https://images.unsplash.com/photo-1601924582975-7e1e89c5b45c", // pasta normal
-  "https://images.unsplash.com/photo-1504674900247-0877df9cc836", // comida familiar
-  "https://images.unsplash.com/photo-1528716321680-815a8cdb8cbe", // pollo
+const IMAGES = [
+  "https://images.unsplash.com/photo-1604908176997-4316c288032e?w=400&q=80",
+  "https://images.unsplash.com/photo-1600891964599-f61ba0e24092?w=400&q=80",
+  "https://images.unsplash.com/photo-1617196034183-421b4917c92d?w=400&q=80",
+  "https://images.unsplash.com/photo-1594007654729-407eedc4be65?w=400&q=80",
+  "https://images.unsplash.com/photo-1625944196264-9b56cf2c82c5?w=400&q=80",
+  "https://images.unsplash.com/photo-1627308595171-d1b5d67129c4?w=400&q=80",
+  "https://images.unsplash.com/photo-1562967916-eb82221dfb92?w=400&q=80",
+  "https://images.unsplash.com/photo-1505253716362-afaea1d3d1af?w=400&q=80",
+  "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=400&q=80",
+  "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=400&q=80",
+  "https://images.unsplash.com/photo-1550547660-d9450f859349?w=400&q=80",
+  "https://images.unsplash.com/photo-1601924582975-7e1e89c5b45c?w=400&q=80",
+  "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400&q=80",
+  "https://images.unsplash.com/photo-1528716321680-815a8cdb8cbe?w=400&q=80",
 ];
 
+const splitIntoColumns = (items: string[], cols: number): string[][] =>
+    items.reduce<string[][]>(
+        (acc, item, i) => {
+          acc[i % cols].push(item);
+          return acc;
+        },
+        Array.from({ length: cols }, () => [])
+    );
 
-const FoodCarousel = () => {
-  const loopImages = [...images, ...images];
+interface ScrollColumnProps {
+  images: string[];
+  duration: number;   // segundos — columnas distintas a distinta velocidad
+  reverse?: boolean;  // columna par sube, impar baja → más dinamismo
+}
+
+const ScrollColumn: React.FC<ScrollColumnProps> = ({ images, duration, reverse = false }) => {
+
+  const looped = [...images, ...images];
 
   return (
-      <div className="h-[600px] w-full overflow-hidden rounded-2xl bg-neutral-100">
-        <div className="animate-scroll grid grid-cols-2 gap-4 p-4">
-          {loopImages.map((src, i) => (
+      <div className="overflow-hidden flex-1">
+        <div
+            className="flex flex-col gap-3"
+            style={{
+              animation: `scroll-${reverse ? 'down' : 'up'} ${duration}s linear infinite`,
+            }}
+        >
+          {looped.map((src, i) => (
               <div
-                  key={i}
-                  className="overflow-hidden rounded-xl shadow-lg hover:scale-105 transition-transform duration-700"
+                  key={`${src}-${i}`}
+                  className="overflow-hidden rounded-xl shadow-md flex-shrink-0"
               >
                 <img
-                    src={`${src}?w=500&auto=format&fit=crop&q=80`}
-                    className="w-full h-48 object-cover"
+                    src={src}
                     alt="food"
-                    onError={(e) => {
-                      const img = e.target as HTMLImageElement;
-                      img.src = "https://images.unsplash.com/photo-1498837167922-ddd27525d352?w=500&auto=format&fit=crop&q=80";
-                    }}
-
                     loading="lazy"
+                    className="w-full h-44 object-cover transition-transform duration-500 group-hover:scale-110"
+
+                    onError={(e) => {
+                      const img = e.currentTarget;
+                      img.src =
+                          "https://images.unsplash.com/photo-1498837167922-ddd27525d352?w=500&auto=format&fit=crop&q=80";
+                    }}
 
                 />
               </div>
@@ -52,5 +69,18 @@ const FoodCarousel = () => {
   );
 };
 
+const FoodCarousel: React.FC = () => {
+  const [col1, col2] = splitIntoColumns(IMAGES, 2);
+
+  return (
+      <>
+
+        <div className="w-full h-full overflow-hidden rounded-2xl flex gap-3 p-4 ">
+          <ScrollColumn images={col1} duration={20} />
+          <ScrollColumn images={col2} duration={25} reverse />
+        </div>
+      </>
+  );
+};
 
 export default FoodCarousel;
