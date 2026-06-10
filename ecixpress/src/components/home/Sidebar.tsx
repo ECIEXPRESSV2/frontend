@@ -4,9 +4,10 @@ import { User, Plus, Grid, ShoppingCart, Clipboard, MessageCircle, LogOut, Walle
 interface SidebarProps {
   activeItem?: string;
   onItemClick?: (item: string) => void;
+  onUserClick?: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ activeItem = 'home', onItemClick }) => {
+const Sidebar: React.FC<SidebarProps> = ({ activeItem = 'home', onItemClick, onUserClick }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const menuItems = [
     { id: 'home', icon: Grid, label: 'Inicio' },
@@ -24,14 +25,17 @@ const Sidebar: React.FC<SidebarProps> = ({ activeItem = 'home', onItemClick }) =
       onMouseLeave={() => setIsExpanded(false)}
     >
       {/* User Icon Header */}
-      <div className={`mb-8 flex items-center transition-all duration-300 ${isExpanded ? 'px-6' : 'justify-center'}`}>
+      <button
+        onClick={onUserClick}
+        className={`mb-8 flex items-center transition-all duration-300 ${isExpanded ? 'px-6' : 'justify-center'} hover:scale-105`}
+      >
         <div className="w-12 h-12 rounded-full bg-gradient-to-r from-yellow-400 to-yellow-500 flex items-center justify-center shadow-lg shadow-yellow-200/60 flex-shrink-0">
           <User size={24} className="text-white" />
         </div>
         {isExpanded && (
           <span className="ml-4 font-semibold text-gray-900 opacity-100 transition-all duration-300 delay-75">Mi Perfil</span>
         )}
-      </div>
+      </button>
 
       {/* Navigation */}
       <nav className="flex-1 flex flex-col gap-2 w-full px-3 transition-all duration-300">

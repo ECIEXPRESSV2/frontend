@@ -4,8 +4,9 @@ import SignUpForm from '../components/ui/SignUpForm';
 import LandingPage from './landing/LandingPage';
 import Home from './home/Home';
 import StoreDetail from './store/StoreDetail';
+import UserProfile from './user/UserProfile';
 
-type PageType = 'landing' | 'signin' | 'signup' | 'home' | 'store-detail';
+type PageType = 'landing' | 'signin' | 'signup' | 'home' | 'store-detail' | 'profile';
 
 const MainPage: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<PageType>('landing');
@@ -62,6 +63,14 @@ const MainPage: React.FC = () => {
     setCurrentStoreId(null);
   }, []);
 
+  const handleProfileClick = useCallback(() => {
+    setCurrentPage('profile');
+  }, []);
+
+  const handleProfileBack = useCallback(() => {
+    setCurrentPage('home');
+  }, []);
+
   const getPageContent = (page: PageType) => {
     switch (page) {
       case 'signin':
@@ -97,11 +106,13 @@ const MainPage: React.FC = () => {
           />
         );
       case 'home':
-        return <Home onStoreClick={handleStoreClick} />;
+        return <Home onStoreClick={handleStoreClick} onUserClick={handleProfileClick} />;
       case 'store-detail':
         return currentStoreId !== null ? (
           <StoreDetail storeId={currentStoreId} onBack={handleStoreDetailBack} />
         ) : null;
+      case 'profile':
+        return <UserProfile onBack={handleProfileBack} />;
     }
   };
 
@@ -156,6 +167,11 @@ const MainPage: React.FC = () => {
       {currentPage === 'store-detail' ? (
         <div className="relative">
           {getPageContent('store-detail')}
+        </div>
+      ) : null}
+      {currentPage === 'profile' ? (
+        <div className="relative">
+          {getPageContent('profile')}
         </div>
       ) : null}
     </div>

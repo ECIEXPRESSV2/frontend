@@ -7,9 +7,10 @@ import CategoryTabs from '../../components/home/CategoryTabs';
 
 interface HomeProps {
   onStoreClick?: (storeId: number) => void;
+  onUserClick?: () => void;
 }
 
-const Home: React.FC<HomeProps> = ({ onStoreClick }) => {
+const Home: React.FC<HomeProps> = ({ onStoreClick, onUserClick }) => {
   const [activeCategory, setActiveCategory] = useState('Cafetería');
   const [activeStore, setActiveStore] = useState(0);
   const [activeSidebarItem, setActiveSidebarItem] = useState('home');
@@ -69,6 +70,7 @@ const Home: React.FC<HomeProps> = ({ onStoreClick }) => {
       <Sidebar 
         activeItem={activeSidebarItem}
         onItemClick={setActiveSidebarItem}
+        onUserClick={onUserClick}
       />
 
       {/* Main Content */}
