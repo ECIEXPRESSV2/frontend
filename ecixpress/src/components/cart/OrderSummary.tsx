@@ -1,27 +1,18 @@
 import React from 'react';
-
-interface CartProduct {
-  id: number;
-  name: string;
-  price: number;
-  quantity: number;
-}
+import { CartProduct, CartTotals } from '../../types/cart';
 
 interface OrderSummaryProps {
   products: CartProduct[];
-  subtotal: number;
-  discount: number;
-  total: number;
+  totals: CartTotals;
   onContinue: () => void;
 }
 
 const OrderSummary: React.FC<OrderSummaryProps> = ({
   products,
-  subtotal,
-  discount,
-  total,
+  totals,
   onContinue
 }) => {
+  const { subtotal, discount, total } = totals;
   return (
     <div className="rounded-2xl bg-white/60 backdrop-blur-xl shadow-sm p-6 space-y-6">
       <h2 className="text-xl font-bold text-gray-900">Resumen del Pedido</h2>

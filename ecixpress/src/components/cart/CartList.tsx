@@ -1,15 +1,7 @@
 import React from 'react';
 import { Filter } from 'lucide-react';
 import CartItem from './CartItem';
-
-interface CartProduct {
-  id: number;
-  name: string;
-  description?: string;
-  imageUrl: string;
-  price: number;
-  quantity: number;
-}
+import { CartProduct } from '../../types/cart';
 
 interface CartListProps {
   products: CartProduct[];
@@ -34,12 +26,7 @@ const CartList: React.FC<CartListProps> = ({ products, onQuantityChange, onRemov
         {products.map((product) => (
           <CartItem
             key={product.id}
-            id={product.id}
-            name={product.name}
-            description={product.description}
-            imageUrl={product.imageUrl}
-            price={product.price}
-            quantity={product.quantity}
+            product={product}
             onQuantityChange={onQuantityChange}
             onRemove={onRemove}
           />

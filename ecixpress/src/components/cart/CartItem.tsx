@@ -1,27 +1,19 @@
 import React from 'react';
 import { Trash2 } from 'lucide-react';
+import { CartProduct } from '../../types/cart';
 
 interface CartItemProps {
-  id: number;
-  name: string;
-  description?: string;
-  imageUrl: string;
-  price: number;
-  quantity: number;
+  product: CartProduct;
   onQuantityChange: (id: number, quantity: number) => void;
   onRemove: (id: number) => void;
 }
 
 const CartItem: React.FC<CartItemProps> = ({
-  id,
-  name,
-  description,
-  imageUrl,
-  price,
-  quantity,
+  product,
   onQuantityChange,
   onRemove
 }) => {
+  const { id, name, description, imageUrl, price, quantity } = product;
   return (
     <div className="flex items-center gap-4 p-4 rounded-xl bg-white/60 backdrop-blur-xl border border-white/40 shadow-sm hover:shadow-md transition-all duration-300">
       {/* Image */}
