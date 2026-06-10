@@ -1,6 +1,7 @@
 import React from 'react';
 
 interface StoreItemProps {
+  id: number;
   name: string;
   imageUrl: string;
   isActive?: boolean;
@@ -8,6 +9,7 @@ interface StoreItemProps {
 }
 
 const StoreItem: React.FC<StoreItemProps> = ({ 
+  id,
   name, 
   imageUrl, 
   isActive = false,

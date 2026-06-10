@@ -3,12 +3,14 @@ import SignInForm from '../components/ui/SignInForm';
 import SignUpForm from '../components/ui/SignUpForm';
 import LandingPage from './landing/LandingPage';
 import Home from './home/Home';
+import StoreDetail from './store/StoreDetail';
 
-type PageType = 'landing' | 'signin' | 'signup' | 'home';
+type PageType = 'landing' | 'signin' | 'signup' | 'home' | 'store-detail';
 
 const MainPage: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<PageType>('landing');
   const [slideDirection, setSlideDirection] = useState<'left' | 'right' | null>(null);
+  const [currentStoreId, setCurrentStoreId] = useState<number | null>(null);
 
   const handleLoginClick = useCallback(() => {
     setCurrentPage('signin');
@@ -50,6 +52,16 @@ const MainPage: React.FC = () => {
     }, 50);
   }, []);
 
+  const handleStoreClick = useCallback((storeId: number) => {
+    setCurrentStoreId(storeId);
+    setCurrentPage('store-detail');
+  }, []);
+
+  const handleStoreDetailBack = useCallback(() => {
+    setCurrentPage('home');
+    setCurrentStoreId(null);
+  }, []);
+
   const getPageContent = (page: PageType) => {
     switch (page) {
       case 'signin':
@@ -85,7 +97,11 @@ const MainPage: React.FC = () => {
           />
         );
       case 'home':
-        return <Home />;
+        return <Home onStoreClick={handleStoreClick} />;
+      case 'store-detail':
+        return currentStoreId !== null ? (
+          <StoreDetail storeId={currentStoreId} onBack={handleStoreDetailBack} />
+        ) : null;
     }
   };
 
@@ -135,6 +151,11 @@ const MainPage: React.FC = () => {
       {currentPage === 'home' ? (
         <div className="relative">
           {getPageContent('home')}
+        </div>
+      ) : null}
+      {currentPage === 'store-detail' ? (
+        <div className="relative">
+          {getPageContent('store-detail')}
         </div>
       ) : null}
     </div>

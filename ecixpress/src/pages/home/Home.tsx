@@ -5,7 +5,11 @@ import StoreItem from '../../components/home/StoreItem';
 import ProductCard from '../../components/home/ProductCard';
 import CategoryTabs from '../../components/home/CategoryTabs';
 
-const Home: React.FC = () => {
+interface HomeProps {
+  onStoreClick?: (storeId: number) => void;
+}
+
+const Home: React.FC<HomeProps> = ({ onStoreClick }) => {
   const [activeCategory, setActiveCategory] = useState('Cafetería');
   const [activeStore, setActiveStore] = useState(0);
   const [activeSidebarItem, setActiveSidebarItem] = useState('home');
@@ -87,10 +91,14 @@ const Home: React.FC = () => {
               {stores.map((store, index) => (
                 <StoreItem
                   key={store.id}
+                  id={store.id}
                   name={store.name}
                   imageUrl={store.imageUrl}
                   isActive={activeStore === index}
-                  onClick={() => setActiveStore(index)}
+                  onClick={() => {
+                    setActiveStore(index);
+                    onStoreClick?.(store.id);
+                  }}
                 />
               ))}
             </div>
