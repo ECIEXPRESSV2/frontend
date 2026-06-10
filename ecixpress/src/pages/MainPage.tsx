@@ -5,8 +5,9 @@ import LandingPage from './landing/LandingPage';
 import Home from './home/Home';
 import StoreDetail from './store/StoreDetail';
 import UserProfile from './user/UserProfile';
+import CartPage from './cart/CartPage';
 
-type PageType = 'landing' | 'signin' | 'signup' | 'home' | 'store-detail' | 'profile';
+type PageType = 'landing' | 'signin' | 'signup' | 'home' | 'store-detail' | 'profile' | 'cart';
 
 const MainPage: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<PageType>('landing');
@@ -71,6 +72,19 @@ const MainPage: React.FC = () => {
     setCurrentPage('home');
   }, []);
 
+  const handleCartClick = useCallback(() => {
+    setCurrentPage('cart');
+  }, []);
+
+  const handleCartBack = useCallback(() => {
+    setCurrentPage('home');
+  }, []);
+
+  const handleCartContinue = useCallback(() => {
+    // Navigate to payment page (to be implemented)
+    console.log('Navigate to payment');
+  }, []);
+
   const getPageContent = (page: PageType) => {
     switch (page) {
       case 'signin':
@@ -106,13 +120,15 @@ const MainPage: React.FC = () => {
           />
         );
       case 'home':
-        return <Home onStoreClick={handleStoreClick} onUserClick={handleProfileClick} />;
+        return <Home onStoreClick={handleStoreClick} onUserClick={handleProfileClick} onCartClick={handleCartClick} />;
       case 'store-detail':
         return currentStoreId !== null ? (
           <StoreDetail storeId={currentStoreId} onBack={handleStoreDetailBack} />
         ) : null;
       case 'profile':
         return <UserProfile onBack={handleProfileBack} />;
+      case 'cart':
+        return <CartPage onBack={handleCartBack} onContinue={handleCartContinue} />;
     }
   };
 
@@ -172,6 +188,11 @@ const MainPage: React.FC = () => {
       {currentPage === 'profile' ? (
         <div className="relative">
           {getPageContent('profile')}
+        </div>
+      ) : null}
+      {currentPage === 'cart' ? (
+        <div className="relative">
+          {getPageContent('cart')}
         </div>
       ) : null}
     </div>
