@@ -1,4 +1,11 @@
-import { CartProduct } from '../types/cart';
+interface CartProduct {
+  id: number;
+  name: string;
+  description?: string;
+  imageUrl: string;
+  price: number;
+  quantity: number;
+}
 
 export const mockCartProducts: CartProduct[] = [
   {

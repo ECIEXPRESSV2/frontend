@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import Sidebar from '../../components/home/Sidebar';
 import StoreHeader from '../../components/store/StoreHeader';
@@ -28,14 +29,11 @@ interface Store {
   products: Product[];
 }
 
-interface StoreDetailProps {
-  storeId: number;
-  onBack: () => void;
-}
-
-const StoreDetail: React.FC<StoreDetailProps> = ({ storeId, onBack }) => {
+const StoreDetail: React.FC = () => {
+  const { storeId } = useParams<{ storeId: string }>();
+  const navigate = useNavigate();
   const [activeSidebarItem, setActiveSidebarItem] = useState('home');
-  const store: Store | undefined = getStoreById(storeId);
+  const store: Store | undefined = storeId ? getStoreById(parseInt(storeId)) : undefined;
 
   if (!store) {
     return (
@@ -43,7 +41,7 @@ const StoreDetail: React.FC<StoreDetailProps> = ({ storeId, onBack }) => {
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-900 mb-4">Tienda no encontrada</h1>
           <button
-            onClick={onBack}
+            onClick={() => navigate('/home')}
             className="px-6 py-3 rounded-xl bg-gradient-to-r from-yellow-400 to-yellow-500 text-white font-semibold hover:from-yellow-500 hover:to-yellow-600 transition-all duration-300 shadow-md"
           >
             Volver al inicio
@@ -66,7 +64,7 @@ const StoreDetail: React.FC<StoreDetailProps> = ({ storeId, onBack }) => {
         <div className="max-w-7xl mx-auto space-y-8">
           {/* Back Button */}
           <button
-            onClick={onBack}
+            onClick={() => navigate('/home')}
             className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/60 backdrop-blur-xl border border-white/40 text-gray-700 font-medium text-sm hover:bg-yellow-50 hover:text-yellow-600 transition-all duration-300"
           >
             <ArrowLeft size={16} />

@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { User, Plus, Grid, ShoppingCart, Clipboard, MessageCircle, LogOut, Wallet, Bell } from 'lucide-react';
 
 interface SidebarProps {
   activeItem?: string;
   onItemClick?: (item: string) => void;
-  onUserClick?: () => void;
-  onCartClick?: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ activeItem = 'home', onItemClick, onUserClick, onCartClick }) => {
+const Sidebar: React.FC<SidebarProps> = ({ activeItem = 'home', onItemClick }) => {
+  const navigate = useNavigate();
   const [isExpanded, setIsExpanded] = useState(false);
   const menuItems = [
     { id: 'home', icon: Grid, label: 'Inicio' },
@@ -27,7 +27,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeItem = 'home', onItemClick, onU
     >
       {/* User Icon Header */}
       <button
-        onClick={onUserClick}
+        onClick={() => navigate('/profile')}
         className={`mb-8 flex items-center transition-all duration-300 ${isExpanded ? 'px-6' : 'justify-center'} hover:scale-105`}
       >
         <div className="w-12 h-12 rounded-full bg-gradient-to-r from-yellow-400 to-yellow-500 flex items-center justify-center shadow-lg shadow-yellow-200/60 flex-shrink-0">
@@ -48,8 +48,10 @@ const Sidebar: React.FC<SidebarProps> = ({ activeItem = 'home', onItemClick, onU
             <button
               key={item.id}
               onClick={() => {
-                if (item.id === 'cart' && onCartClick) {
-                  onCartClick();
+                if (item.id === 'cart') {
+                  navigate('/cart');
+                } else if (item.id === 'home') {
+                  navigate('/home');
                 } else {
                   onItemClick?.(item.id);
                 }

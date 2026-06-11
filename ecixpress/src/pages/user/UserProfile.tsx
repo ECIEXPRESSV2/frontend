@@ -1,12 +1,10 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, User, Mail, Phone, MapPin, Edit, Camera } from 'lucide-react';
 import Sidebar from '../../components/home/Sidebar';
 
-interface UserProfileProps {
-  onBack: () => void;
-}
-
-const UserProfile: React.FC<UserProfileProps> = ({ onBack }) => {
+const UserProfile: React.FC = () => {
+  const navigate = useNavigate();
   const [activeSidebarItem, setActiveSidebarItem] = useState('profile');
   
   // Mock data - fácil de reemplazar con datos del backend
@@ -35,7 +33,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ onBack }) => {
         <div className="max-w-4xl mx-auto space-y-8">
           {/* Back Button */}
           <button
-            onClick={onBack}
+            onClick={() => navigate('/home')}
             className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/60 backdrop-blur-xl border border-white/40 text-gray-700 font-medium text-sm hover:bg-yellow-50 hover:text-yellow-600 transition-all duration-300"
           >
             <ArrowLeft size={16} />

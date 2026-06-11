@@ -1,17 +1,13 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Sidebar from '../../components/home/Sidebar';
 import Banner from '../../components/home/Banner';
 import StoreItem from '../../components/home/StoreItem';
 import ProductCard from '../../components/home/ProductCard';
 import CategoryTabs from '../../components/home/CategoryTabs';
 
-interface HomeProps {
-  onStoreClick?: (storeId: number) => void;
-  onUserClick?: () => void;
-  onCartClick?: () => void;
-}
-
-const Home: React.FC<HomeProps> = ({ onStoreClick, onUserClick, onCartClick }) => {
+const Home: React.FC = () => {
+  const navigate = useNavigate();
   const [activeCategory, setActiveCategory] = useState('Cafetería');
   const [activeStore, setActiveStore] = useState(0);
   const [activeSidebarItem, setActiveSidebarItem] = useState('home');
@@ -71,8 +67,6 @@ const Home: React.FC<HomeProps> = ({ onStoreClick, onUserClick, onCartClick }) =
       <Sidebar 
         activeItem={activeSidebarItem}
         onItemClick={setActiveSidebarItem}
-        onUserClick={onUserClick}
-        onCartClick={onCartClick}
       />
 
       {/* Main Content */}
@@ -101,7 +95,7 @@ const Home: React.FC<HomeProps> = ({ onStoreClick, onUserClick, onCartClick }) =
                   isActive={activeStore === index}
                   onClick={() => {
                     setActiveStore(index);
-                    onStoreClick?.(store.id);
+                    navigate(`/store/${store.id}`);
                   }}
                 />
               ))}

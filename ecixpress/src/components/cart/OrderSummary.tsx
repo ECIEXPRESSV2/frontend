@@ -1,5 +1,17 @@
 import React from 'react';
-import { CartProduct, CartTotals } from '../../types/cart';
+
+interface CartProduct {
+  id: number;
+  name: string;
+  price: number;
+  quantity: number;
+}
+
+interface CartTotals {
+  subtotal: number;
+  discount: number;
+  total: number;
+}
 
 interface OrderSummaryProps {
   products: CartProduct[];
