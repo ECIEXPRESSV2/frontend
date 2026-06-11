@@ -21,7 +21,7 @@ const AuthLayout: React.FC<AuthLayoutProps> = ({
         
         {/* Carrusel */}
         <div className="relative w-full h-full">
-          <FoodCarousel className="w-full h-full" />
+          <FoodCarousel />
         </div>
       </div>
 

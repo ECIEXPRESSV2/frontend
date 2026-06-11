@@ -6,9 +6,11 @@ interface SidebarProps {
   onItemClick?: (item: string) => void;
   onUserClick?: () => void;
   onCartClick?: () => void;
+  onOrdersClick?: () => void;
+  onMessagesClick?: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ activeItem = 'home', onItemClick, onUserClick, onCartClick }) => {
+const Sidebar: React.FC<SidebarProps> = ({ activeItem = 'home', onItemClick, onUserClick, onCartClick, onOrdersClick, onMessagesClick }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const menuItems = [
     { id: 'home', icon: Grid, label: 'Inicio' },
@@ -50,6 +52,10 @@ const Sidebar: React.FC<SidebarProps> = ({ activeItem = 'home', onItemClick, onU
               onClick={() => {
                 if (item.id === 'cart' && onCartClick) {
                   onCartClick();
+                } else if (item.id === 'orders' && onOrdersClick) {
+                  onOrdersClick();
+                } else if (item.id === 'messages' && onMessagesClick) {
+                  onMessagesClick();
                 } else {
                   onItemClick?.(item.id);
                 }

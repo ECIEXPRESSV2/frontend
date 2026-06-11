@@ -31,9 +31,11 @@ interface Store {
 interface StoreDetailProps {
   storeId: number;
   onBack: () => void;
+  onOrdersClick?: () => void;
+  onMessagesClick?: () => void;
 }
 
-const StoreDetail: React.FC<StoreDetailProps> = ({ storeId, onBack }) => {
+const StoreDetail: React.FC<StoreDetailProps> = ({ storeId, onBack, onOrdersClick, onMessagesClick }) => {
   const [activeSidebarItem, setActiveSidebarItem] = useState('home');
   const store: Store | undefined = getStoreById(storeId);
 
@@ -59,6 +61,8 @@ const StoreDetail: React.FC<StoreDetailProps> = ({ storeId, onBack }) => {
       <Sidebar 
         activeItem={activeSidebarItem}
         onItemClick={setActiveSidebarItem}
+        onOrdersClick={onOrdersClick}
+        onMessagesClick={onMessagesClick}
       />
 
       {/* Main Content */}

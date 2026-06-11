@@ -1,7 +1,7 @@
 import React from 'react';
 import { Filter } from 'lucide-react';
 import CartItem from './CartItem';
-import { CartProduct } from '../../types/cart';
+import type { CartProduct } from '../../types/cart';
 
 interface CartListProps {
   products: CartProduct[];

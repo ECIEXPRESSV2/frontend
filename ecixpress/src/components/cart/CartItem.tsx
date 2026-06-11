@@ -1,6 +1,6 @@
 import React from 'react';
 import { Trash2 } from 'lucide-react';
-import { CartProduct } from '../../types/cart';
+import type { CartProduct } from '../../types/cart';
 
 interface CartItemProps {
   product: CartProduct;

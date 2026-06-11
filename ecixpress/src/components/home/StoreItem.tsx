@@ -18,6 +18,7 @@ const StoreItem: React.FC<StoreItemProps> = ({
   return (
     <button
       onClick={onClick}
+      data-store-id={id}
       className={`flex flex-col items-center gap-2 transition-all duration-300 ease-in-out group
         ${isActive ? 'scale-110' : 'hover:scale-105'}`}
     >

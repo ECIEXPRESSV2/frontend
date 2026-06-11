@@ -9,9 +9,11 @@ import { useCart } from '../../hooks/useCart';
 interface CartPageProps {
   onBack: () => void;
   onContinue: () => void;
+  onOrdersClick?: () => void;
+  onMessagesClick?: () => void;
 }
 
-const CartPage: React.FC<CartPageProps> = ({ onBack, onContinue }) => {
+const CartPage: React.FC<CartPageProps> = ({ onBack, onContinue, onOrdersClick, onMessagesClick }) => {
   const [activeSidebarItem, setActiveSidebarItem] = useState('cart');
   
   // Hook personalizado para lógica del carrito (fácil de migrar a backend)
@@ -44,6 +46,8 @@ const CartPage: React.FC<CartPageProps> = ({ onBack, onContinue }) => {
       <Sidebar 
         activeItem={activeSidebarItem}
         onItemClick={setActiveSidebarItem}
+        onOrdersClick={onOrdersClick}
+        onMessagesClick={onMessagesClick}
       />
 
       {/* Main Content */}

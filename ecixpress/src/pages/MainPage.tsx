@@ -6,13 +6,15 @@ import Home from './home/Home';
 import StoreDetail from './store/StoreDetail';
 import UserProfile from './user/UserProfile';
 import CartPage from './cart/CartPage';
+import BackendDemoPage from './demo/BackendDemoPage';
 
-type PageType = 'landing' | 'signin' | 'signup' | 'home' | 'store-detail' | 'profile' | 'cart';
+type PageType = 'landing' | 'signin' | 'signup' | 'home' | 'store-detail' | 'profile' | 'cart' | 'backend-demo';
 
 const MainPage: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<PageType>('landing');
   const [slideDirection, setSlideDirection] = useState<'left' | 'right' | null>(null);
   const [currentStoreId, setCurrentStoreId] = useState<number | null>(null);
+  const [demoInitialTab, setDemoInitialTab] = useState<'orders' | 'messages'>('orders');
 
   const handleLoginClick = useCallback(() => {
     setCurrentPage('signin');
@@ -85,6 +87,20 @@ const MainPage: React.FC = () => {
     console.log('Navigate to payment');
   }, []);
 
+  const handleOpenOrdersDemo = useCallback(() => {
+    setDemoInitialTab('orders');
+    setCurrentPage('backend-demo');
+  }, []);
+
+  const handleOpenMessagesDemo = useCallback(() => {
+    setDemoInitialTab('messages');
+    setCurrentPage('backend-demo');
+  }, []);
+
+  const handleDemoBack = useCallback(() => {
+    setCurrentPage('home');
+  }, []);
+
   const getPageContent = (page: PageType) => {
     switch (page) {
       case 'signin':
@@ -120,15 +136,37 @@ const MainPage: React.FC = () => {
           />
         );
       case 'home':
-        return <Home onStoreClick={handleStoreClick} onUserClick={handleProfileClick} onCartClick={handleCartClick} />;
+        return (
+          <Home
+            onStoreClick={handleStoreClick}
+            onUserClick={handleProfileClick}
+            onCartClick={handleCartClick}
+            onOrdersClick={handleOpenOrdersDemo}
+            onMessagesClick={handleOpenMessagesDemo}
+          />
+        );
       case 'store-detail':
         return currentStoreId !== null ? (
-          <StoreDetail storeId={currentStoreId} onBack={handleStoreDetailBack} />
+          <StoreDetail
+            storeId={currentStoreId}
+            onBack={handleStoreDetailBack}
+            onOrdersClick={handleOpenOrdersDemo}
+            onMessagesClick={handleOpenMessagesDemo}
+          />
         ) : null;
       case 'profile':
         return <UserProfile onBack={handleProfileBack} />;
       case 'cart':
-        return <CartPage onBack={handleCartBack} onContinue={handleCartContinue} />;
+        return (
+          <CartPage
+            onBack={handleCartBack}
+            onContinue={handleCartContinue}
+            onOrdersClick={handleOpenOrdersDemo}
+            onMessagesClick={handleOpenMessagesDemo}
+          />
+        );
+      case 'backend-demo':
+        return <BackendDemoPage onBack={handleDemoBack} initialTab={demoInitialTab} />;
     }
   };
 
@@ -193,6 +231,11 @@ const MainPage: React.FC = () => {
       {currentPage === 'cart' ? (
         <div className="relative">
           {getPageContent('cart')}
+        </div>
+      ) : null}
+      {currentPage === 'backend-demo' ? (
+        <div className="relative">
+          {getPageContent('backend-demo')}
         </div>
       ) : null}
     </div>

@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { CartProduct, CartTotals } from '../types/cart';
+import type { CartProduct, CartTotals } from '../types/cart';
 import { getCartProducts, updateCartItemQuantity, removeCartItem } from '../mock/cart';
 
 export const useCart = () => {
