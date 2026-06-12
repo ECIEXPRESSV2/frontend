@@ -1,7 +1,15 @@
 import React from 'react';
 import { Filter } from 'lucide-react';
 import CartItem from './CartItem';
-import type { CartProduct } from '../../types/cart';
+
+interface CartProduct {
+  id: number;
+  name: string;
+  description?: string;
+  imageUrl: string;
+  price: number;
+  quantity: number;
+}
 
 interface CartListProps {
   products: CartProduct[];

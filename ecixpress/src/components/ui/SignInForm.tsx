@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { toast } from 'react-toastify';
 import AuthLayout from './AuthLayout';
 import FormInput from './FormInput';
 import PasswordInput from './PasswordInput';
 import { validateEmail, validatePassword } from '../../lib/validation';
+import { useAuth } from '../../context/AuthContext';
 
 interface SignInProps {
   onSignUpClick?: () => void;
@@ -10,11 +12,16 @@ interface SignInProps {
 }
 
 const SignInForm: React.FC<SignInProps> = ({ onSignUpClick, onLoginSuccess }) => {
+  const { signIn, signInWithGoogle, resetPassword } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [touched, setTouched] = useState({ email: false, password: false });
+  const [showReset, setShowReset] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetSent, setResetSent] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
 
   const [errors, setErrors] = useState({ email: '', password: '' });
 
@@ -26,7 +33,7 @@ const SignInForm: React.FC<SignInProps> = ({ onSignUpClick, onLoginSuccess }) =>
     setErrors(prev => ({ ...prev, password: validatePassword(password) }));
   }, [password]);
 
-  const handleSignIn = (e: React.FormEvent) => {
+  const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setTouched({ email: true, password: true });
     const emailError = validateEmail(email);
@@ -34,12 +41,105 @@ const SignInForm: React.FC<SignInProps> = ({ onSignUpClick, onLoginSuccess }) =>
     setErrors({ email: emailError, password: passwordError });
     if (emailError || passwordError) return;
     setIsLoading(true);
-    setTimeout(() => {
-      console.log('Sign in:', { email, password });
-      setIsLoading(false);
+    try {
+      await signIn(email, password);
       onLoginSuccess?.();
-    }, 1500);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Error al iniciar sesión';
+      toast.error(msg.includes('invalid-credential') ? 'Correo o contraseña incorrectos' : msg);
+    } finally {
+      setIsLoading(false);
+    }
   };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resetEmail) return;
+    setResetLoading(true);
+    try {
+      await resetPassword(resetEmail);
+      setResetSent(true);
+    } catch {
+      // Mostrar mensaje genérico para no revelar si el email existe
+      setResetSent(true);
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    setIsLoading(true);
+    try {
+      await signInWithGoogle();
+      onLoginSuccess?.();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Error con Google';
+      toast.error(msg);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (showReset) {
+    return (
+      <AuthLayout carouselPosition="left">
+        <div className="text-center space-y-1">
+          <img src="/logotipoEcixpress.svg" className="h-9 mx-auto mb-2" alt="EciXpress" />
+          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Recuperar contraseña</h1>
+          <p className="text-sm text-gray-500">Te enviaremos un enlace a tu correo</p>
+        </div>
+
+        {resetSent ? (
+          <div className="rounded-xl bg-green-50 border border-green-200 p-4 text-center space-y-3">
+            <p className="text-sm text-green-700 font-medium">
+              Si ese correo está registrado, recibirás un enlace para restablecer tu contraseña.
+            </p>
+            <button
+              type="button"
+              onClick={() => { setShowReset(false); setResetSent(false); setResetEmail(''); }}
+              className="text-sm text-yellow-600 font-semibold hover:underline"
+            >
+              Volver al inicio de sesión
+            </button>
+          </div>
+        ) : (
+          <form onSubmit={handleResetPassword} noValidate className="space-y-4">
+            <FormInput
+              label="Correo electrónico"
+              type="email"
+              value={resetEmail}
+              onChange={setResetEmail}
+              onBlur={() => {}}
+              placeholder="ejemplo@empresa.com"
+              error=""
+              touched={false}
+            />
+            <button
+              type="submit"
+              disabled={resetLoading || !resetEmail}
+              className="w-full py-3 mt-1 rounded-xl font-semibold text-sm text-black
+                bg-gradient-to-r from-yellow-400 to-yellow-500
+                hover:from-yellow-500 hover:to-yellow-600
+                active:scale-[.98] transition-all duration-150
+                disabled:opacity-60 disabled:cursor-not-allowed
+                shadow-lg shadow-yellow-200/60"
+            >
+              {resetLoading ? 'Enviando...' : 'Enviar enlace'}
+            </button>
+            <p className="text-center text-sm text-gray-500">
+              <button
+                type="button"
+                onClick={() => setShowReset(false)}
+                className="text-yellow-600 font-semibold hover:underline"
+              >
+                ← Volver al inicio de sesión
+              </button>
+            </p>
+          </form>
+        )}
+      </AuthLayout>
+    );
+  }
 
   return (
     <AuthLayout carouselPosition="left">
@@ -62,16 +162,27 @@ const SignInForm: React.FC<SignInProps> = ({ onSignUpClick, onLoginSuccess }) =>
           touched={touched.email}
         />
 
-        <PasswordInput
-          label="Contraseña"
-          value={password}
-          onChange={setPassword}
-          onBlur={() => setTouched(prev => ({ ...prev, password: true }))}
-          error={errors.password}
-          touched={touched.password}
-          showPassword={showPassword}
-          onTogglePassword={() => setShowPassword(!showPassword)}
-        />
+        <div className="space-y-1">
+          <PasswordInput
+            label="Contraseña"
+            value={password}
+            onChange={setPassword}
+            onBlur={() => setTouched(prev => ({ ...prev, password: true }))}
+            error={errors.password}
+            touched={touched.password}
+            showPassword={showPassword}
+            onTogglePassword={() => setShowPassword(!showPassword)}
+          />
+          <div className="text-right">
+            <button
+              type="button"
+              onClick={() => { setShowReset(true); setResetEmail(email); }}
+              className="text-xs text-yellow-600 hover:underline font-medium"
+            >
+              ¿Olvidaste tu contraseña?
+            </button>
+          </div>
+        </div>
 
         <button
           type="submit"
@@ -97,11 +208,14 @@ const SignInForm: React.FC<SignInProps> = ({ onSignUpClick, onLoginSuccess }) =>
       {/* Google Button */}
       <button
         type="button"
+        onClick={handleGoogleSignIn}
+        disabled={isLoading}
         className="w-full py-3 rounded-xl font-semibold text-sm text-gray-700
           bg-white/80 backdrop-blur-sm border border-gray-200
           hover:bg-white hover:border-gray-300
           active:scale-[.98] transition-all duration-150
-          shadow-sm flex items-center justify-center gap-3"
+          shadow-sm flex items-center justify-center gap-3
+          disabled:opacity-60 disabled:cursor-not-allowed"
       >
         <svg className="w-5 h-5" viewBox="0 0 24 24">
           <path

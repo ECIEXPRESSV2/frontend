@@ -1,6 +1,20 @@
 import { useState, useCallback } from 'react';
-import type { CartProduct, CartTotals } from '../types/cart';
 import { getCartProducts, updateCartItemQuantity, removeCartItem } from '../mock/cart';
+
+interface CartProduct {
+  id: number;
+  name: string;
+  description?: string;
+  imageUrl: string;
+  price: number;
+  quantity: number;
+}
+
+interface CartTotals {
+  subtotal: number;
+  discount: number;
+  total: number;
+}
 
 export const useCart = () => {
   const [cartProducts, setCartProducts] = useState<CartProduct[]>([]);

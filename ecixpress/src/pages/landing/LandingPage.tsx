@@ -1,4 +1,5 @@
 import React, { useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Navbar from '../../components/landing/Navbar';
 import HeroSection from '../../components/landing/HeroSection';
 import FeaturesSection from '../../components/landing/FeaturesSection';
@@ -7,22 +8,16 @@ import UniversityContextSection from '../../components/landing/UniversityContext
 import ModulesSection from '../../components/landing/ModulesSection';
 import { CTAFinal, Footer } from '../../components/landing/CTASection';
 
-interface LandingPageProps {
-  onNavigateToLogin?: () => void;
-  onNavigateToSignUp?: () => void;
-}
+const LandingPage: React.FC = () => {
+  const navigate = useNavigate();
 
-const LandingPage: React.FC<LandingPageProps> = ({
-  onNavigateToLogin,
-  onNavigateToSignUp
-}) => {
   const handleLoginClick = useCallback(() => {
-    onNavigateToLogin?.();
-  }, [onNavigateToLogin]);
+    navigate('/signin');
+  }, [navigate]);
 
   const handleSignUpClick = useCallback(() => {
-    onNavigateToSignUp?.();
-  }, [onNavigateToSignUp]);
+    navigate('/signup');
+  }, [navigate]);
 
   const handleGetStartedClick = useCallback(() => {
     console.log('Get started clicked');

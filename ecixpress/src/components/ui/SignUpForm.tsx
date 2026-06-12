@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { toast } from 'react-toastify';
 import AuthLayout from './AuthLayout';
 import FormInput from './FormInput';
 import PasswordInput from './PasswordInput';
 import { validateEmail, validatePassword, validateName, validateConfirmPassword } from '../../lib/validation';
+import { useAuth } from '../../context/AuthContext';
 
 interface SignUpProps {
   onSignInClick?: () => void;
@@ -10,6 +12,7 @@ interface SignUpProps {
 }
 
 const SignUpForm: React.FC<SignUpProps> = ({ onSignInClick, onSignUpSuccess }) => {
+  const { signUp, signInWithGoogle } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -52,7 +55,7 @@ const SignUpForm: React.FC<SignUpProps> = ({ onSignInClick, onSignUpSuccess }) =
     }));
   }, [confirmPassword, password]);
 
-  const handleSignUp = (e: React.FormEvent) => {
+  const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
 
     setTouched({
@@ -73,12 +76,27 @@ const SignUpForm: React.FC<SignUpProps> = ({ onSignInClick, onSignUpSuccess }) =
     if (Object.values(newErrors).some(err => err)) return;
 
     setIsLoading(true);
-
-    setTimeout(() => {
-      console.log('Sign up:', { name, email, password });
-      setIsLoading(false);
+    try {
+      await signUp(email, password, name);
       onSignUpSuccess?.();
-    }, 1500);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Error al crear cuenta';
+      toast.error(msg.includes('email-already-in-use') ? 'Este correo ya está registrado' : msg);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleGoogleSignUp = async () => {
+    setIsLoading(true);
+    try {
+      await signInWithGoogle();
+      onSignUpSuccess?.();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Error con Google');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -159,11 +177,14 @@ const SignUpForm: React.FC<SignUpProps> = ({ onSignInClick, onSignUpSuccess }) =
       {/* Google Button */}
       <button
         type="button"
+        onClick={handleGoogleSignUp}
+        disabled={isLoading}
         className="w-full py-3 rounded-xl font-semibold text-sm text-gray-700
           bg-white/80 backdrop-blur-sm border border-gray-200
           hover:bg-white hover:border-gray-300
           active:scale-[.98] transition-all duration-150
-          shadow-sm flex items-center justify-center gap-3"
+          shadow-sm flex items-center justify-center gap-3
+          disabled:opacity-60 disabled:cursor-not-allowed"
       >
         <svg className="w-5 h-5" viewBox="0 0 24 24">
           <path

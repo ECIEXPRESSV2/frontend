@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import Sidebar from '../../components/home/Sidebar';
 import Stepper from '../../components/cart/Stepper';
@@ -13,7 +14,23 @@ interface CartPageProps {
   onMessagesClick?: () => void;
 }
 
+interface CartProduct {
+  id: number;
+  name: string;
+  description?: string;
+  imageUrl: string;
+  price: number;
+  quantity: number;
+}
+
+interface CartTotals {
+  subtotal: number;
+  discount: number;
+  total: number;
+}
+
 const CartPage: React.FC<CartPageProps> = ({ onBack, onContinue, onOrdersClick, onMessagesClick }) => {
+  const navigate = useNavigate();
   const [activeSidebarItem, setActiveSidebarItem] = useState('cart');
   
   // Hook personalizado para lógica del carrito (fácil de migrar a backend)
@@ -33,6 +50,12 @@ const CartPage: React.FC<CartPageProps> = ({ onBack, onContinue, onOrdersClick, 
   }, [loadCart]);
 
   const totals = calculateTotals();
+
+  const handleContinue = () => {
+    // Navigate to payment page (to be implemented)
+    console.log('Navigate to payment');
+    // navigate('/payment');
+  };
 
   const steps = [
     { id: 'cart', label: 'Carrito' },
@@ -55,7 +78,7 @@ const CartPage: React.FC<CartPageProps> = ({ onBack, onContinue, onOrdersClick, 
         <div className="max-w-7xl mx-auto space-y-8">
           {/* Back Button */}
           <button
-            onClick={onBack}
+            onClick={() => navigate('/home')}
             className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/60 backdrop-blur-xl border border-white/40 text-gray-700 font-medium text-sm hover:bg-yellow-50 hover:text-yellow-600 transition-all duration-300"
           >
             <ArrowLeft size={16} />
@@ -91,7 +114,7 @@ const CartPage: React.FC<CartPageProps> = ({ onBack, onContinue, onOrdersClick, 
               <OrderSummary
                 products={cartProducts}
                 totals={totals}
-                onContinue={onContinue}
+                onContinue={handleContinue}
               />
             </div>
           </div>
