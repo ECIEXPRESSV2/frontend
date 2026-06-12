@@ -14,9 +14,12 @@ export interface AuditLog {
 
 export interface PaginatedAudit {
   data: AuditLog[];
-  total: number;
-  page: number;
-  limit: number;
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
 }
 
 export const getAuditLogs = (

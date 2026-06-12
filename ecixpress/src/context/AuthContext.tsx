@@ -8,7 +8,6 @@ import {
   GoogleAuthProvider,
   signOut as firebaseSignOut,
   sendPasswordResetEmail,
-  sendEmailVerification,
 } from 'firebase/auth';
 import { auth } from '../lib/firebase';
 import { apiFetch } from '../services/api';
@@ -38,7 +37,6 @@ interface AuthContextType {
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
-  resendVerificationEmail: () => Promise<void>;
   isAdmin: () => boolean;
   isVendor: () => boolean;
 }
@@ -119,17 +117,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signUp = async (email: string, password: string, fullName: string) => {
     const cred = await createUserWithEmailAndPassword(auth, email, password);
-    await sendEmailVerification(cred.user);
-    // Llamar explícito con fullName antes de que onAuthStateChanged lo haga sin él
     await syncAndLoadProfile(cred.user, fullName);
   };
 
   const resetPassword = async (email: string) => {
     await sendPasswordResetEmail(auth, email);
-  };
-
-  const resendVerificationEmail = async () => {
-    if (auth.currentUser) await sendEmailVerification(auth.currentUser);
   };
 
   const signOut = async () => {
@@ -167,7 +159,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         signOut,
         refreshProfile,
         resetPassword,
-        resendVerificationEmail,
         isAdmin,
         isVendor,
       }}
