@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { toast } from 'react-toastify';
 import AuthLayout from './AuthLayout';
 import FormInput from './FormInput';
 import PasswordInput from './PasswordInput';
 import { validateEmail, validatePassword, validateName, validateConfirmPassword } from '../../lib/validation';
+import { useAuth } from '../../context/AuthContext';
 
 interface SignUpProps {
   onSignInClick?: () => void;
@@ -10,8 +12,12 @@ interface SignUpProps {
 }
 
 const SignUpForm: React.FC<SignUpProps> = ({ onSignInClick, onSignUpSuccess }) => {
+  const { signUp, signInWithGoogle, resendVerificationEmail } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [verificationSent, setVerificationSent] = useState(false);
+  const [registeredEmail, setRegisteredEmail] = useState('');
+  const [resendLoading, setResendLoading] = useState(false);
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -52,7 +58,7 @@ const SignUpForm: React.FC<SignUpProps> = ({ onSignInClick, onSignUpSuccess }) =
     }));
   }, [confirmPassword, password]);
 
-  const handleSignUp = (e: React.FormEvent) => {
+  const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
 
     setTouched({
@@ -73,13 +79,89 @@ const SignUpForm: React.FC<SignUpProps> = ({ onSignInClick, onSignUpSuccess }) =
     if (Object.values(newErrors).some(err => err)) return;
 
     setIsLoading(true);
-
-    setTimeout(() => {
-      console.log('Sign up:', { name, email, password });
+    try {
+      await signUp(email, password, name);
+      setRegisteredEmail(email);
+      setVerificationSent(true);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Error al crear cuenta';
+      toast.error(msg.includes('email-already-in-use') ? 'Este correo ya está registrado' : msg);
+    } finally {
       setIsLoading(false);
-      onSignUpSuccess?.();
-    }, 1500);
+    }
   };
+
+  const handleResend = async () => {
+    setResendLoading(true);
+    try {
+      await resendVerificationEmail();
+      toast.success('Enlace de verificación reenviado');
+    } catch {
+      toast.error('No se pudo reenviar el enlace');
+    } finally {
+      setResendLoading(false);
+    }
+  };
+
+  const handleGoogleSignUp = async () => {
+    setIsLoading(true);
+    try {
+      await signInWithGoogle();
+      onSignUpSuccess?.();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Error con Google');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (verificationSent) {
+    return (
+      <AuthLayout carouselPosition="right">
+        <div className="text-center space-y-1">
+          <img src="/logotipoEcixpress.svg" className="h-9 mx-auto mb-2" alt="EciXpress" />
+          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Verifica tu correo</h1>
+          <p className="text-sm text-gray-500">Un paso más antes de continuar</p>
+        </div>
+
+        <div className="rounded-xl bg-yellow-50 border border-yellow-200 p-5 space-y-3 text-center">
+          <div className="text-4xl">📧</div>
+          <p className="text-sm text-gray-700">
+            Enviamos un enlace de verificación a{' '}
+            <span className="font-semibold text-gray-900">{registeredEmail}</span>.
+          </p>
+          <p className="text-xs text-gray-500">
+            Abre el correo y haz clic en el enlace para activar tu cuenta.
+          </p>
+        </div>
+
+        <div className="space-y-3">
+          <button
+            type="button"
+            onClick={() => onSignUpSuccess?.()}
+            className="w-full py-3 rounded-xl font-semibold text-sm text-black
+              bg-gradient-to-r from-yellow-400 to-yellow-500
+              hover:from-yellow-500 hover:to-yellow-600
+              active:scale-[.98] transition-all duration-150
+              shadow-lg shadow-yellow-200/60"
+          >
+            Ir a la aplicación
+          </button>
+          <p className="text-center text-xs text-gray-500">
+            ¿No recibiste el correo?{' '}
+            <button
+              type="button"
+              onClick={handleResend}
+              disabled={resendLoading}
+              className="text-yellow-600 font-semibold hover:underline disabled:opacity-50"
+            >
+              {resendLoading ? 'Enviando...' : 'Reenviar enlace'}
+            </button>
+          </p>
+        </div>
+      </AuthLayout>
+    );
+  }
 
   return (
     <AuthLayout carouselPosition="right">
@@ -159,11 +241,14 @@ const SignUpForm: React.FC<SignUpProps> = ({ onSignInClick, onSignUpSuccess }) =
       {/* Google Button */}
       <button
         type="button"
+        onClick={handleGoogleSignUp}
+        disabled={isLoading}
         className="w-full py-3 rounded-xl font-semibold text-sm text-gray-700
           bg-white/80 backdrop-blur-sm border border-gray-200
           hover:bg-white hover:border-gray-300
           active:scale-[.98] transition-all duration-150
-          shadow-sm flex items-center justify-center gap-3"
+          shadow-sm flex items-center justify-center gap-3
+          disabled:opacity-60 disabled:cursor-not-allowed"
       >
         <svg className="w-5 h-5" viewBox="0 0 24 24">
           <path
