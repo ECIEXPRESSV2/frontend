@@ -7,9 +7,9 @@ import {
   getStores, createStore, updateStoreStatus,
   getStoreSchedules, createSchedule, deleteSchedule,
   getStoreClosures, createClosure, cancelClosure,
-  assignStaff,
+  assignStaff, removeStaff, getStoreById,
   getDayName,
-  type Store, type StoreSchedule, type StoreClosure, type CreateStoreDto,
+  type Store, type StoreSchedule, type StoreClosure, type StoreStaff, type CreateStoreDto,
 } from '../../services/storeService';
 import { getUsers, type UserItem } from '../../services/userService';
 
@@ -38,6 +38,7 @@ const StoresPage: React.FC = () => {
 
   // Staff
   const [allUsers, setAllUsers] = useState<UserItem[]>([]);
+  const [staffList, setStaffList] = useState<StoreStaff[]>([]);
   const [staffUserId, setStaffUserId] = useState('');
 
   // Create store form
@@ -60,6 +61,12 @@ const StoresPage: React.FC = () => {
 
   useEffect(() => { loadStores(); }, []);
 
+  const loadStaff = async (storeId: string) => {
+    const token = await getToken();
+    const store = await getStoreById(storeId, token).catch(() => null);
+    setStaffList(store?.staff ?? []);
+  };
+
   const handleSelectStore = async (store: Store) => {
     setSelectedStore(store);
     setActiveTab('schedules');
@@ -73,6 +80,7 @@ const StoresPage: React.FC = () => {
     setClosures(clos);
     const userList = Array.isArray(users) ? users : (users as { data: UserItem[] }).data ?? [];
     setAllUsers(userList);
+    await loadStaff(store.id);
   };
 
   const handleCreateStore = async () => {
@@ -166,6 +174,19 @@ const StoresPage: React.FC = () => {
       await assignStaff(selectedStore.id, staffUserId, token);
       toast.success('Vendedor asignado');
       setStaffUserId('');
+      await loadStaff(selectedStore.id);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Error');
+    }
+  };
+
+  const handleRemoveStaff = async (userId: string) => {
+    if (!selectedStore) return;
+    try {
+      const token = await getToken();
+      await removeStaff(selectedStore.id, userId, token);
+      toast.success('Vendedor removido');
+      await loadStaff(selectedStore.id);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Error');
     }
@@ -291,7 +312,7 @@ const StoresPage: React.FC = () => {
                               {c.reason && <span className="text-gray-400">({c.reason})</span>}
                             </div>
                             <div className="flex items-center gap-2">
-                              <span className="text-xs text-gray-400">{c.status}</span>
+                              <span className="text-xs text-gray-400">{{ SCHEDULED: 'Programado', ACTIVE: 'Activo', EXPIRED: 'Expirado', CANCELLED: 'Cancelado' }[c.status] ?? c.status}</span>
                               {c.status !== 'EXPIRED' && c.status !== 'CANCELLED' && (
                                 <button onClick={() => handleCancelClosure(c.id)} className="text-xs text-red-500 hover:text-red-700">Cancelar</button>
                               )}
@@ -315,6 +336,18 @@ const StoresPage: React.FC = () => {
                         </button>
                       </div>
                       <p className="text-xs text-gray-400">El usuario debe tener rol VENDOR para ser asignado como staff.</p>
+                      {staffList.length === 0 ? (
+                        <p className="text-xs text-gray-400 text-center py-2">No hay vendedores asignados</p>
+                      ) : (
+                        <div className="space-y-1 mt-2">
+                          {staffList.map(s => (
+                            <div key={s.id} className="flex items-center justify-between px-3 py-2 rounded-lg bg-gray-50 text-sm">
+                              <span className="text-gray-700">{s.user?.fullName ?? s.userId} <span className="text-gray-400 text-xs">({s.user?.email})</span></span>
+                              <button onClick={() => handleRemoveStaff(s.userId)} className="text-xs text-red-500 hover:text-red-700">Remover</button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </>
                   )}
                 </div>

@@ -25,8 +25,9 @@ const AuditPage: React.FC = () => {
         setLogs(res);
         setTotal(res.length);
       } else {
-        setLogs((res as { data: AuditLog[] }).data ?? []);
-        setTotal((res as { total: number }).total ?? 0);
+        const paged = res as { data: AuditLog[]; meta?: { total: number } };
+        setLogs(paged.data ?? []);
+        setTotal(paged.meta?.total ?? paged.data?.length ?? 0);
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Error');

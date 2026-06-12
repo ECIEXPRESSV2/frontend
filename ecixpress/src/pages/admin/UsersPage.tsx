@@ -3,13 +3,27 @@ import { toast } from 'react-toastify';
 import { Search, RefreshCw, UserCheck, UserX, UserMinus } from 'lucide-react';
 import Sidebar from '../../components/home/Sidebar';
 import { useAuth } from '../../context/AuthContext';
-import { getUsers, updateUserStatus, assignRole, type UserItem } from '../../services/userService';
+import { getUsers, updateUserStatus, assignRole, revokeRole, type UserItem } from '../../services/userService';
 import { getRoles, type Role } from '../../services/roleService';
 
 const STATUS_COLORS: Record<string, string> = {
   ACTIVE: 'bg-green-100 text-green-700',
   INACTIVE: 'bg-gray-100 text-gray-600',
   SUSPENDED: 'bg-orange-100 text-orange-700',
+};
+
+const STATUS_LABEL: Record<string, string> = {
+  ACTIVE:    'Activo',
+  INACTIVE:  'Inactivo',
+  SUSPENDED: 'Suspendido',
+};
+
+const ROLE_DISPLAY: Record<string, string> = {
+  ADMIN:    'ADMIN',
+  VENDOR:   'VENDOR',
+  SELLER:   'VENDOR',
+  BUYER:    'BUYER',
+  ANALYST:  'ANALYST',
 };
 
 const UsersPage: React.FC = () => {
@@ -41,11 +55,18 @@ const UsersPage: React.FC = () => {
 
   useEffect(() => { load(); }, []);
 
+  useEffect(() => {
+    if (selectedUser) {
+      const updated = users.find(u => u.id === selectedUser.id);
+      if (updated) setSelectedUser(updated);
+    }
+  }, [users]);
+
   const handleStatusChange = async (user: UserItem, status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED') => {
     try {
       const token = await getToken();
       await updateUserStatus(user.id, status, token);
-      toast.success(`Estado cambiado a ${status}`);
+      toast.success(`Usuario ${STATUS_LABEL[status] ?? status}`);
       load();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Error');
@@ -58,8 +79,18 @@ const UsersPage: React.FC = () => {
       const token = await getToken();
       await assignRole(selectedUser.id, assigningRole, token);
       toast.success('Rol asignado');
-      setSelectedUser(null);
       setAssigningRole('');
+      load();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Error');
+    }
+  };
+
+  const handleRevokeRole = async (user: UserItem, roleId: string) => {
+    try {
+      const token = await getToken();
+      await revokeRole(user.id, roleId, token);
+      toast.success('Rol revocado');
       load();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Error');
@@ -130,13 +161,13 @@ const UsersPage: React.FC = () => {
                         <td className="px-6 py-4">
                           <div className="flex flex-wrap gap-1">
                             {getRoleNames(user).map(r => (
-                              <span key={r} className="px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700 text-xs font-medium">{r}</span>
+                              <span key={r} className="px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700 text-xs font-medium">{ROLE_DISPLAY[r] ?? r}</span>
                             ))}
                           </div>
                         </td>
                         <td className="px-6 py-4">
                           <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${STATUS_COLORS[user.status] || ''}`}>
-                            {user.status}
+                            {STATUS_LABEL[user.status] ?? user.status}
                           </span>
                         </td>
                         <td className="px-6 py-4">
@@ -179,10 +210,39 @@ const UsersPage: React.FC = () => {
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-md space-y-4">
             <h3 className="text-lg font-bold text-gray-900">Gestionar Roles — {selectedUser.fullName}</h3>
-            <p className="text-sm text-gray-500">Roles actuales: {getRoleNames(selectedUser).join(', ') || 'Ninguno'}</p>
+
+            {/* Roles actuales con botón de revocar */}
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-gray-700">Roles actuales</p>
+              {(() => {
+                const names = getRoleNames(selectedUser);
+                const roleObjs = names
+                  .map(name => roles.find(r => r.name === name))
+                  .filter(Boolean) as typeof roles;
+                return roleObjs.length === 0
+                  ? <p className="text-sm text-gray-400">Ninguno</p>
+                  : (
+                    <div className="flex flex-wrap gap-2">
+                      {roleObjs.map(r => (
+                        <div key={r.id} className="flex items-center gap-1 px-2 py-1 rounded-full bg-yellow-100">
+                          <span className="text-xs font-medium text-yellow-700">{ROLE_DISPLAY[r.name] ?? r.name}</span>
+                          <button
+                            onClick={() => handleRevokeRole(selectedUser, r.id)}
+                            className="text-yellow-500 hover:text-red-500 text-xs font-bold leading-none"
+                            title="Revocar"
+                          >✕</button>
+                        </div>
+                      ))}
+                    </div>
+                  );
+              })()}
+            </div>
+
+            {/* Asignar nuevo rol */}
             <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">Asignar rol</label>
+              <label htmlFor="role-select" className="text-sm font-medium text-gray-700">Asignar rol</label>
               <select
+                id="role-select"
                 className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-yellow-400"
                 value={assigningRole}
                 onChange={e => setAssigningRole(e.target.value)}
