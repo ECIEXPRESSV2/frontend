@@ -6,39 +6,46 @@ import Home from './pages/home/Home';
 import StoreDetail from './pages/store/StoreDetail';
 import UserProfile from './pages/user/UserProfile';
 import CartPage from './pages/cart/CartPage';
+import ProtectedRoute from './components/common/ProtectedRoute';
+import UsersPage from './pages/admin/UsersPage';
+import RolesPage from './pages/admin/RolesPage';
+import StoresPage from './pages/admin/StoresPage';
+import AuditPage from './pages/admin/AuditPage';
+import VendorStoresPage from './pages/vendor/VendorStoresPage';
 
 const AppRoutes: React.FC = () => {
   return (
     <Routes>
       {/* Landing Page */}
       <Route path="/" element={<LandingPage />} />
-      
+
       {/* Authentication */}
       <Route path="/signin" element={<SignInPage />} />
       <Route path="/signup" element={<SignUpPage />} />
-      
+
       {/* Main App */}
-      <Route path="/home" element={<Home />} />
-      
-      {/* Store Detail */}
-      <Route path="/store/:storeId" element={<StoreDetail />} />
-      
-      {/* User Profile */}
-      <Route path="/profile" element={<UserProfile />} />
-      
-      {/* Cart */}
-      <Route path="/cart" element={<CartPage />} />
-      
-      {/* Catch all - redirect to landing */}
+      <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
+      <Route path="/store/:storeId" element={<ProtectedRoute><StoreDetail /></ProtectedRoute>} />
+      <Route path="/profile" element={<ProtectedRoute><UserProfile /></ProtectedRoute>} />
+      <Route path="/cart" element={<ProtectedRoute><CartPage /></ProtectedRoute>} />
+
+      {/* Admin */}
+      <Route path="/admin/users" element={<ProtectedRoute requireAdmin><UsersPage /></ProtectedRoute>} />
+      <Route path="/admin/roles" element={<ProtectedRoute requireAdmin><RolesPage /></ProtectedRoute>} />
+      <Route path="/admin/stores" element={<ProtectedRoute requireAdmin><StoresPage /></ProtectedRoute>} />
+      <Route path="/admin/audit" element={<ProtectedRoute requireAdmin><AuditPage /></ProtectedRoute>} />
+
+      {/* Vendor */}
+      <Route path="/vendor/stores" element={<ProtectedRoute requireVendor><VendorStoresPage /></ProtectedRoute>} />
+
+      {/* Catch all */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 };
 
-// Wrapper components for auth pages with back button
 const SignInPage: React.FC = () => {
   const navigate = useNavigate();
-  
   return (
     <div className="w-full min-h-screen bg-gradient-to-br from-yellow-50 via-white to-yellow-100">
       <button
@@ -47,9 +54,9 @@ const SignInPage: React.FC = () => {
       >
         ← Volver
       </button>
-      <SignInForm 
-        onSignUpClick={() => navigate('/signup')} 
-        onLoginSuccess={() => navigate('/home')} 
+      <SignInForm
+        onSignUpClick={() => navigate('/signup')}
+        onLoginSuccess={() => navigate('/home')}
       />
     </div>
   );
@@ -57,7 +64,6 @@ const SignInPage: React.FC = () => {
 
 const SignUpPage: React.FC = () => {
   const navigate = useNavigate();
-  
   return (
     <div className="w-full min-h-screen bg-gradient-to-br from-yellow-50 via-white to-yellow-100">
       <button
@@ -66,9 +72,9 @@ const SignUpPage: React.FC = () => {
       >
         ← Volver
       </button>
-      <SignUpForm 
-        onSignInClick={() => navigate('/signin')} 
-        onSignUpSuccess={() => navigate('/home')} 
+      <SignUpForm
+        onSignInClick={() => navigate('/signin')}
+        onSignUpSuccess={() => navigate('/home')}
       />
     </div>
   );
