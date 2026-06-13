@@ -2,9 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
 import { Search, RefreshCw, UserCheck, UserX, UserMinus } from 'lucide-react';
 import Sidebar from '../../components/home/Sidebar';
+import { TableSkeleton } from '../../components/common/LoadingSkeleton';
 import { useAuth } from '../../context/AuthContext';
 import { getUsers, updateUserStatus, assignRole, revokeRole, type UserItem } from '../../services/userService';
 import { getRoles, type Role } from '../../services/roleService';
+import { getPageCache, pageCacheKeys, setPageCache } from '../../services/pageCache';
 
 const STATUS_COLORS: Record<string, string> = {
   ACTIVE: 'bg-green-100 text-green-700',
@@ -26,26 +28,39 @@ const ROLE_DISPLAY: Record<string, string> = {
   ANALYST:  'ANALYST',
 };
 
+type UsersCache = {
+  users: UserItem[];
+  roles: Role[];
+};
+
 const UsersPage: React.FC = () => {
   const { getToken } = useAuth();
-  const [users, setUsers] = useState<UserItem[]>([]);
-  const [roles, setRoles] = useState<Role[]>([]);
-  const [loading, setLoading] = useState(true);
+  const initialCache = getPageCache<UsersCache>(pageCacheKeys.adminUsers());
+  const [users, setUsers] = useState<UserItem[]>(() => initialCache?.users ?? []);
+  const [roles, setRoles] = useState<Role[]>(() => initialCache?.roles ?? []);
+  const [loading, setLoading] = useState(() => !initialCache);
   const [search, setSearch] = useState('');
   const [selectedUser, setSelectedUser] = useState<UserItem | null>(null);
   const [assigningRole, setAssigningRole] = useState('');
 
-  const load = async () => {
-    setLoading(true);
+  const load = async ({ searchValue = search, showLoading = false } = {}) => {
+    const cacheKey = pageCacheKeys.adminUsers(searchValue);
+    const cached = getPageCache<UsersCache>(cacheKey);
+    if (cached) {
+      setUsers(cached.users);
+      setRoles(cached.roles);
+    }
+    setLoading(showLoading && !cached);
     try {
       const token = await getToken();
       const [usersRes, rolesRes] = await Promise.all([
-        getUsers(token, search ? { search } : undefined),
+        getUsers(token, searchValue ? { search: searchValue } : undefined),
         getRoles(token),
       ]);
       const list = Array.isArray(usersRes) ? usersRes : (usersRes as { data: UserItem[] }).data ?? [];
       setUsers(list);
       setRoles(rolesRes);
+      setPageCache(cacheKey, { users: list, roles: rolesRes });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Error cargando usuarios');
     } finally {
@@ -53,7 +68,7 @@ const UsersPage: React.FC = () => {
     }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load({ showLoading: !initialCache }); }, []);
 
   useEffect(() => {
     if (selectedUser) {
@@ -110,7 +125,7 @@ const UsersPage: React.FC = () => {
         <div className="max-w-6xl mx-auto space-y-6">
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold text-gray-900">Gestión de Usuarios</h1>
-            <button onClick={load} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-yellow-400 text-white font-medium text-sm hover:bg-yellow-500 transition">
+            <button onClick={() => load({ searchValue: search })} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-yellow-400 text-white font-medium text-sm hover:bg-yellow-500 transition">
               <RefreshCw size={15} /> Actualizar
             </button>
           </div>
@@ -124,20 +139,18 @@ const UsersPage: React.FC = () => {
                 placeholder="Buscar por email o nombre..."
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && load()}
+                onKeyDown={e => e.key === 'Enter' && load({ searchValue: search })}
               />
             </div>
-            <button onClick={load} className="px-5 py-2.5 rounded-xl bg-gray-100 text-gray-700 font-medium text-sm hover:bg-gray-200">
+            <button onClick={() => load({ searchValue: search })} className="px-5 py-2.5 rounded-xl bg-gray-100 text-gray-700 font-medium text-sm hover:bg-gray-200">
               Buscar
             </button>
           </div>
 
           {/* Table */}
           <div className="rounded-2xl bg-white/70 backdrop-blur-xl shadow-sm overflow-hidden">
-            {loading ? (
-              <div className="flex justify-center py-16">
-                <div className="w-8 h-8 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin" />
-              </div>
+            {loading && users.length === 0 ? (
+              <TableSkeleton rows={6} columns={4} />
             ) : users.length === 0 ? (
               <p className="text-center py-12 text-gray-400">No hay usuarios</p>
             ) : (

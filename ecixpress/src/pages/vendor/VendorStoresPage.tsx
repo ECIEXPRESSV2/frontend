@@ -2,8 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
 import { MapPin, Clock, RefreshCw, Tag } from 'lucide-react';
 import Sidebar from '../../components/home/Sidebar';
+import { CardSkeleton } from '../../components/common/LoadingSkeleton';
 import { useAuth } from '../../context/AuthContext';
 import { getMyStores, getStoreSchedules, getDayName, type Store, type StoreSchedule } from '../../services/storeService';
+import { getPageCache, pageCacheKeys, setPageCache } from '../../services/pageCache';
 
 const STATUS_COLORS: Record<string, string> = {
   OPEN: 'bg-green-100 text-green-700',
@@ -11,21 +13,35 @@ const STATUS_COLORS: Record<string, string> = {
   TEMPORARILY_CLOSED: 'bg-orange-100 text-orange-700',
 };
 
+type VendorStoresCache = {
+  stores: Store[];
+  schedules: Record<string, StoreSchedule[]>;
+};
+
 const VendorStoresPage: React.FC = () => {
   const { getToken } = useAuth();
-  const [stores, setStores] = useState<Store[]>([]);
-  const [schedules, setSchedules] = useState<Record<string, StoreSchedule[]>>({});
-  const [loading, setLoading] = useState(true);
+  const initialCache = getPageCache<VendorStoresCache>(pageCacheKeys.vendorStores);
+  const [stores, setStores] = useState<Store[]>(() => initialCache?.stores ?? []);
+  const [schedules, setSchedules] = useState<Record<string, StoreSchedule[]>>(() => initialCache?.schedules ?? {});
+  const [loading, setLoading] = useState(() => !initialCache);
+  const [loadingSchedules, setLoadingSchedules] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
 
-  const load = async () => {
-    setLoading(true);
+  const load = async ({ showLoading = false } = {}) => {
+    const cached = getPageCache<VendorStoresCache>(pageCacheKeys.vendorStores);
+    if (cached) {
+      setStores(cached.stores);
+      setSchedules(cached.schedules);
+    }
+    setLoading(showLoading && !cached);
+    setLoadingSchedules(false);
     try {
       const token = await getToken();
       const data = await getMyStores(token);
       setStores(data);
+      setLoading(false);
 
-      // Cargar horarios de todas las tiendas en paralelo
+      setLoadingSchedules(true);
       const schedMap: Record<string, StoreSchedule[]> = {};
       await Promise.all(
         data.map(async (store) => {
@@ -38,14 +54,16 @@ const VendorStoresPage: React.FC = () => {
         })
       );
       setSchedules(schedMap);
+      setPageCache(pageCacheKeys.vendorStores, { stores: data, schedules: schedMap });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Error cargando tus tiendas');
     } finally {
       setLoading(false);
+      setLoadingSchedules(false);
     }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load({ showLoading: !initialCache }); }, []);
 
   const typeLabel = (type: string) =>
     type === 'CAFETERIA' ? 'Cafetería' : type === 'PAPELERIA' ? 'Papelería' : 'Restaurante';
@@ -57,15 +75,13 @@ const VendorStoresPage: React.FC = () => {
         <div className="max-w-4xl mx-auto space-y-6">
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold text-gray-900">Mis Puntos de Venta</h1>
-            <button onClick={load} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-yellow-400 text-white font-medium text-sm hover:bg-yellow-500">
+            <button onClick={() => load()} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-yellow-400 text-white font-medium text-sm hover:bg-yellow-500">
               <RefreshCw size={15} /> Actualizar
             </button>
           </div>
 
-          {loading ? (
-            <div className="flex justify-center py-16">
-              <div className="w-10 h-10 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin" />
-            </div>
+          {loading && stores.length === 0 ? (
+            <CardSkeleton rows={3} />
           ) : stores.length === 0 ? (
             <div className="text-center py-16 bg-white/60 rounded-2xl shadow-sm">
               <p className="text-gray-500 font-medium">No tienes puntos de venta asignados.</p>
@@ -103,7 +119,12 @@ const VendorStoresPage: React.FC = () => {
                         <Clock size={16} className="text-yellow-500" />
                         <h3 className="font-semibold text-gray-800 text-sm">Horarios de Atención</h3>
                       </div>
-                      {!schedules[store.id] || schedules[store.id].length === 0 ? (
+                      {loadingSchedules && !schedules[store.id] ? (
+                        <div className="space-y-2 animate-pulse">
+                          <div className="h-3 w-1/2 rounded-full bg-gray-100" />
+                          <div className="h-3 w-1/3 rounded-full bg-gray-100" />
+                        </div>
+                      ) : !schedules[store.id] || schedules[store.id].length === 0 ? (
                         <p className="text-gray-400 text-sm">Sin horarios configurados. Contacta al administrador.</p>
                       ) : (
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
