@@ -4,66 +4,41 @@ import { MapPin, Clock, RefreshCw, Tag } from 'lucide-react';
 import Sidebar from '../../components/home/Sidebar';
 import { CardSkeleton } from '../../components/common/LoadingSkeleton';
 import { useAuth } from '../../context/AuthContext';
-import { getMyStores, getStoreSchedules, getDayName, type Store, type StoreSchedule } from '../../services/storeService';
-import { getPageCache, pageCacheKeys, setPageCache } from '../../services/pageCache';
+import { getMyStores, getDayName, type Store, type StoreSchedule } from '../../services/storeService';
 
-const STATUS_COLORS: Record<string, string> = {
-  OPEN: 'bg-green-100 text-green-700',
-  CLOSED: 'bg-red-100 text-red-700',
-  TEMPORARILY_CLOSED: 'bg-orange-100 text-orange-700',
+const isWithinSchedule = (schedules: StoreSchedule[]): boolean => {
+  const now = new Date();
+  const day = now.getDay();
+  const time = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
+  return schedules.some(s => s.isActive && s.dayOfWeek === day && time >= s.openTime && time < s.closeTime);
 };
 
-type VendorStoresCache = {
-  stores: Store[];
-  schedules: Record<string, StoreSchedule[]>;
+const getStoreLabel = (store: Store): { label: string; color: string } => {
+  if (store.status === 'TEMPORARILY_CLOSED') return { label: 'Cierre temporal', color: 'bg-orange-100 text-orange-700' };
+  if (store.status === 'CLOSED')             return { label: 'Cerrado', color: 'bg-red-100 text-red-700' };
+  if (isWithinSchedule(store.schedules ?? [])) return { label: 'Abierto', color: 'bg-green-100 text-green-700' };
+  return { label: 'Fuera de horario', color: 'bg-gray-100 text-gray-600' };
 };
 
 const VendorStoresPage: React.FC = () => {
   const { getToken } = useAuth();
-  const initialCache = getPageCache<VendorStoresCache>(pageCacheKeys.vendorStores);
-  const [stores, setStores] = useState<Store[]>(() => initialCache?.stores ?? []);
-  const [schedules, setSchedules] = useState<Record<string, StoreSchedule[]>>(() => initialCache?.schedules ?? {});
-  const [loading, setLoading] = useState(() => !initialCache);
-  const [loadingSchedules, setLoadingSchedules] = useState(false);
+  const [stores, setStores] = useState<Store[]>([]);
+  const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<string | null>(null);
 
-  const load = async ({ showLoading = false } = {}) => {
-    const cached = getPageCache<VendorStoresCache>(pageCacheKeys.vendorStores);
-    if (cached) {
-      setStores(cached.stores);
-      setSchedules(cached.schedules);
-    }
-    setLoading(showLoading && !cached);
-    setLoadingSchedules(false);
+  const load = async () => {
     try {
       const token = await getToken();
       const data = await getMyStores(token);
       setStores(data);
-      setLoading(false);
-
-      setLoadingSchedules(true);
-      const schedMap: Record<string, StoreSchedule[]> = {};
-      await Promise.all(
-        data.map(async (store) => {
-          try {
-            const s = await getStoreSchedules(store.id, token);
-            schedMap[store.id] = s;
-          } catch {
-            schedMap[store.id] = [];
-          }
-        })
-      );
-      setSchedules(schedMap);
-      setPageCache(pageCacheKeys.vendorStores, { stores: data, schedules: schedMap });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Error cargando tus tiendas');
     } finally {
       setLoading(false);
-      setLoadingSchedules(false);
     }
   };
 
-  useEffect(() => { load({ showLoading: !initialCache }); }, []);
+  useEffect(() => { load(); }, []);
 
   const typeLabel = (type: string) =>
     type === 'CAFETERIA' ? 'Cafetería' : type === 'PAPELERIA' ? 'Papelería' : 'Restaurante';
@@ -75,7 +50,7 @@ const VendorStoresPage: React.FC = () => {
         <div className="max-w-4xl mx-auto space-y-6">
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold text-gray-900">Mis Puntos de Venta</h1>
-            <button onClick={() => load()} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-yellow-400 text-white font-medium text-sm hover:bg-yellow-500">
+            <button onClick={load} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-yellow-400 text-white font-medium text-sm hover:bg-yellow-500">
               <RefreshCw size={15} /> Actualizar
             </button>
           </div>
@@ -99,9 +74,10 @@ const VendorStoresPage: React.FC = () => {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-3 flex-wrap">
                         <h2 className="text-lg font-bold text-gray-900">{store.name}</h2>
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${STATUS_COLORS[store.status] || ''}`}>
-                          {store.status === 'OPEN' ? 'Abierto' : store.status === 'CLOSED' ? 'Cerrado' : 'Cierre temporal'}
-                        </span>
+                        {(() => {
+                          const { label, color } = getStoreLabel(store);
+                          return <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${color}`}>{label}</span>;
+                        })()}
                       </div>
                       <div className="flex flex-wrap gap-4 mt-2 text-sm text-gray-500">
                         <span className="flex items-center gap-1"><MapPin size={13} className="text-yellow-500" />{store.location}</span>
@@ -119,19 +95,14 @@ const VendorStoresPage: React.FC = () => {
                         <Clock size={16} className="text-yellow-500" />
                         <h3 className="font-semibold text-gray-800 text-sm">Horarios de Atención</h3>
                       </div>
-                      {loadingSchedules && !schedules[store.id] ? (
-                        <div className="space-y-2 animate-pulse">
-                          <div className="h-3 w-1/2 rounded-full bg-gray-100" />
-                          <div className="h-3 w-1/3 rounded-full bg-gray-100" />
-                        </div>
-                      ) : !schedules[store.id] || schedules[store.id].length === 0 ? (
+                      {!store.schedules || store.schedules.length === 0 ? (
                         <p className="text-gray-400 text-sm">Sin horarios configurados. Contacta al administrador.</p>
                       ) : (
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                          {schedules[store.id]
-                            .filter(s => s.isActive)
-                            .sort((a, b) => a.dayOfWeek - b.dayOfWeek)
-                            .map(s => (
+                          {store.schedules
+                            .filter((s: StoreSchedule) => s.isActive)
+                            .sort((a: StoreSchedule, b: StoreSchedule) => a.dayOfWeek - b.dayOfWeek)
+                            .map((s: StoreSchedule) => (
                               <div key={s.id} className="flex flex-col p-3 bg-yellow-50 rounded-xl">
                                 <span className="text-xs font-semibold text-yellow-700">{getDayName(s.dayOfWeek)}</span>
                                 <span className="text-sm text-gray-700 mt-0.5">{s.openTime} – {s.closeTime}</span>
