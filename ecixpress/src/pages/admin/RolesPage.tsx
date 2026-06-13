@@ -2,14 +2,22 @@ import React, { useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
 import { Plus, RefreshCw, Shield } from 'lucide-react';
 import Sidebar from '../../components/home/Sidebar';
+import { TableSkeleton } from '../../components/common/LoadingSkeleton';
 import { useAuth } from '../../context/AuthContext';
-import { getRoles, createRole, getPermissions, setRolePermissions, type Role, type Permission } from '../../services/roleService';
+import { getRoles, createRole, getPermissions, getRolePermissions, setRolePermissions, type Role, type Permission } from '../../services/roleService';
+import { getPageCache, pageCacheKeys, setPageCache } from '../../services/pageCache';
+
+type RolesCache = {
+  roles: Role[];
+  permissions: Permission[];
+};
 
 const RolesPage: React.FC = () => {
   const { getToken } = useAuth();
-  const [roles, setRoles] = useState<Role[]>([]);
-  const [permissions, setPermissions] = useState<Permission[]>([]);
-  const [loading, setLoading] = useState(true);
+  const initialCache = getPageCache<RolesCache>(pageCacheKeys.adminRoles);
+  const [roles, setRoles] = useState<Role[]>(() => initialCache?.roles ?? []);
+  const [permissions, setPermissions] = useState<Permission[]>(() => initialCache?.permissions ?? []);
+  const [loading, setLoading] = useState(() => !initialCache);
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
   const [selectedPerms, setSelectedPerms] = useState<Set<string>>(new Set());
   const [newRoleName, setNewRoleName] = useState('');
@@ -17,13 +25,19 @@ const RolesPage: React.FC = () => {
   const [creating, setCreating] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const load = async () => {
-    setLoading(true);
+  const load = async ({ showLoading = false } = {}) => {
+    const cached = getPageCache<RolesCache>(pageCacheKeys.adminRoles);
+    if (cached) {
+      setRoles(cached.roles);
+      setPermissions(cached.permissions);
+    }
+    setLoading(showLoading && !cached);
     try {
       const token = await getToken();
       const [r, p] = await Promise.all([getRoles(token), getPermissions(token)]);
       setRoles(r);
       setPermissions(p);
+      setPageCache(pageCacheKeys.adminRoles, { roles: r, permissions: p });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Error');
     } finally {
@@ -31,7 +45,7 @@ const RolesPage: React.FC = () => {
     }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load({ showLoading: !initialCache }); }, []);
 
   const handleCreateRole = async () => {
     if (!newRoleName.trim()) return;
@@ -50,9 +64,15 @@ const RolesPage: React.FC = () => {
     }
   };
 
-  const openPermissions = (role: Role) => {
+  const openPermissions = async (role: Role) => {
+    try {
+      const token = await getToken();
+      const current = await getRolePermissions(role.id, token);
+      setSelectedPerms(new Set(current.map(p => p.id)));
+    } catch {
+      setSelectedPerms(new Set());
+    }
     setSelectedRole(role);
-    setSelectedPerms(new Set());
   };
 
   const handleSavePermissions = async () => {
@@ -86,7 +106,7 @@ const RolesPage: React.FC = () => {
         <div className="max-w-4xl mx-auto space-y-6">
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold text-gray-900">Roles y Permisos</h1>
-            <button onClick={load} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-yellow-400 text-white font-medium text-sm hover:bg-yellow-500">
+            <button onClick={() => load()} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-yellow-400 text-white font-medium text-sm hover:bg-yellow-500">
               <RefreshCw size={15} /> Actualizar
             </button>
           </div>
@@ -119,10 +139,8 @@ const RolesPage: React.FC = () => {
 
           {/* Roles list */}
           <div className="rounded-2xl bg-white/70 backdrop-blur-xl shadow-sm overflow-hidden">
-            {loading ? (
-              <div className="flex justify-center py-12">
-                <div className="w-8 h-8 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin" />
-              </div>
+            {loading && roles.length === 0 ? (
+              <TableSkeleton rows={5} columns={4} />
             ) : (
               <table className="w-full text-sm">
                 <thead>
@@ -170,7 +188,10 @@ const RolesPage: React.FC = () => {
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-lg space-y-4 max-h-[80vh] overflow-y-auto">
             <h3 className="text-lg font-bold text-gray-900">Permisos — {selectedRole.name}</h3>
-            <p className="text-xs text-gray-400">Selecciona los permisos para reemplazar los actuales del rol.</p>
+            {selectedRole.isSystem
+              ? <p className="text-xs text-orange-500 font-medium">Los roles de sistema no pueden modificarse.</p>
+              : <p className="text-xs text-gray-400">Selecciona los permisos para reemplazar los actuales del rol.</p>
+            }
             <div className="grid grid-cols-2 gap-2">
               {permissions.map(p => (
                 <label key={p.id} className="flex items-center gap-2 p-2 rounded-lg border border-gray-100 hover:bg-yellow-50 cursor-pointer">
@@ -187,7 +208,7 @@ const RolesPage: React.FC = () => {
             <div className="flex gap-3 pt-2">
               <button
                 onClick={handleSavePermissions}
-                disabled={saving}
+                disabled={saving || selectedRole.isSystem}
                 className="flex-1 py-2.5 rounded-xl bg-yellow-400 text-white font-medium text-sm hover:bg-yellow-500 disabled:opacity-50"
               >
                 {saving ? 'Guardando...' : 'Guardar Permisos'}

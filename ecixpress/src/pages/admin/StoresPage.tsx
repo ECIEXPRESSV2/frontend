@@ -1,19 +1,27 @@
 import React, { useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
-import { Plus, RefreshCw, MapPin, Clock, Users, AlertTriangle } from 'lucide-react';
+import { Plus, RefreshCw, MapPin, Clock, Users, AlertTriangle, Pencil } from 'lucide-react';
 import Sidebar from '../../components/home/Sidebar';
+import { CardSkeleton, TableSkeleton } from '../../components/common/LoadingSkeleton';
 import { useAuth } from '../../context/AuthContext';
 import {
-  getStores, createStore, updateStoreStatus,
-  getStoreSchedules, createSchedule, deleteSchedule,
+  getStores, createStore, updateStore, updateStoreStatus,
+  getStoreSchedules, createSchedule, updateSchedule, deleteSchedule,
   getStoreClosures, createClosure, cancelClosure,
   assignStaff, removeStaff, getStoreById,
   getDayName,
   type Store, type StoreSchedule, type StoreClosure, type StoreStaff, type CreateStoreDto,
 } from '../../services/storeService';
 import { getUsers, type UserItem } from '../../services/userService';
+import { deletePageCache, getPageCache, pageCacheKeys, setPageCache } from '../../services/pageCache';
 
 type TabType = 'stores' | 'schedules' | 'closures' | 'staff';
+type StoreDetailCache = {
+  schedules: StoreSchedule[];
+  closures: StoreClosure[];
+  staff: StoreStaff[];
+  users: UserItem[];
+};
 
 const STATUS_COLORS: Record<string, string> = {
   OPEN: 'bg-green-100 text-green-700',
@@ -23,8 +31,9 @@ const STATUS_COLORS: Record<string, string> = {
 
 const StoresPage: React.FC = () => {
   const { getToken } = useAuth();
-  const [stores, setStores] = useState<Store[]>([]);
-  const [loading, setLoading] = useState(true);
+  const initialStoresCache = getPageCache<Store[]>(pageCacheKeys.adminStores);
+  const [stores, setStores] = useState<Store[]>(() => initialStoresCache ?? []);
+  const [loading, setLoading] = useState(() => !initialStoresCache);
   const [selectedStore, setSelectedStore] = useState<Store | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>('stores');
 
@@ -46,12 +55,26 @@ const StoresPage: React.FC = () => {
   const [createForm, setCreateForm] = useState<CreateStoreDto>({ name: '', type: 'CAFETERIA', location: '' });
   const [creating, setCreating] = useState(false);
 
-  const loadStores = async () => {
-    setLoading(true);
+  // Edit store
+  const [editingStore, setEditingStore] = useState<Store | null>(null);
+  const [editForm, setEditForm] = useState<Partial<CreateStoreDto>>({});
+  const [saving, setSaving] = useState(false);
+
+  // Edit schedule
+  const [editingSchedule, setEditingSchedule] = useState<StoreSchedule | null>(null);
+  const [editSched, setEditSched] = useState({ openTime: '', closeTime: '' });
+
+  const [loadingDetail, setLoadingDetail] = useState(false);
+
+  const loadStores = async ({ showLoading = false } = {}) => {
+    const cached = getPageCache<Store[]>(pageCacheKeys.adminStores);
+    if (cached) setStores(cached);
+    setLoading(showLoading && !cached);
     try {
       const token = await getToken();
       const data = await getStores(token);
       setStores(data);
+      setPageCache(pageCacheKeys.adminStores, data);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Error cargando tiendas');
     } finally {
@@ -59,7 +82,7 @@ const StoresPage: React.FC = () => {
     }
   };
 
-  useEffect(() => { loadStores(); }, []);
+  useEffect(() => { loadStores({ showLoading: !initialStoresCache }); }, []);
 
   const loadStaff = async (storeId: string) => {
     const token = await getToken();
@@ -70,17 +93,36 @@ const StoresPage: React.FC = () => {
   const handleSelectStore = async (store: Store) => {
     setSelectedStore(store);
     setActiveTab('schedules');
-    const token = await getToken();
-    const [sched, clos, users] = await Promise.all([
-      getStoreSchedules(store.id, token).catch(() => []),
-      getStoreClosures(store.id, token).catch(() => []),
-      getUsers(token).catch(() => []),
-    ]);
-    setSchedules(sched);
-    setClosures(clos);
-    const userList = Array.isArray(users) ? users : (users as { data: UserItem[] }).data ?? [];
-    setAllUsers(userList);
-    await loadStaff(store.id);
+
+    const cacheKey = pageCacheKeys.adminStoreDetail(store.id);
+    const cached = getPageCache<StoreDetailCache>(cacheKey);
+    if (cached) {
+      setSchedules(cached.schedules);
+      setClosures(cached.closures);
+      setStaffList(cached.staff);
+      setAllUsers(cached.users);
+      return;
+    }
+
+    setLoadingDetail(true);
+    try {
+      const token = await getToken();
+      const [sched, clos, rawUsers, storeDetail] = await Promise.all([
+        getStoreSchedules(store.id, token).catch(() => []),
+        getStoreClosures(store.id, token).catch(() => []),
+        getUsers(token).catch(() => []),
+        getStoreById(store.id, token).catch(() => null),
+      ]);
+      const userList = Array.isArray(rawUsers) ? rawUsers : (rawUsers as { data: UserItem[] }).data ?? [];
+      const staff = storeDetail?.staff ?? [];
+      setSchedules(sched);
+      setClosures(clos);
+      setAllUsers(userList);
+      setStaffList(staff);
+      setPageCache(cacheKey, { schedules: sched, closures: clos, staff, users: userList });
+    } finally {
+      setLoadingDetail(false);
+    }
   };
 
   const handleCreateStore = async () => {
@@ -100,12 +142,64 @@ const StoresPage: React.FC = () => {
     }
   };
 
+  const openEditStore = (store: Store, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditForm({
+      name: store.name,
+      description: store.description ?? undefined,
+      location: store.location,
+      imageUrl: store.imageUrl ?? undefined,
+    });
+    setEditingStore(store);
+  };
+
+  const handleEditStore = async () => {
+    if (!editingStore) return;
+    setSaving(true);
+    try {
+      const token = await getToken();
+      const payload = Object.fromEntries(
+        Object.entries(editForm).filter(([, v]) => v !== '' && v !== undefined)
+      ) as Partial<CreateStoreDto>;
+      await updateStore(editingStore.id, payload, token);
+      toast.success('Tienda actualizada');
+      deletePageCache(pageCacheKeys.adminStoreDetail(editingStore.id));
+      setEditingStore(null);
+      loadStores();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const openEditSchedule = (sched: StoreSchedule) => {
+    setEditSched({ openTime: sched.openTime, closeTime: sched.closeTime });
+    setEditingSchedule(sched);
+  };
+
+  const handleUpdateSchedule = async () => {
+    if (!selectedStore || !editingSchedule) return;
+    try {
+      const token = await getToken();
+      await updateSchedule(selectedStore.id, editingSchedule.id, editSched, token);
+      toast.success('Horario actualizado');
+      setEditingSchedule(null);
+      const updated = await getStoreSchedules(selectedStore.id, token);
+      setSchedules(updated);
+      deletePageCache(pageCacheKeys.adminStoreDetail(selectedStore.id));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Error');
+    }
+  };
+
   const handleStatusToggle = async (store: Store) => {
     try {
       const token = await getToken();
       const next = store.status === 'OPEN' ? 'CLOSED' : 'OPEN';
       await updateStoreStatus(store.id, next, token);
       toast.success(`Tienda ${next === 'OPEN' ? 'abierta' : 'cerrada'}`);
+      deletePageCache(pageCacheKeys.adminStoreDetail(store.id));
       loadStores();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Error');
@@ -120,6 +214,7 @@ const StoresPage: React.FC = () => {
       toast.success('Horario agregado');
       const updated = await getStoreSchedules(selectedStore.id, token);
       setSchedules(updated);
+      deletePageCache(pageCacheKeys.adminStoreDetail(selectedStore.id));
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Error');
     }
@@ -132,6 +227,7 @@ const StoresPage: React.FC = () => {
       await deleteSchedule(selectedStore.id, scheduleId, token);
       toast.success('Horario eliminado');
       setSchedules(prev => prev.filter(s => s.id !== scheduleId));
+      deletePageCache(pageCacheKeys.adminStoreDetail(selectedStore.id));
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Error');
     }
@@ -150,6 +246,7 @@ const StoresPage: React.FC = () => {
       const updated = await getStoreClosures(selectedStore.id, token);
       setClosures(updated);
       setNewClosure({ startDate: '', endDate: '', reason: '' });
+      deletePageCache(pageCacheKeys.adminStoreDetail(selectedStore.id));
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Error');
     }
@@ -175,6 +272,7 @@ const StoresPage: React.FC = () => {
       toast.success('Vendedor asignado');
       setStaffUserId('');
       await loadStaff(selectedStore.id);
+      deletePageCache(pageCacheKeys.adminStoreDetail(selectedStore.id));
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Error');
     }
@@ -187,6 +285,7 @@ const StoresPage: React.FC = () => {
       await removeStaff(selectedStore.id, userId, token);
       toast.success('Vendedor removido');
       await loadStaff(selectedStore.id);
+      deletePageCache(pageCacheKeys.adminStoreDetail(selectedStore.id));
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Error');
     }
@@ -200,7 +299,7 @@ const StoresPage: React.FC = () => {
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold text-gray-900">Gestión de Tiendas</h1>
             <div className="flex gap-3">
-              <button onClick={loadStores} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-100 text-gray-700 font-medium text-sm hover:bg-gray-200">
+              <button onClick={() => loadStores()} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-100 text-gray-700 font-medium text-sm hover:bg-gray-200">
                 <RefreshCw size={15} />
               </button>
               <button onClick={() => setShowCreate(true)} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-yellow-400 text-white font-medium text-sm hover:bg-yellow-500">
@@ -213,8 +312,8 @@ const StoresPage: React.FC = () => {
             {/* Stores list */}
             <div className="lg:col-span-1 space-y-3">
               <h2 className="font-semibold text-gray-700 text-sm">Tiendas ({stores.length})</h2>
-              {loading ? (
-                <div className="flex justify-center py-8"><div className="w-7 h-7 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin" /></div>
+              {loading && stores.length === 0 ? (
+                <CardSkeleton rows={4} />
               ) : stores.map(store => (
                 <div
                   key={store.id}
@@ -228,12 +327,21 @@ const StoresPage: React.FC = () => {
                     </div>
                     <div className="flex flex-col items-end gap-1">
                       <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${STATUS_COLORS[store.status] || ''}`}>{store.status}</span>
-                      <button
-                        onClick={e => { e.stopPropagation(); handleStatusToggle(store); }}
-                        className="text-xs text-gray-400 hover:text-yellow-600 underline"
-                      >
-                        {store.status === 'OPEN' ? 'Cerrar' : 'Abrir'}
-                      </button>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={e => openEditStore(store, e)}
+                          className="text-xs text-gray-400 hover:text-yellow-600"
+                          title="Editar tienda"
+                        >
+                          <Pencil size={12} />
+                        </button>
+                        <button
+                          onClick={e => { e.stopPropagation(); handleStatusToggle(store); }}
+                          className="text-xs text-gray-400 hover:text-yellow-600 underline"
+                        >
+                          {store.status === 'OPEN' ? 'Cerrar' : 'Abrir'}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -259,6 +367,9 @@ const StoresPage: React.FC = () => {
                 </div>
 
                 <div className="p-5 space-y-4">
+                  {loadingDetail && schedules.length === 0 ? (
+                    <TableSkeleton rows={3} columns={2} />
+                  ) : (<>
                   {/* Schedules Tab */}
                   {activeTab === 'schedules' && (
                     <>
@@ -272,13 +383,26 @@ const StoresPage: React.FC = () => {
                       </div>
                       <div className="space-y-2">
                         {schedules.length === 0 ? <p className="text-gray-400 text-sm">Sin horarios</p> : schedules.map(s => (
-                          <div key={s.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
-                            <div className="flex items-center gap-2 text-sm">
-                              <Clock size={13} className="text-yellow-500" />
-                              <span className="font-medium">{getDayName(s.dayOfWeek)}</span>
-                              <span className="text-gray-500">{s.openTime} – {s.closeTime}</span>
+                          <div key={s.id} className="p-3 bg-gray-50 rounded-xl space-y-2">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2 text-sm">
+                                <Clock size={13} className="text-yellow-500" />
+                                <span className="font-medium">{getDayName(s.dayOfWeek)}</span>
+                                <span className="text-gray-500">{s.openTime} – {s.closeTime}</span>
+                              </div>
+                              <div className="flex gap-2">
+                                <button onClick={() => openEditSchedule(s)} className="text-xs text-yellow-600 hover:text-yellow-800">Editar</button>
+                                <button onClick={() => handleDeleteSchedule(s.id)} className="text-xs text-red-500 hover:text-red-700">Eliminar</button>
+                              </div>
                             </div>
-                            <button onClick={() => handleDeleteSchedule(s.id)} className="text-xs text-red-500 hover:text-red-700">Eliminar</button>
+                            {editingSchedule?.id === s.id && (
+                              <div className="flex gap-2 pt-1">
+                                <input type="time" className="border border-gray-200 rounded-lg px-2 py-1 text-sm" value={editSched.openTime} onChange={e => setEditSched(p => ({ ...p, openTime: e.target.value }))} />
+                                <input type="time" className="border border-gray-200 rounded-lg px-2 py-1 text-sm" value={editSched.closeTime} onChange={e => setEditSched(p => ({ ...p, closeTime: e.target.value }))} />
+                                <button onClick={handleUpdateSchedule} className="px-3 py-1 rounded-lg bg-yellow-400 text-white text-xs font-medium hover:bg-yellow-500">Guardar</button>
+                                <button onClick={() => setEditingSchedule(null)} className="px-3 py-1 rounded-lg bg-gray-200 text-gray-600 text-xs">Cancelar</button>
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -350,6 +474,7 @@ const StoresPage: React.FC = () => {
                       )}
                     </>
                   )}
+                  </>)}
                 </div>
               </div>
             ) : (
@@ -360,6 +485,53 @@ const StoresPage: React.FC = () => {
           </div>
         </div>
       </main>
+
+      {/* Edit store modal */}
+      {editingStore && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-md space-y-4">
+            <h3 className="text-lg font-bold text-gray-900">Editar — {editingStore.name}</h3>
+            <div className="space-y-3">
+              <input
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-yellow-400"
+                placeholder="Nombre *"
+                value={editForm.name ?? ''}
+                onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
+              />
+              <input
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-yellow-400"
+                placeholder="Ubicación *"
+                value={editForm.location ?? ''}
+                onChange={e => setEditForm(f => ({ ...f, location: e.target.value }))}
+              />
+              <input
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-yellow-400"
+                placeholder="Descripción (opcional)"
+                value={editForm.description ?? ''}
+                onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))}
+              />
+              <input
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-yellow-400"
+                placeholder="URL imagen (opcional)"
+                value={editForm.imageUrl ?? ''}
+                onChange={e => setEditForm(f => ({ ...f, imageUrl: e.target.value }))}
+              />
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={handleEditStore}
+                disabled={saving || !editForm.name || !editForm.location}
+                className="flex-1 py-2.5 rounded-xl bg-yellow-400 text-white font-medium text-sm hover:bg-yellow-500 disabled:opacity-50"
+              >
+                {saving ? 'Guardando...' : 'Guardar Cambios'}
+              </button>
+              <button onClick={() => setEditingStore(null)} className="flex-1 py-2.5 rounded-xl bg-gray-100 text-gray-700 font-medium text-sm">
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Create modal */}
       {showCreate && (
