@@ -13,22 +13,6 @@ import { mockOrderHistory } from '../../mock/userProfile';
 
 // ─── Tipos de pedidos (Order & Communication — futuro microservicio) ──────────
 type OrderStatus = 'completed' | 'pending' | 'cancelled';
-
-interface OrderItem {
-  productId: number | string;
-  productName: string;
-  productImage: string;
-  quantity: number;
-}
-
-interface Order {
-  id: string;
-  storeName: string;
-  date: string;
-  status: OrderStatus;
-  items: OrderItem[];
-  total: number;
-}
 // ─────────────────────────────────────────────────────────────────────────────
 
 const STATUS_CONFIG: Record<OrderStatus, {
@@ -59,7 +43,13 @@ const STATUS_CONFIG: Record<OrderStatus, {
 
 const glassCard = 'bg-white/52 backdrop-blur-2xl border border-white/72 rounded-3xl shadow-[0_4px_24px_rgba(0,0,0,0.055),0_1px_4px_rgba(0,0,0,0.03),inset_0_1px_0_rgba(255,255,255,0.8)]';
 
-const UserProfile: React.FC = () => {
+interface UserProfileProps {
+  onBack?: () => void;
+  onOrdersClick?: () => void;
+  onMessagesClick?: () => void;
+}
+
+const UserProfile: React.FC<UserProfileProps> = ({ onBack, onOrdersClick, onMessagesClick }) => {
   const navigate = useNavigate();
   const { userProfile, getToken, refreshProfile } = useAuth();
   const [activeSidebarItem, setActiveSidebarItem] = useState('profile');
@@ -134,14 +124,19 @@ const UserProfile: React.FC = () => {
       <div className="pointer-events-none absolute -bottom-20 -right-10 w-[340px] h-[340px] rounded-full bg-amber-400/16 blur-3xl" />
       <div className="pointer-events-none absolute top-[42%] left-[52%] w-[260px] h-[260px] rounded-full bg-yellow-300/12 blur-3xl" />
 
-      <Sidebar activeItem={activeSidebarItem} onItemClick={setActiveSidebarItem} />
+      <Sidebar
+        activeItem={activeSidebarItem}
+        onItemClick={setActiveSidebarItem}
+        onOrdersClick={onOrdersClick}
+        onMessagesClick={onMessagesClick}
+      />
 
       <main className="ml-16 p-7 md:p-10 relative z-10">
         <div className="max-w-5xl mx-auto space-y-4">
 
           {/* Back */}
           <button
-            onClick={() => navigate('/home')}
+            onClick={() => onBack?.() ?? navigate('/home')}
             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-white/58 backdrop-blur-xl border border-white/75 text-sm text-gray-500 hover:bg-white/75 hover:text-gray-800 transition-colors duration-200"
           >
             <ArrowLeft size={15} />

@@ -72,18 +72,6 @@ const STORE_FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1554118811-1e0d5
 
       <main className="ml-16 p-6 md:p-8">
         <div className="max-w-7xl mx-auto space-y-8">
-          <section className="rounded-2xl bg-white/60 backdrop-blur-xl border border-white/40 shadow-sm p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.3em] text-yellow-600">Demo temporal</p>
-              <h2 className="text-xl font-bold text-gray-900">Validar backend de pedidos y comunicación</h2>
-              <p className="text-sm text-gray-500">Estas entradas llevan a pantallas de prueba conectadas al microservicio real.</p>
-            </div>
-            <div className="flex gap-3">
-              <button onClick={onOrdersClick} className="px-4 py-2 rounded-xl bg-yellow-400 text-white font-semibold shadow-md shadow-yellow-200/60 hover:bg-yellow-500 transition-all duration-300">Abrir demo</button>
-              <button onClick={onMessagesClick} className="px-4 py-2 rounded-xl bg-white/80 border border-white/60 text-gray-700 font-semibold hover:bg-white transition-all duration-300">Abrir chat</button>
-            </div>
-          </section>
-
           {/* Category Tabs */}
           <CategoryTabs
             categories={categories}
@@ -113,7 +101,11 @@ const STORE_FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1554118811-1e0d5
                     isActive={activeStore === index}
                     onClick={() => {
                       setActiveStore(index);
-                      navigate(`/store/${store.id}`);
+                      if (onStoreClick) {
+                        onStoreClick(Number(store.id));
+                      } else {
+                        navigate(`/store/${store.id}`);
+                      }
                     }}
                   />
                 ))}
