@@ -7,6 +7,13 @@ import CartList from '../../components/cart/CartList';
 import OrderSummary from '../../components/cart/OrderSummary';
 import { useCart } from '../../hooks/useCart';
 
+interface CartPageProps {
+  onBack: () => void;
+  onContinue: () => void;
+  onOrdersClick?: () => void;
+  onMessagesClick?: () => void;
+}
+
 interface CartProduct {
   id: number;
   name: string;
@@ -22,7 +29,7 @@ interface CartTotals {
   total: number;
 }
 
-const CartPage: React.FC = () => {
+const CartPage: React.FC<CartPageProps> = ({ onBack, onContinue, onOrdersClick, onMessagesClick }) => {
   const navigate = useNavigate();
   const [activeSidebarItem, setActiveSidebarItem] = useState('cart');
   
@@ -62,6 +69,8 @@ const CartPage: React.FC = () => {
       <Sidebar 
         activeItem={activeSidebarItem}
         onItemClick={setActiveSidebarItem}
+        onOrdersClick={onOrdersClick}
+        onMessagesClick={onMessagesClick}
       />
 
       {/* Main Content */}

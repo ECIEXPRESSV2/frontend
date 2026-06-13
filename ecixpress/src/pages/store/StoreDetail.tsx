@@ -12,6 +12,27 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   TEMPORARILY_CLOSED: { label: 'Cierre temporal', color: 'text-orange-600 bg-orange-50' },
 };
 
+interface Store {
+  id: number;
+  name: string;
+  imageUrl: string;
+  rating: number;
+  location: string;
+  schedule: {
+    weekdays: string;
+    saturday: string;
+  };
+  products: Product[];
+}
+
+interface StoreDetailProps {
+  storeId: number;
+  onBack: () => void;
+  onOrdersClick?: () => void;
+  onMessagesClick?: () => void;
+}
+
+const StoreDetail: React.FC<StoreDetailProps> = ({ storeId, onBack, onOrdersClick, onMessagesClick }) => {
 const StoreDetail: React.FC = () => {
   const { storeId } = useParams<{ storeId: string }>();
   const navigate = useNavigate();
@@ -75,7 +96,13 @@ const StoreDetail: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-white to-yellow-100">
-      <Sidebar activeItem={activeSidebarItem} onItemClick={setActiveSidebarItem} />
+      {/* Sidebar */}
+      <Sidebar 
+        activeItem={activeSidebarItem}
+        onItemClick={setActiveSidebarItem}
+        onOrdersClick={onOrdersClick}
+        onMessagesClick={onMessagesClick}
+      />
 
       <main className="ml-16 p-6 md:p-8">
         <div className="max-w-4xl mx-auto space-y-6">

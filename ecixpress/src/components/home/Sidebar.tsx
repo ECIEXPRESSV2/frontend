@@ -6,9 +6,13 @@ import { useAuth } from '../../context/AuthContext';
 interface SidebarProps {
   activeItem?: string;
   onItemClick?: (item: string) => void;
+  onUserClick?: () => void;
+  onCartClick?: () => void;
+  onOrdersClick?: () => void;
+  onMessagesClick?: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ activeItem = 'home', onItemClick }) => {
+const Sidebar: React.FC<SidebarProps> = ({ activeItem = 'home', onItemClick, onUserClick, onCartClick, onOrdersClick, onMessagesClick }) => {
   const navigate = useNavigate();
   const { userProfile, signOut, isAdmin, isVendor } = useAuth();
   const [isExpanded, setIsExpanded] = useState(false);
