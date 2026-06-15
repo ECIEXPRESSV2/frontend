@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, Plus, PlusCircle, Grid, ShoppingCart, Clipboard, MessageCircle, LogOut, Wallet, Bell, Shield, Store, Clock, CreditCard } from 'lucide-react';
+import { User, Plus, Grid, ShoppingCart, Clipboard, MessageCircle, LogOut, Wallet, Bell, Shield, Store } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useWallet } from '../../context/WalletContext';
-import { PaymentMethodIcon } from '../wallet/paymentMethods';
 
 interface SidebarProps {
   activeItem?: string;
@@ -13,14 +12,7 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ activeItem = 'home', onItemClick }) => {
   const navigate = useNavigate();
   const { userProfile, signOut, isAdmin, isVendor } = useAuth();
-  const {
-    balanceLabel,
-    loading: walletLoading,
-    defaultMethod,
-    openRecharge,
-    openHistory,
-    openMethodPicker,
-  } = useWallet();
+  const { balanceLabel, loading: walletLoading } = useWallet();
   const [isExpanded, setIsExpanded] = useState(false);
 
   const menuItems = [
@@ -153,11 +145,10 @@ const Sidebar: React.FC<SidebarProps> = ({ activeItem = 'home', onItemClick }) =
         )}
       </nav>
 
-      {/* Wallet */}
-      <div className="mt-4 mb-3 px-3 flex flex-col gap-1.5">
-        {/* Saldo */}
+      {/* Wallet — solo saldo; al hacer click navega al perfil donde están los controles */}
+      <div className="mt-4 mb-3 px-3">
         <button
-          onClick={openRecharge}
+          onClick={() => navigate('/profile')}
           title={`Saldo disponible: ${balanceLabel}`}
           className={`w-full rounded-xl flex items-center bg-gradient-to-r from-yellow-400 to-yellow-500 text-white shadow-sm hover:shadow-md transition-all overflow-hidden
             ${isExpanded ? 'p-3' : 'h-11 justify-center'}`}
@@ -169,43 +160,6 @@ const Sidebar: React.FC<SidebarProps> = ({ activeItem = 'home', onItemClick }) =
               <p className="text-base font-bold leading-tight">{walletLoading ? '—' : balanceLabel}</p>
             </div>
           )}
-        </button>
-
-        {/* Recargar */}
-        <button
-          onClick={openRecharge}
-          title="Recargar"
-          className={`w-full h-11 rounded-xl flex items-center text-gray-500 hover:bg-yellow-50 hover:text-yellow-600 transition-all overflow-hidden
-            ${isExpanded ? 'px-4' : 'justify-center'}`}
-        >
-          <PlusCircle size={18} className="flex-shrink-0" />
-          {isExpanded && <span className="ml-3 font-medium text-sm whitespace-nowrap">Recargar</span>}
-        </button>
-
-        {/* Historial de recargas */}
-        <button
-          onClick={openHistory}
-          title="Historial de recargas"
-          className={`w-full h-11 rounded-xl flex items-center text-gray-500 hover:bg-yellow-50 hover:text-yellow-600 transition-all overflow-hidden
-            ${isExpanded ? 'px-4' : 'justify-center'}`}
-        >
-          <Clock size={18} className="flex-shrink-0" />
-          {isExpanded && <span className="ml-3 font-medium text-sm whitespace-nowrap">Historial de recargas</span>}
-        </button>
-
-        {/* Método de pago: muestra el ícono del método elegido; al hover/expandir, "Cambiar método de pago" */}
-        <button
-          onClick={openMethodPicker}
-          title="Cambiar método de pago"
-          className={`w-full h-11 rounded-xl flex items-center text-gray-500 hover:bg-yellow-50 hover:text-yellow-600 transition-all overflow-hidden
-            ${isExpanded ? 'px-4' : 'justify-center'}`}
-        >
-          {defaultMethod ? (
-            <PaymentMethodIcon method={defaultMethod} size={22} className="flex-shrink-0" />
-          ) : (
-            <CreditCard size={18} className="flex-shrink-0" />
-          )}
-          {isExpanded && <span className="ml-3 font-medium text-sm whitespace-nowrap">Cambiar método de pago</span>}
         </button>
       </div>
 

@@ -1,0 +1,58 @@
+{
+  "version": 8,
+  "glyphs": "https://fonts.openmaptiles.org/{fontstack}/{range}.pbf",
+  "sources": {
+    "osm": {
+      "type": "raster",
+      "tiles": ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+      "tileSize": 256,
+      "attribution": "© OpenStreetMap contributors"
+    },
+    "campus": {
+      "type": "geojson",
+      "data": "/campus.geojson",
+      "promoteId": "name"
+    }
+  },
+  "layers": [
+    {
+      "id": "fondo",
+      "type": "background",
+      "paint": { "background-color": "#e9e6dd" }
+    },
+    {
+      "id": "osm",
+      "type": "raster",
+      "source": "osm",
+      "paint": {
+        "raster-opacity": 0.55,
+        "raster-saturation": -0.4
+      }
+    },
+    {
+      "id": "edificios",
+      "type": "fill-extrusion",
+      "source": "campus",
+      "paint": {
+        "fill-extrusion-color": [
+          "case",
+          ["boolean", ["feature-state", "sel"], false], "#e23b3b",
+          "#3b4252"
+        ],
+        "fill-extrusion-height": ["get", "height"],
+        "fill-extrusion-base": 0,
+        "fill-extrusion-opacity": 0.92
+      }
+    },
+    {
+      "id": "edificios-borde",
+      "type": "line",
+      "source": "campus",
+      "paint": {
+        "line-color": "#F5C13D",
+        "line-width": 1.2,
+        "line-opacity": 0.5
+      }
+    }
+  ]
+}

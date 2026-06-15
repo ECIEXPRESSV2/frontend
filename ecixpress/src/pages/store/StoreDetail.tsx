@@ -5,6 +5,7 @@ import { toast } from 'react-toastify';
 import Sidebar from '../../components/home/Sidebar';
 import { useAuth } from '../../context/AuthContext';
 import { getStoreById, getStoreSchedules, getDayName, type Store, type StoreSchedule } from '../../services/storeService';
+import { getStoreImage } from '../../services/storeImageStore';
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   OPEN: { label: 'Abierto', color: 'text-green-600 bg-green-50' },
@@ -93,9 +94,9 @@ const StoreDetail: React.FC = () => {
 
           {/* Store Card */}
           <div className="rounded-2xl bg-white/60 backdrop-blur-xl shadow-sm overflow-hidden">
-            {store.imageUrl && (
+            {(store.imageUrl || getStoreImage(store.id)) && (
               <img
-                src={store.imageUrl}
+                src={store.imageUrl || getStoreImage(store.id) || ''}
                 alt={store.name}
                 className="w-full h-48 object-cover"
                 onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}

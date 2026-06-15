@@ -70,20 +70,21 @@ const WalletCard: React.FC = () => {
         )}
       </div>
 
-      {/* Tira de botones (colapsados; se expanden al hover revelando la descripción) */}
-      <div className="flex flex-col items-start justify-center gap-3 py-1">
+      {/* Tira de botones: anclados a la derecha; al hover se expanden hacia la
+          izquierda (el ícono no se mueve, la descripción se revela a su izquierda). */}
+      <div className="flex flex-col items-end justify-center gap-3 py-1">
         {actions.map((a) => (
           <button
             key={a.key}
             onClick={a.onClick}
             title={a.label}
-            className="group/wa flex items-center h-12 w-12 hover:w-56 rounded-2xl bg-gray-900 text-white overflow-hidden shadow-md hover:shadow-lg transition-all duration-300 ease-out"
+            className="group/wa flex items-center justify-end h-12 w-12 hover:w-56 rounded-2xl bg-gray-900 text-white overflow-hidden shadow-md hover:shadow-lg transition-all duration-300 ease-out"
           >
+            <span className="pl-4 whitespace-nowrap text-sm font-medium opacity-0 translate-x-2 group-hover/wa:opacity-100 group-hover/wa:translate-x-0 transition-all duration-300">
+              {a.label}
+            </span>
             <span className="w-12 h-12 grid place-items-center flex-shrink-0">
               {a.icon}
-            </span>
-            <span className="pr-4 whitespace-nowrap text-sm font-medium opacity-0 -translate-x-2 group-hover/wa:opacity-100 group-hover/wa:translate-x-0 transition-all duration-300">
-              {a.label}
             </span>
           </button>
         ))}

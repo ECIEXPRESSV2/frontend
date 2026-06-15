@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
-import { X, MapPin, Check } from 'lucide-react';
-import { campusMapHtml } from './campusMapHtml';
+import React, { useEffect, useRef, useState } from 'react';
+import maplibregl from 'maplibre-gl';
+import 'maplibre-gl/dist/maplibre-gl.css';
+import { X, MapPin, Check, Loader2 } from 'lucide-react';
 
 interface Props {
   open: boolean;
@@ -10,36 +11,75 @@ interface Props {
 }
 
 /**
- * Selector de ubicación: abre el mapa 3D del campus en un iframe. Al hacer click en
- * un edificio, el mapa emite un postMessage con el nombre del bloque; aquí lo
- * recibimos y, al confirmar, lo devolvemos como valor de "ubicación".
+ * Selector de ubicación: mapa 3D del campus. Al hacer click en un edificio se
+ * selecciona (se resalta en rojo) y, al confirmar, se devuelve su nombre como
+ * valor de "ubicación".
+ *
+ * Mapa inicial: luego se enriquecerá con indicadores de las tiendas existentes y
+ * texturas en los edificios; la lógica de selección se mantiene.
  */
 const LocationPickerModal: React.FC<Props> = ({ open, initial, onClose, onSelect }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const selectedIdRef = useRef<string | number | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (open) setSelected(initial ?? null);
-  }, [open, initial]);
+    if (!open || !containerRef.current) return;
+    setSelected(initial ?? null);
+    setLoading(true);
+    selectedIdRef.current = null;
 
-  useEffect(() => {
-    if (!open) return;
-    const onMessage = (e: MessageEvent) => {
-      const data = e.data as { type?: string; name?: string } | null;
-      if (!data || typeof data.name !== 'string') return;
-      if (data.type === 'campus-select') {
-        setSelected(data.name);
-      } else if (data.type === 'campus-confirm') {
-        onSelect(data.name);
-        onClose();
-      }
-    };
-    window.addEventListener('message', onMessage);
-    document.body.style.overflow = 'hidden';
+    const el = containerRef.current;
+    // El estilo y los datos viven en /public — edítalos sin tocar este componente.
+    const map = new maplibregl.Map({
+      container: el,
+      style: '/campus-style.json',
+      center: [-74.043725, 4.782866],
+      zoom: 16.7,
+      pitch: 55,
+      bearing: -18,
+      maxPitch: 75,
+    });
+
+    map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right');
+
+    const ro = new ResizeObserver(() => map.resize());
+    ro.observe(el);
+
+    map.on('load', () => {
+      // Calcula los bounds desde el GeoJSON público para encuadrar todos los edificios.
+      fetch('/campus.geojson')
+        .then((r) => r.json())
+        .then((campus: { features: { geometry: { coordinates: number[][][] } }[] }) => {
+          const b = new maplibregl.LngLatBounds();
+          campus.features.forEach((f) =>
+            f.geometry.coordinates[0].forEach((c) => b.extend(c as [number, number])),
+          );
+          map.fitBounds(b, { padding: 50, bearing: -18, pitch: 55, maxZoom: 18, duration: 0 });
+          map.resize();
+        })
+        .finally(() => setLoading(false));
+
+      map.on('click', 'edificios', (e) => {
+        const f = e.features?.[0];
+        if (!f) return;
+        if (selectedIdRef.current !== null) {
+          map.setFeatureState({ source: 'campus', id: selectedIdRef.current }, { sel: false });
+        }
+        selectedIdRef.current = f.id ?? null;
+        if (f.id !== undefined) map.setFeatureState({ source: 'campus', id: f.id }, { sel: true });
+        setSelected((f.properties?.name as string) ?? null);
+      });
+      map.on('mouseenter', 'edificios', () => { map.getCanvas().style.cursor = 'pointer'; });
+      map.on('mouseleave', 'edificios', () => { map.getCanvas().style.cursor = ''; });
+    });
+
     return () => {
-      window.removeEventListener('message', onMessage);
-      document.body.style.overflow = '';
+      ro.disconnect();
+      map.remove();
     };
-  }, [open, onSelect, onClose]);
+  }, [open, initial]);
 
   if (!open) return null;
 
@@ -60,12 +100,15 @@ const LocationPickerModal: React.FC<Props> = ({ open, initial, onClose, onSelect
           </button>
         </div>
 
-        <div className="flex-1 relative">
-          <iframe
-            title="Mapa 3D del campus"
-            srcDoc={campusMapHtml}
-            className="absolute inset-0 w-full h-full border-0"
-          />
+        <div className="flex-1 relative bg-[#e9e6dd]">
+          {/* h-full/w-full (no absolute): el CSS de MapLibre fuerza position:relative en el
+              contenedor del mapa, así que no podemos depender de `absolute inset-0`. */}
+          <div ref={containerRef} className="h-full w-full" />
+          {loading && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <Loader2 className="animate-spin text-yellow-500" size={32} />
+            </div>
+          )}
         </div>
 
         <div className="flex items-center justify-between gap-4 px-5 py-3.5 border-t border-gray-100 bg-gray-50">

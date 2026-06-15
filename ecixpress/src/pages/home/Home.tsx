@@ -8,6 +8,7 @@ import ProductCard from '../../components/home/ProductCard';
 import CategoryTabs from '../../components/home/CategoryTabs';
 import { useAuth } from '../../context/AuthContext';
 import { getAvailableStores, type Store } from '../../services/storeService';
+import { getStoreImage } from '../../services/storeImageStore';
 
 const FALLBACK_PRODUCTS = [
   { id: 1, title: 'Cappuccino Italiano', description: 'Café espresso con leche espumada', imageUrl: 'https://images.unsplash.com/photo-1572442388796-11668a67e53d?w=400&auto=format&fit=crop', price: 4.50, rating: 4.8, estimatedTime: '5 min' },
@@ -85,7 +86,7 @@ const Home: React.FC = () => {
                     key={store.id}
                     id={store.id as unknown as number}
                     name={store.name}
-                    imageUrl={store.imageUrl || STORE_FALLBACK_IMAGE}
+                    imageUrl={getStoreImage(String(store.id)) || store.imageUrl || STORE_FALLBACK_IMAGE}
                     isActive={activeStore === index}
                     onClick={() => {
                       setActiveStore(index);

@@ -31,6 +31,29 @@ const QUICK_AMOUNTS = [10000, 20000, 50000, 100000]; // en pesos COP
 const MIN_PESOS = 10;
 const DOC_TYPES = ['CC', 'CE', 'TI', 'NIT', 'PP'];
 
+// Valores de prueba para el entorno sandbox de Wompi.
+const SANDBOX_DEFAULTS: Record<TopupPaymentMethod, {
+  phone?: string;
+  docType?: string;
+  docNumber?: string;
+  userType?: number;
+  bankCode?: string;
+  customerPhone?: string;
+  customerName?: string;
+  cardNumber?: string;
+  cardHolder?: string;
+  cardExpMonth?: string;
+  cardExpYear?: string;
+  cardCvc?: string;
+}> = {
+  NEQUI:                { phone: '3991111111' },
+  DAVIPLATA:            { phone: '3991111111', docType: 'CC', docNumber: '1234567890' },
+  PSE:                  { docType: 'CC', docNumber: '1234567890', bankCode: '1007', customerPhone: '3001234567', customerName: 'Estudiante Prueba', userType: 0 },
+  BANCOLOMBIA_TRANSFER: {},
+  BANCOLOMBIA_QR:       {},
+  CARD:                 { cardNumber: '4242 4242 4242 4242', cardHolder: 'APPROVED', cardExpMonth: '12', cardExpYear: '28', cardCvc: '123' },
+};
+
 const WalletRechargeModal: React.FC<Props> = ({ open, onClose }) => {
   const { userId, defaultMethod, refresh } = useWallet();
 
@@ -62,6 +85,7 @@ const WalletRechargeModal: React.FC<Props> = ({ open, onClose }) => {
 
   const meta = getMethodMeta(method);
   const amountCents = Math.round((Number(amountPesos) || 0) * 100);
+  const sd = SANDBOX_DEFAULTS[method];
 
   // Reset al abrir; precarga el método por defecto.
   useEffect(() => {
@@ -256,7 +280,7 @@ const WalletRechargeModal: React.FC<Props> = ({ open, onClose }) => {
           <input
             value={phone}
             onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
-            placeholder="3001234567"
+            placeholder={sd.phone ?? '3001234567'}
             className={input}
           />
         </div>
@@ -275,7 +299,7 @@ const WalletRechargeModal: React.FC<Props> = ({ open, onClose }) => {
             <input
               value={docNumber}
               onChange={(e) => setDocNumber(e.target.value.replace(/\D/g, ''))}
-              placeholder="123456789"
+              placeholder={sd.docNumber ?? '1234567890'}
               className={input}
             />
           </div>
@@ -308,14 +332,14 @@ const WalletRechargeModal: React.FC<Props> = ({ open, onClose }) => {
           </div>
           <div>
             <label className={labelCls}>Nombre del titular</label>
-            <input value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="Juan Pérez" className={input} />
+            <input value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder={sd.customerName ?? 'Juan Pérez'} className={input} />
           </div>
           <div>
             <label className={labelCls}>Celular del titular</label>
             <input
               value={customerPhone}
               onChange={(e) => setCustomerPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
-              placeholder="3001234567"
+              placeholder={sd.customerPhone ?? '3001234567'}
               className={input}
             />
           </div>
@@ -332,26 +356,26 @@ const WalletRechargeModal: React.FC<Props> = ({ open, onClose }) => {
                 const digits = e.target.value.replace(/\D/g, '').slice(0, 16);
                 setCardNumber(digits.replace(/(.{4})/g, '$1 ').trim());
               }}
-              placeholder="4242 4242 4242 4242"
+              placeholder={sd.cardNumber ?? '4242 4242 4242 4242'}
               className={input}
             />
           </div>
           <div>
             <label className={labelCls}>Nombre en la tarjeta</label>
-            <input value={cardHolder} onChange={(e) => setCardHolder(e.target.value)} placeholder="JUAN PEREZ" className={input} />
+            <input value={cardHolder} onChange={(e) => setCardHolder(e.target.value)} placeholder={sd.cardHolder ?? 'JUAN PEREZ'} className={input} />
           </div>
           <div className="grid grid-cols-3 gap-2">
             <div>
               <label className={labelCls}>Mes (MM)</label>
-              <input value={cardExpMonth} onChange={(e) => setCardExpMonth(e.target.value.replace(/\D/g, '').slice(0, 2))} placeholder="08" className={input} />
+              <input value={cardExpMonth} onChange={(e) => setCardExpMonth(e.target.value.replace(/\D/g, '').slice(0, 2))} placeholder={sd.cardExpMonth ?? '08'} className={input} />
             </div>
             <div>
               <label className={labelCls}>Año (AA)</label>
-              <input value={cardExpYear} onChange={(e) => setCardExpYear(e.target.value.replace(/\D/g, '').slice(0, 2))} placeholder="28" className={input} />
+              <input value={cardExpYear} onChange={(e) => setCardExpYear(e.target.value.replace(/\D/g, '').slice(0, 2))} placeholder={sd.cardExpYear ?? '28'} className={input} />
             </div>
             <div>
               <label className={labelCls}>CVC</label>
-              <input value={cardCvc} onChange={(e) => setCardCvc(e.target.value.replace(/\D/g, '').slice(0, 4))} placeholder="123" className={input} />
+              <input value={cardCvc} onChange={(e) => setCardCvc(e.target.value.replace(/\D/g, '').slice(0, 4))} placeholder={sd.cardCvc ?? '123'} className={input} />
             </div>
           </div>
           <div>
