@@ -12,7 +12,6 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   CLOSED: { label: 'Cerrado', color: 'text-red-600 bg-red-50' },
   TEMPORARILY_CLOSED: { label: 'Cierre temporal', color: 'text-orange-600 bg-orange-50' },
 };
-
 const StoreDetail: React.FC = () => {
   const { storeId } = useParams<{ storeId: string }>();
   const navigate = useNavigate();
