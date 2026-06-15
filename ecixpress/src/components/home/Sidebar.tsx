@@ -2,19 +2,17 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User, Plus, Grid, ShoppingCart, Clipboard, MessageCircle, LogOut, Wallet, Bell, Shield, Store } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useWallet } from '../../context/WalletContext';
 
 interface SidebarProps {
   activeItem?: string;
   onItemClick?: (item: string) => void;
-  onUserClick?: () => void;
-  onCartClick?: () => void;
-  onOrdersClick?: () => void;
-  onMessagesClick?: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ activeItem = 'home', onItemClick, onUserClick, onCartClick, onOrdersClick, onMessagesClick }) => {
+const Sidebar: React.FC<SidebarProps> = ({ activeItem = 'home', onItemClick }) => {
   const navigate = useNavigate();
   const { userProfile, signOut, isAdmin, isVendor } = useAuth();
+  const { balanceLabel, loading: walletLoading } = useWallet();
   const [isExpanded, setIsExpanded] = useState(false);
 
   const menuItems = [
@@ -147,23 +145,22 @@ const Sidebar: React.FC<SidebarProps> = ({ activeItem = 'home', onItemClick, onU
         )}
       </nav>
 
-      {/* Wallet */}
+      {/* Wallet — solo saldo; al hacer click navega al perfil donde están los controles */}
       <div className="mt-4 mb-3 px-3">
-        {isExpanded ? (
-          <div className="rounded-xl flex items-center bg-white/60 border border-white/40 shadow-sm p-4">
-            <div className="flex items-center justify-center rounded-full bg-gradient-to-r from-yellow-400 to-yellow-500 text-white shadow-lg flex-shrink-0 w-10 h-10">
-              <Wallet size={18} />
-            </div>
+        <button
+          onClick={() => navigate('/profile')}
+          title={`Saldo disponible: ${balanceLabel}`}
+          className={`w-full rounded-xl flex items-center bg-gradient-to-r from-yellow-400 to-yellow-500 text-white shadow-sm hover:shadow-md transition-all overflow-hidden
+            ${isExpanded ? 'p-3' : 'h-11 justify-center'}`}
+        >
+          <Wallet size={18} className="flex-shrink-0" />
+          {isExpanded && (
             <div className="ml-3 text-left">
-              <p className="text-xs text-gray-400">Saldo</p>
-              <p className="text-base font-bold text-gray-900">$0.00</p>
+              <p className="text-[10px] text-white/80 uppercase tracking-wider leading-none">Saldo</p>
+              <p className="text-base font-bold leading-tight">{walletLoading ? '—' : balanceLabel}</p>
             </div>
-          </div>
-        ) : (
-          <button className="w-full h-11 rounded-xl flex items-center justify-center text-gray-500 hover:bg-yellow-50 hover:text-yellow-600 transition-all" title="Billetera">
-            <Wallet size={18} />
-          </button>
-        )}
+          )}
+        </button>
       </div>
 
       {/* Bottom */}

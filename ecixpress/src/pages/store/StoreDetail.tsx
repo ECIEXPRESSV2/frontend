@@ -5,14 +5,13 @@ import { toast } from 'react-toastify';
 import Sidebar from '../../components/home/Sidebar';
 import { useAuth } from '../../context/AuthContext';
 import { getStoreById, getStoreSchedules, getDayName, type Store, type StoreSchedule } from '../../services/storeService';
+import { getStoreImage } from '../../services/storeImageStore';
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   OPEN: { label: 'Abierto', color: 'text-green-600 bg-green-50' },
   CLOSED: { label: 'Cerrado', color: 'text-red-600 bg-red-50' },
   TEMPORARILY_CLOSED: { label: 'Cierre temporal', color: 'text-orange-600 bg-orange-50' },
 };
-
-
 const StoreDetail: React.FC = () => {
   const { storeId } = useParams<{ storeId: string }>();
   const navigate = useNavigate();
@@ -77,11 +76,9 @@ const StoreDetail: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-white to-yellow-100">
       {/* Sidebar */}
-      <Sidebar 
+      <Sidebar
         activeItem={activeSidebarItem}
         onItemClick={setActiveSidebarItem}
-        onOrdersClick={onOrdersClick}
-        onMessagesClick={onMessagesClick}
       />
 
       <main className="ml-16 p-6 md:p-8">
@@ -96,9 +93,9 @@ const StoreDetail: React.FC = () => {
 
           {/* Store Card */}
           <div className="rounded-2xl bg-white/60 backdrop-blur-xl shadow-sm overflow-hidden">
-            {store.imageUrl && (
+            {(store.imageUrl || getStoreImage(store.id)) && (
               <img
-                src={store.imageUrl}
+                src={store.imageUrl || getStoreImage(store.id) || ''}
                 alt={store.name}
                 className="w-full h-48 object-cover"
                 onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}

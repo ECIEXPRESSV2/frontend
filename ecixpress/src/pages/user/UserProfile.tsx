@@ -2,33 +2,19 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Mail, Phone, Edit, Save, X, User,
-  Wallet, ShoppingBag, Star, Plus, ArrowRight,
+  Wallet, ShoppingBag, Star, ArrowRight,
   Clock, CheckCircle, XCircle, Store,
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import Sidebar from '../../components/home/Sidebar';
 import { useAuth } from '../../context/AuthContext';
+import { useWallet } from '../../context/WalletContext';
+import WalletCard from '../../components/wallet/WalletCard';
 import { updateMe } from '../../services/userService';
 import { mockOrderHistory } from '../../mock/userProfile';
 
 // ─── Tipos de pedidos (Order & Communication — futuro microservicio) ──────────
 type OrderStatus = 'completed' | 'pending' | 'cancelled';
-
-interface OrderItem {
-  productId: number | string;
-  productName: string;
-  productImage: string;
-  quantity: number;
-}
-
-interface Order {
-  id: string;
-  storeName: string;
-  date: string;
-  status: OrderStatus;
-  items: OrderItem[];
-  total: number;
-}
 // ─────────────────────────────────────────────────────────────────────────────
 
 const STATUS_CONFIG: Record<OrderStatus, {
@@ -62,6 +48,7 @@ const glassCard = 'bg-white/52 backdrop-blur-2xl border border-white/72 rounded-
 const UserProfile: React.FC = () => {
   const navigate = useNavigate();
   const { userProfile, getToken, refreshProfile } = useAuth();
+  const { balanceLabel, loading: walletLoading } = useWallet();
   const [activeSidebarItem, setActiveSidebarItem] = useState('profile');
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -320,22 +307,7 @@ const UserProfile: React.FC = () => {
               </p>
               <h2 className="text-sm text-gray-900 mb-5">Mi billetera</h2>
 
-              <div className="flex gap-4">
-                <div className="relative w-full aspect-[1.586] rounded-3xl bg-gradient-to-br from-yellow-400 to-orange-400 p-6 overflow-hidden shadow-md">
-                  <div className="absolute right-0 top-0 w-40 h-40 bg-orange-300 opacity-40 rounded-full blur-2xl" />
-                  <div className="relative flex flex-col items-center justify-center h-full text-center">
-                    <p className="text-white text-3xl font-semibold tracking-tight">$0.00</p>
-                    <p className="text-white/90 mt-2 text-sm">{userProfile?.fullName || '—'}</p>
-                    <p className="text-white/70 text-xs mt-1">{userProfile?.email}</p>
-                  </div>
-                  <img src="/eciexpress.svg" alt="logo" className="absolute bottom-4 left-4 w-10" />
-                </div>
-                <div className="w-24 rounded-3xl bg-green-200 flex items-center justify-center shadow-md">
-                  <button className="w-14 h-14 rounded-full border-2 border-green-500 flex items-center justify-center hover:scale-110 transition">
-                    <Plus className="text-green-600" size={28} />
-                  </button>
-                </div>
-              </div>
+              <WalletCard />
             </div>
           </div>
 
@@ -346,7 +318,7 @@ const UserProfile: React.FC = () => {
 
             {[
               { icon: ShoppingBag, label: 'Pedidos realizados', val: orderHistory.length },
-              { icon: Wallet, label: 'Saldo disponible', val: '$0.00' },
+              { icon: Wallet, label: 'Saldo disponible', val: walletLoading ? '…' : balanceLabel },
               { icon: Star, label: 'Estado de cuenta', val: userProfile?.status === 'ACTIVE' ? 'Activa' : userProfile?.status ?? '—' },
             ].map(({ icon: Icon, label, val }) => (
               <div

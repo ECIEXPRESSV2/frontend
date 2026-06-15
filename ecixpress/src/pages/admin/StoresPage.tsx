@@ -1,8 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
-import { Plus, RefreshCw, MapPin, Clock, Users, AlertTriangle, Pencil } from 'lucide-react';
+import { Plus, RefreshCw, MapPin, Clock, Users, AlertTriangle, Pencil, ImagePlus, Map } from 'lucide-react';
 import Sidebar from '../../components/home/Sidebar';
 import { CardSkeleton, TableSkeleton } from '../../components/common/LoadingSkeleton';
+// Carga diferida: incluye maplibre-gl, solo se descarga al abrir el selector de mapa.
+const LocationPickerModal = lazy(() => import('../../components/admin/LocationPickerModal'));
 import { useAuth } from '../../context/AuthContext';
 import {
   getStores, createStore, updateStore, updateStoreStatus,
@@ -14,6 +16,7 @@ import {
 } from '../../services/storeService';
 import { getUsers, type UserItem } from '../../services/userService';
 import { deletePageCache, getPageCache, pageCacheKeys, setPageCache } from '../../services/pageCache';
+import { getStoreImage, setStoreImage, fileToDataUrl } from '../../services/storeImageStore';
 
 type TabType = 'stores' | 'schedules' | 'closures' | 'staff';
 type StoreDetailCache = {
@@ -53,12 +56,19 @@ const StoresPage: React.FC = () => {
   // Create store form
   const [showCreate, setShowCreate] = useState(false);
   const [createForm, setCreateForm] = useState<CreateStoreDto>({ name: '', type: 'CAFETERIA', location: '' });
+  const [createImage, setCreateImage] = useState<string | undefined>(undefined);
   const [creating, setCreating] = useState(false);
 
   // Edit store
   const [editingStore, setEditingStore] = useState<Store | null>(null);
   const [editForm, setEditForm] = useState<Partial<CreateStoreDto>>({});
+  const [editImage, setEditImage] = useState<string | undefined>(undefined);
   const [saving, setSaving] = useState(false);
+
+  // Selector de ubicación (mapa 3D); 'create' | 'edit' indica a qué formulario aplica.
+  const [locationPickerFor, setLocationPickerFor] = useState<'create' | 'edit' | null>(null);
+  const createFileRef = useRef<HTMLInputElement>(null);
+  const editFileRef = useRef<HTMLInputElement>(null);
 
   // Edit schedule
   const [editingSchedule, setEditingSchedule] = useState<StoreSchedule | null>(null);
@@ -130,15 +140,36 @@ const StoresPage: React.FC = () => {
     setCreating(true);
     try {
       const token = await getToken();
-      await createStore(createForm, token);
+      const created = await createStore(createForm, token);
+      // La imagen elegida desde el dispositivo se guarda localmente (ver storeImageStore).
+      // TODO: subirla a un Blob Storage y mandar la URL al backend cuando exista el servicio.
+      if (createImage && created?.id) setStoreImage(created.id, createImage);
       toast.success('Tienda creada');
       setShowCreate(false);
       setCreateForm({ name: '', type: 'CAFETERIA', location: '' });
+      setCreateImage(undefined);
       loadStores();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Error');
     } finally {
       setCreating(false);
+    }
+  };
+
+  // Lee un archivo de imagen elegido y lo guarda como data URL en el estado del form.
+  const handleImageFile = async (
+    file: File | undefined,
+    set: (v: string | undefined) => void,
+  ) => {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error('El archivo debe ser una imagen');
+      return;
+    }
+    try {
+      set(await fileToDataUrl(file));
+    } catch {
+      toast.error('No se pudo leer la imagen');
     }
   };
 
@@ -150,6 +181,7 @@ const StoresPage: React.FC = () => {
       location: store.location,
       imageUrl: store.imageUrl ?? undefined,
     });
+    setEditImage(getStoreImage(store.id) ?? undefined);
     setEditingStore(store);
   };
 
@@ -162,9 +194,12 @@ const StoresPage: React.FC = () => {
         Object.entries(editForm).filter(([, v]) => v !== '' && v !== undefined)
       ) as Partial<CreateStoreDto>;
       await updateStore(editingStore.id, payload, token);
+      // Imagen local (TODO: migrar a Blob Storage).
+      if (editImage) setStoreImage(editingStore.id, editImage);
       toast.success('Tienda actualizada');
       deletePageCache(pageCacheKeys.adminStoreDetail(editingStore.id));
       setEditingStore(null);
+      setEditImage(undefined);
       loadStores();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Error');
@@ -498,24 +533,31 @@ const StoresPage: React.FC = () => {
                 value={editForm.name ?? ''}
                 onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
               />
-              <input
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-yellow-400"
-                placeholder="Ubicación *"
-                value={editForm.location ?? ''}
-                onChange={e => setEditForm(f => ({ ...f, location: e.target.value }))}
-              />
+              <div className="flex gap-2">
+                <input
+                  className="flex-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-yellow-400"
+                  placeholder="Ubicación *"
+                  value={editForm.location ?? ''}
+                  onChange={e => setEditForm(f => ({ ...f, location: e.target.value }))}
+                />
+                <button type="button" onClick={() => setLocationPickerFor('edit')} title="Elegir en el mapa del campus" className="px-3 rounded-xl bg-gray-100 text-gray-700 hover:bg-gray-200 flex items-center gap-1.5 text-sm font-medium">
+                  <Map size={15} /> Mapa
+                </button>
+              </div>
               <input
                 className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-yellow-400"
                 placeholder="Descripción (opcional)"
                 value={editForm.description ?? ''}
                 onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))}
               />
-              <input
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-yellow-400"
-                placeholder="URL imagen (opcional)"
-                value={editForm.imageUrl ?? ''}
-                onChange={e => setEditForm(f => ({ ...f, imageUrl: e.target.value }))}
-              />
+              {/* Imagen de la tienda: archivo del dispositivo, guardado local (TODO: Blob Storage). */}
+              <div>
+                <input ref={editFileRef} type="file" accept="image/*" className="hidden" onChange={e => { handleImageFile(e.target.files?.[0], setEditImage); e.target.value = ''; }} />
+                <button type="button" onClick={() => editFileRef.current?.click()} className="w-full border border-dashed border-gray-300 rounded-xl px-3 py-3 text-sm text-gray-500 hover:border-yellow-400 hover:text-yellow-600 flex items-center justify-center gap-2 transition">
+                  <ImagePlus size={16} /> {editImage ? 'Cambiar imagen' : 'Subir imagen (opcional)'}
+                </button>
+                {editImage && <img src={editImage} alt="Vista previa" className="mt-2 w-full h-28 object-cover rounded-xl border border-gray-100" />}
+              </div>
             </div>
             <div className="flex gap-3">
               <button
@@ -525,7 +567,7 @@ const StoresPage: React.FC = () => {
               >
                 {saving ? 'Guardando...' : 'Guardar Cambios'}
               </button>
-              <button onClick={() => setEditingStore(null)} className="flex-1 py-2.5 rounded-xl bg-gray-100 text-gray-700 font-medium text-sm">
+              <button onClick={() => { setEditingStore(null); setEditImage(undefined); }} className="flex-1 py-2.5 rounded-xl bg-gray-100 text-gray-700 font-medium text-sm">
                 Cancelar
               </button>
             </div>
@@ -545,18 +587,48 @@ const StoresPage: React.FC = () => {
                 <option value="PAPELERIA">Papelería</option>
                 <option value="RESTAURANTE">Restaurante</option>
               </select>
-              <input className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-yellow-400" placeholder="Ubicación *" value={createForm.location} onChange={e => setCreateForm(f => ({ ...f, location: e.target.value }))} />
+              <div className="flex gap-2">
+                <input className="flex-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-yellow-400" placeholder="Ubicación *" value={createForm.location} onChange={e => setCreateForm(f => ({ ...f, location: e.target.value }))} />
+                <button type="button" onClick={() => setLocationPickerFor('create')} title="Elegir en el mapa del campus" className="px-3 rounded-xl bg-gray-100 text-gray-700 hover:bg-gray-200 flex items-center gap-1.5 text-sm font-medium">
+                  <Map size={15} /> Mapa
+                </button>
+              </div>
               <input className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-yellow-400" placeholder="Descripción (opcional)" value={createForm.description || ''} onChange={e => setCreateForm(f => ({ ...f, description: e.target.value }))} />
-              <input className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-yellow-400" placeholder="URL imagen (opcional)" value={createForm.imageUrl || ''} onChange={e => setCreateForm(f => ({ ...f, imageUrl: e.target.value }))} />
+              {/* Imagen de la tienda: se elige del dispositivo y se guarda local (TODO: Blob Storage). */}
+              <div>
+                <input ref={createFileRef} type="file" accept="image/*" className="hidden" onChange={e => { handleImageFile(e.target.files?.[0], setCreateImage); e.target.value = ''; }} />
+                <button type="button" onClick={() => createFileRef.current?.click()} className="w-full border border-dashed border-gray-300 rounded-xl px-3 py-3 text-sm text-gray-500 hover:border-yellow-400 hover:text-yellow-600 flex items-center justify-center gap-2 transition">
+                  <ImagePlus size={16} /> {createImage ? 'Cambiar imagen' : 'Subir imagen (opcional)'}
+                </button>
+                {createImage && <img src={createImage} alt="Vista previa" className="mt-2 w-full h-28 object-cover rounded-xl border border-gray-100" />}
+              </div>
             </div>
             <div className="flex gap-3">
               <button onClick={handleCreateStore} disabled={creating || !createForm.name || !createForm.location} className="flex-1 py-2.5 rounded-xl bg-yellow-400 text-white font-medium text-sm hover:bg-yellow-500 disabled:opacity-50">
                 {creating ? 'Creando...' : 'Crear Tienda'}
               </button>
-              <button onClick={() => setShowCreate(false)} className="flex-1 py-2.5 rounded-xl bg-gray-100 text-gray-700 font-medium text-sm">Cancelar</button>
+              <button onClick={() => { setShowCreate(false); setCreateImage(undefined); }} className="flex-1 py-2.5 rounded-xl bg-gray-100 text-gray-700 font-medium text-sm">Cancelar</button>
             </div>
           </div>
         </div>
+      )}
+
+      {/* Selector de ubicación: mapa 3D del campus (carga diferida) */}
+      {locationPickerFor !== null && (
+        <Suspense fallback={null}>
+          <LocationPickerModal
+            open
+            initial={locationPickerFor === 'edit' ? editForm.location : createForm.location}
+            onClose={() => setLocationPickerFor(null)}
+            onSelect={(loc) => {
+              if (locationPickerFor === 'edit') {
+                setEditForm(f => ({ ...f, location: loc }));
+              } else {
+                setCreateForm(f => ({ ...f, location: loc }));
+              }
+            }}
+          />
+        </Suspense>
       )}
     </div>
   );
