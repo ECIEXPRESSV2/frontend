@@ -18,9 +18,16 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-yellow-50 via-white to-yellow-100">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-gray-500 text-sm">Cargando...</p>
+        <div className="w-full max-w-3xl space-y-4 px-6 animate-pulse">
+          <div className="h-6 w-48 rounded-full bg-white/80" />
+          <div className="rounded-2xl bg-white/70 p-6 shadow-sm">
+            <div className="mb-5 h-4 w-2/3 rounded-full bg-gray-100" />
+            <div className="space-y-3">
+              <div className="h-3 rounded-full bg-gray-100" />
+              <div className="h-3 w-5/6 rounded-full bg-gray-100" />
+              <div className="h-3 w-3/4 rounded-full bg-gray-100" />
+            </div>
+          </div>
         </div>
       </div>
     );

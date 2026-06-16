@@ -2,33 +2,52 @@ import React, { useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
 import { RefreshCw, Search } from 'lucide-react';
 import Sidebar from '../../components/home/Sidebar';
+import { TableSkeleton } from '../../components/common/LoadingSkeleton';
 import { useAuth } from '../../context/AuthContext';
 import { getAuditLogs, type AuditLog } from '../../services/auditService';
+import { getPageCache, pageCacheKeys, setPageCache } from '../../services/pageCache';
+
+type AuditCache = {
+  logs: AuditLog[];
+  total: number;
+};
 
 const AuditPage: React.FC = () => {
   const { getToken } = useAuth();
-  const [logs, setLogs] = useState<AuditLog[]>([]);
-  const [loading, setLoading] = useState(true);
   const [action, setAction] = useState('');
   const [page, setPage] = useState(1);
-  const [total, setTotal] = useState(0);
   const limit = 20;
+  const initialCache = getPageCache<AuditCache>(pageCacheKeys.adminAudit(1));
+  const [logs, setLogs] = useState<AuditLog[]>(() => initialCache?.logs ?? []);
+  const [loading, setLoading] = useState(() => !initialCache);
+  const [total, setTotal] = useState(() => initialCache?.total ?? 0);
 
-  const load = async (p = page) => {
-    setLoading(true);
+  const load = async (p = page, { actionValue = action, showLoading = false } = {}) => {
+    const cacheKey = pageCacheKeys.adminAudit(p, actionValue);
+    const cached = getPageCache<AuditCache>(cacheKey);
+    if (cached) {
+      setLogs(cached.logs);
+      setTotal(cached.total);
+    }
+    setLoading(showLoading && !cached);
     try {
       const token = await getToken();
       const params: Record<string, string> = { page: String(p), limit: String(limit) };
-      if (action) params.action = action;
+      if (actionValue) params.action = actionValue;
       const res = await getAuditLogs(token, params);
+      let nextLogs: AuditLog[];
+      let nextTotal: number;
       if (Array.isArray(res)) {
-        setLogs(res);
-        setTotal(res.length);
+        nextLogs = res;
+        nextTotal = res.length;
       } else {
         const paged = res as { data: AuditLog[]; meta?: { total: number } };
-        setLogs(paged.data ?? []);
-        setTotal(paged.meta?.total ?? paged.data?.length ?? 0);
+        nextLogs = paged.data ?? [];
+        nextTotal = paged.meta?.total ?? paged.data?.length ?? 0;
       }
+      setLogs(nextLogs);
+      setTotal(nextTotal);
+      setPageCache(cacheKey, { logs: nextLogs, total: nextTotal });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Error');
     } finally {
@@ -36,9 +55,9 @@ const AuditPage: React.FC = () => {
     }
   };
 
-  useEffect(() => { load(1); }, []);
+  useEffect(() => { load(1, { showLoading: !initialCache }); }, []);
 
-  const handleSearch = () => { setPage(1); load(1); };
+  const handleSearch = () => { setPage(1); load(1, { actionValue: action }); };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-white to-yellow-100">
@@ -47,32 +66,42 @@ const AuditPage: React.FC = () => {
         <div className="max-w-6xl mx-auto space-y-6">
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold text-gray-900">Log de Auditoría</h1>
-            <button onClick={() => load(page)} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-yellow-400 text-white font-medium text-sm hover:bg-yellow-500">
+            <button onClick={() => load(page, { actionValue: action })} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-yellow-400 text-white font-medium text-sm hover:bg-yellow-500">
               <RefreshCw size={15} /> Actualizar
             </button>
           </div>
 
           {/* Filters */}
           <div className="flex gap-3">
-            <div className="relative flex-1 max-w-xs">
-              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input
-                className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-yellow-400"
-                placeholder="Filtrar por acción..."
-                value={action}
-                onChange={e => setAction(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleSearch()}
-              />
-            </div>
-            <button onClick={handleSearch} className="px-5 py-2.5 rounded-xl bg-gray-100 text-gray-700 font-medium text-sm hover:bg-gray-200">Buscar</button>
+            <select
+              className="border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-yellow-400 bg-white"
+              value={action}
+              onChange={e => { setAction(e.target.value); }}
+            >
+              <option value="">Todas las acciones</option>
+              <option value="USER_CREATED">USER_CREATED</option>
+              <option value="USER_UPDATED">USER_UPDATED</option>
+              <option value="USER_DEACTIVATED">USER_DEACTIVATED</option>
+              <option value="ROLE_ASSIGNED">ROLE_ASSIGNED</option>
+              <option value="ROLE_REVOKED">ROLE_REVOKED</option>
+              <option value="STORE_CREATED">STORE_CREATED</option>
+              <option value="STORE_UPDATED">STORE_UPDATED</option>
+              <option value="STORE_CLOSURE_CREATED">STORE_CLOSURE_CREATED</option>
+              <option value="STORE_CLOSURE_CANCELLED">STORE_CLOSURE_CANCELLED</option>
+              <option value="STORE_STAFF_ASSIGNED">STORE_STAFF_ASSIGNED</option>
+              <option value="STORE_STAFF_REMOVED">STORE_STAFF_REMOVED</option>
+              <option value="PERMISSION_GRANTED">PERMISSION_GRANTED</option>
+              <option value="PERMISSION_REVOKED">PERMISSION_REVOKED</option>
+            </select>
+            <button onClick={handleSearch} className="px-5 py-2.5 rounded-xl bg-gray-100 text-gray-700 font-medium text-sm hover:bg-gray-200">
+              <Search size={15} />
+            </button>
           </div>
 
           {/* Table */}
           <div className="rounded-2xl bg-white/70 backdrop-blur-xl shadow-sm overflow-hidden">
-            {loading ? (
-              <div className="flex justify-center py-12">
-                <div className="w-8 h-8 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin" />
-              </div>
+            {loading && logs.length === 0 ? (
+              <TableSkeleton rows={6} columns={5} />
             ) : logs.length === 0 ? (
               <p className="text-center py-12 text-gray-400">No hay registros de auditoría</p>
             ) : (
@@ -115,7 +144,7 @@ const AuditPage: React.FC = () => {
           {total > limit && (
             <div className="flex justify-center gap-3">
               <button
-                onClick={() => { const p = page - 1; setPage(p); load(p); }}
+                onClick={() => { const p = page - 1; setPage(p); load(p, { actionValue: action }); }}
                 disabled={page === 1}
                 className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 text-sm disabled:opacity-40"
               >
@@ -123,7 +152,7 @@ const AuditPage: React.FC = () => {
               </button>
               <span className="px-4 py-2 text-sm text-gray-500">Página {page} de {Math.ceil(total / limit)}</span>
               <button
-                onClick={() => { const p = page + 1; setPage(p); load(p); }}
+                onClick={() => { const p = page + 1; setPage(p); load(p, { actionValue: action }); }}
                 disabled={page >= Math.ceil(total / limit)}
                 className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 text-sm disabled:opacity-40"
               >

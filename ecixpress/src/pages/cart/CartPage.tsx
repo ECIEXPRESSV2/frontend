@@ -49,11 +49,9 @@ const CartPage: React.FC<CartPageProps> = ({ onBack, onContinue, onOrdersClick, 
   return (
     <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-white to-yellow-100">
       {/* Sidebar */}
-      <Sidebar 
+      <Sidebar
         activeItem={activeSidebarItem}
         onItemClick={setActiveSidebarItem}
-        onOrdersClick={onOrdersClick}
-        onMessagesClick={onMessagesClick}
       />
 
       {/* Main Content */}

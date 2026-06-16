@@ -8,16 +8,8 @@ import ProductCard from '../../components/home/ProductCard';
 import CategoryTabs from '../../components/home/CategoryTabs';
 import { useAuth } from '../../context/AuthContext';
 import { getAvailableStores, type Store } from '../../services/storeService';
+import { getStoreImage } from '../../services/storeImageStore';
 
-interface HomeProps {
-  onStoreClick?: (storeId: number) => void;
-  onUserClick?: () => void;
-  onCartClick?: () => void;
-  onOrdersClick?: () => void;
-  onMessagesClick?: () => void;
-}
-
-const Home: React.FC<HomeProps> = ({ onStoreClick, onUserClick, onCartClick, onOrdersClick, onMessagesClick }) => {
 const FALLBACK_PRODUCTS = [
   { id: 1, title: 'Cappuccino Italiano', description: 'Café espresso con leche espumada', imageUrl: 'https://images.unsplash.com/photo-1572442388796-11668a67e53d?w=400&auto=format&fit=crop', price: 4.50, rating: 4.8, estimatedTime: '5 min' },
   { id: 2, title: 'Croissant de Almendra', description: 'Horneado fresco con relleno de crema', imageUrl: 'https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=400&auto=format&fit=crop', price: 3.75, rating: 4.6, estimatedTime: '3 min' },
@@ -27,6 +19,7 @@ const FALLBACK_PRODUCTS = [
 
 const STORE_FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=200&auto=format&fit=crop';
 
+const Home: React.FC = () => {
   const navigate = useNavigate();
   const { getToken } = useAuth();
   const [activeCategory, setActiveCategory] = useState('Cafetería');
@@ -61,13 +54,9 @@ const STORE_FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1554118811-1e0d5
   return (
     <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-white to-yellow-100">
       {/* Sidebar */}
-      <Sidebar 
+      <Sidebar
         activeItem={activeSidebarItem}
         onItemClick={setActiveSidebarItem}
-        onUserClick={onUserClick}
-        onCartClick={onCartClick}
-        onOrdersClick={onOrdersClick}
-        onMessagesClick={onMessagesClick}
       />
 
       <main className="ml-16 p-6 md:p-8">
@@ -97,7 +86,7 @@ const STORE_FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1554118811-1e0d5
                     key={store.id}
                     id={store.id as unknown as number}
                     name={store.name}
-                    imageUrl={store.imageUrl || STORE_FALLBACK_IMAGE}
+                    imageUrl={getStoreImage(String(store.id)) || store.imageUrl || STORE_FALLBACK_IMAGE}
                     isActive={activeStore === index}
                     onClick={() => {
                       setActiveStore(index);

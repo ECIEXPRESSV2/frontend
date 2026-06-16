@@ -24,6 +24,9 @@ export const createRole = (data: { name: string; description?: string }, token: 
 export const getPermissions = (token: string) =>
   apiFetch<Permission[]>('/permissions', token);
 
+export const getRolePermissions = (roleId: string, token: string) =>
+  apiFetch<Permission[]>(`/roles/${roleId}/permissions`, token);
+
 export const setRolePermissions = (roleId: string, permissionIds: string[], token: string) =>
   apiFetch<unknown>(`/roles/${roleId}/permissions`, token, {
     method: 'PUT',
