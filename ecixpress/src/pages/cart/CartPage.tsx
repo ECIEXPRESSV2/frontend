@@ -7,7 +7,14 @@ import CartList from '../../components/cart/CartList';
 import OrderSummary from '../../components/cart/OrderSummary';
 import { useCart } from '../../hooks/useCart';
 
-const CartPage: React.FC = () => {
+interface CartPageProps {
+  onBack?: () => void;
+  onContinue?: () => void;
+  onOrdersClick?: () => void;
+  onMessagesClick?: () => void;
+}
+
+const CartPage: React.FC<CartPageProps> = ({ onBack, onContinue, onOrdersClick, onMessagesClick }) => {
   const navigate = useNavigate();
   const [activeSidebarItem, setActiveSidebarItem] = useState('cart');
   
@@ -30,9 +37,7 @@ const CartPage: React.FC = () => {
   const totals = calculateTotals();
 
   const handleContinue = () => {
-    // Navigate to payment page (to be implemented)
-    console.log('Navigate to payment');
-    // navigate('/payment');
+    onContinue?.();
   };
 
   const steps = [
@@ -54,7 +59,7 @@ const CartPage: React.FC = () => {
         <div className="max-w-7xl mx-auto space-y-8">
           {/* Back Button */}
           <button
-            onClick={() => navigate('/home')}
+            onClick={() => onBack?.() ?? navigate('/home')}
             className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/60 backdrop-blur-xl border border-white/40 text-gray-700 font-medium text-sm hover:bg-yellow-50 hover:text-yellow-600 transition-all duration-300"
           >
             <ArrowLeft size={16} />

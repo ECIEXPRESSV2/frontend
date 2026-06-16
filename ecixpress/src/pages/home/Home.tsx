@@ -90,7 +90,11 @@ const Home: React.FC = () => {
                     isActive={activeStore === index}
                     onClick={() => {
                       setActiveStore(index);
-                      navigate(`/store/${store.id}`);
+                      if (onStoreClick) {
+                        onStoreClick(Number(store.id));
+                      } else {
+                        navigate(`/store/${store.id}`);
+                      }
                     }}
                   />
                 ))}

@@ -39,6 +39,30 @@ const Sidebar: React.FC<SidebarProps> = ({ activeItem = 'home', onItemClick }) =
     navigate('/signin');
   };
 
+  const handleMenuClick = (item: (typeof menuItems)[number]) => {
+    onItemClick?.(item.id);
+
+    if (item.id === 'orders') {
+      onOrdersClick?.();
+      if (!onOrdersClick) navigate('/backend-demo');
+      return;
+    }
+
+    if (item.id === 'messages') {
+      onMessagesClick?.();
+      if (!onMessagesClick) navigate('/backend-demo/messages');
+      return;
+    }
+
+    if (item.id === 'cart') {
+      onCartClick?.();
+      if (!onCartClick && item.path) navigate(item.path);
+      return;
+    }
+
+    if (item.path) navigate(item.path);
+  };
+
   return (
     <aside
       className={`fixed left-0 top-0 h-screen bg-white/40 backdrop-blur-xl border-r border-white/30 flex flex-col py-6 z-50 transition-all duration-300 ease-in-out overflow-hidden
@@ -48,7 +72,10 @@ const Sidebar: React.FC<SidebarProps> = ({ activeItem = 'home', onItemClick }) =
     >
       {/* User Icon Header */}
       <button
-        onClick={() => navigate('/profile')}
+        onClick={() => {
+          onUserClick?.();
+          if (!onUserClick) navigate('/profile');
+        }}
         className={`mb-6 flex items-center transition-all duration-300 ${isExpanded ? 'px-6' : 'justify-center'} hover:scale-105`}
       >
         <div className="w-12 h-12 rounded-full bg-gradient-to-r from-yellow-400 to-yellow-500 flex items-center justify-center shadow-lg shadow-yellow-200/60 flex-shrink-0 overflow-hidden">
@@ -76,10 +103,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeItem = 'home', onItemClick }) =
           return (
             <button
               key={item.id}
-              onClick={() => {
-                if (item.path) navigate(item.path);
-                else onItemClick?.(item.id);
-              }}
+              onClick={() => handleMenuClick(item)}
               className={`relative w-full h-11 rounded-xl flex items-center transition-all duration-300 ease-in-out group overflow-hidden
                 ${isActive ? 'bg-yellow-100 text-yellow-600' : 'text-gray-500 hover:bg-yellow-50 hover:text-yellow-600'}
                 ${isExpanded ? 'px-4' : 'justify-center'}`}

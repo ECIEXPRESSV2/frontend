@@ -12,14 +12,23 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   CLOSED: { label: 'Cerrado', color: 'text-red-600 bg-red-50' },
   TEMPORARILY_CLOSED: { label: 'Cierre temporal', color: 'text-orange-600 bg-orange-50' },
 };
-const StoreDetail: React.FC = () => {
-  const { storeId } = useParams<{ storeId: string }>();
+
+interface StoreDetailProps {
+  storeId?: number;
+  onBack?: () => void;
+  onOrdersClick?: () => void;
+  onMessagesClick?: () => void;
+}
+
+const StoreDetail: React.FC<StoreDetailProps> = ({ storeId: storeIdProp, onBack, onOrdersClick, onMessagesClick }) => {
+  const { storeId: routeStoreId } = useParams<{ storeId: string }>();
   const navigate = useNavigate();
   const { getToken } = useAuth();
   const [activeSidebarItem, setActiveSidebarItem] = useState('home');
   const [store, setStore] = useState<Store | null>(null);
   const [schedules, setSchedules] = useState<StoreSchedule[]>([]);
   const [loading, setLoading] = useState(true);
+  const storeId = routeStoreId ?? (storeIdProp !== undefined ? String(storeIdProp) : undefined);
 
   useEffect(() => {
     if (!storeId) return;
@@ -60,7 +69,7 @@ const StoreDetail: React.FC = () => {
           <div className="text-center">
             <h1 className="text-2xl font-bold text-gray-900 mb-4">Tienda no encontrada</h1>
             <button
-              onClick={() => navigate('/home')}
+              onClick={() => onBack?.() ?? navigate('/home')}
               className="px-6 py-3 rounded-xl bg-gradient-to-r from-yellow-400 to-yellow-500 text-white font-semibold"
             >
               Volver al inicio
@@ -84,7 +93,7 @@ const StoreDetail: React.FC = () => {
       <main className="ml-16 p-6 md:p-8">
         <div className="max-w-4xl mx-auto space-y-6">
           <button
-            onClick={() => navigate('/home')}
+            onClick={() => onBack?.() ?? navigate('/home')}
             className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/60 backdrop-blur-xl border border-white/40 text-gray-700 font-medium text-sm hover:bg-yellow-50 hover:text-yellow-600 transition-all duration-300"
           >
             <ArrowLeft size={16} />

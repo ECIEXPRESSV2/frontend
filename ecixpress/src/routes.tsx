@@ -12,8 +12,14 @@ import RolesPage from './pages/admin/RolesPage';
 import StoresPage from './pages/admin/StoresPage';
 import AuditPage from './pages/admin/AuditPage';
 import VendorStoresPage from './pages/vendor/VendorStoresPage';
+import BackendDemoPage from './pages/demo/BackendDemoPage';
 
 const AppRoutes: React.FC = () => {
+  const navigate = useNavigate();
+  const openOrdersDemo = () => navigate('/backend-demo');
+  const openMessagesDemo = () => navigate('/backend-demo/messages');
+  const goHome = () => navigate('/home');
+
   return (
     <Routes>
       {/* Landing Page */}
@@ -24,10 +30,12 @@ const AppRoutes: React.FC = () => {
       <Route path="/signup" element={<SignUpPage />} />
 
       {/* Main App */}
-      <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
-      <Route path="/store/:storeId" element={<ProtectedRoute><StoreDetail /></ProtectedRoute>} />
-      <Route path="/profile" element={<ProtectedRoute><UserProfile /></ProtectedRoute>} />
-      <Route path="/cart" element={<ProtectedRoute><CartPage /></ProtectedRoute>} />
+      <Route path="/home" element={<ProtectedRoute><Home onUserClick={() => navigate('/profile')} onCartClick={() => navigate('/cart')} onOrdersClick={openOrdersDemo} onMessagesClick={openMessagesDemo} /></ProtectedRoute>} />
+      <Route path="/store/:storeId" element={<ProtectedRoute><StoreDetail onBack={goHome} onOrdersClick={openOrdersDemo} onMessagesClick={openMessagesDemo} /></ProtectedRoute>} />
+      <Route path="/profile" element={<ProtectedRoute><UserProfile onBack={goHome} onOrdersClick={openOrdersDemo} onMessagesClick={openMessagesDemo} /></ProtectedRoute>} />
+      <Route path="/cart" element={<ProtectedRoute><CartPage onBack={goHome} onOrdersClick={openOrdersDemo} onMessagesClick={openMessagesDemo} /></ProtectedRoute>} />
+      <Route path="/backend-demo" element={<ProtectedRoute><BackendDemoPage onBack={goHome} initialTab="orders" /></ProtectedRoute>} />
+      <Route path="/backend-demo/messages" element={<ProtectedRoute><BackendDemoPage onBack={goHome} initialTab="messages" /></ProtectedRoute>} />
 
       {/* Admin */}
       <Route path="/admin/users" element={<ProtectedRoute requireAdmin><UsersPage /></ProtectedRoute>} />

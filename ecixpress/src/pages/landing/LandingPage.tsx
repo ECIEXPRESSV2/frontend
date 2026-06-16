@@ -8,16 +8,21 @@ import UniversityContextSection from '../../components/landing/UniversityContext
 import ModulesSection from '../../components/landing/ModulesSection';
 import { CTAFinal, Footer } from '../../components/landing/CTASection';
 
-const LandingPage: React.FC = () => {
+interface LandingPageProps {
+  onNavigateToLogin?: () => void;
+  onNavigateToSignUp?: () => void;
+}
+
+const LandingPage: React.FC<LandingPageProps> = ({ onNavigateToLogin, onNavigateToSignUp }) => {
   const navigate = useNavigate();
 
   const handleLoginClick = useCallback(() => {
-    navigate('/signin');
-  }, [navigate]);
+    onNavigateToLogin?.() ?? navigate('/signin');
+  }, [navigate, onNavigateToLogin]);
 
   const handleSignUpClick = useCallback(() => {
-    navigate('/signup');
-  }, [navigate]);
+    onNavigateToSignUp?.() ?? navigate('/signup');
+  }, [navigate, onNavigateToSignUp]);
 
   const handleGetStartedClick = useCallback(() => {
     console.log('Get started clicked');
@@ -61,5 +66,4 @@ const LandingPage: React.FC = () => {
 };
 
 export default LandingPage;
-
 
