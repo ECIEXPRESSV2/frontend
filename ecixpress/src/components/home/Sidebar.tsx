@@ -1,26 +1,40 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, Plus, Grid, ShoppingCart, Clipboard, MessageCircle, LogOut, Wallet, Bell, Shield, Store } from 'lucide-react';
+import { User, Plus, Grid, ShoppingCart, Clipboard, MessageCircle, LogOut, Wallet, Shield, Store } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useWallet } from '../../context/WalletContext';
+import NotificationBell from '../notifications/NotificationBell';
 
 interface SidebarProps {
   activeItem?: string;
   onItemClick?: (item: string) => void;
+  onUserClick?: () => void;
+  onOrdersClick?: () => void;
+  onMessagesClick?: () => void;
+  onCartClick?: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ activeItem = 'home', onItemClick }) => {
+const Sidebar: React.FC<SidebarProps> = ({
+  activeItem = 'home',
+  onItemClick,
+  onUserClick,
+  onOrdersClick,
+  onMessagesClick,
+  onCartClick,
+}) => {
   const navigate = useNavigate();
   const { userProfile, signOut, isAdmin, isVendor } = useAuth();
   const { balanceLabel, loading: walletLoading } = useWallet();
   const [isExpanded, setIsExpanded] = useState(false);
+  // Cuando el panel de notificaciones está abierto, el sidebar se comprime y no se
+  // vuelve a expandir con el hover hasta que se cierre.
+  const [notifOpen, setNotifOpen] = useState(false);
 
   const menuItems = [
     { id: 'home', icon: Grid, label: 'Inicio', path: '/home' },
     { id: 'orders', icon: Clipboard, label: 'Pedidos', path: null },
     { id: 'cart', icon: ShoppingCart, label: 'Carrito', path: '/cart' },
     { id: 'messages', icon: MessageCircle, label: 'Mensajes', path: null },
-    { id: 'notifications', icon: Bell, label: 'Notificaciones', path: null },
   ];
 
   const adminItems = [
@@ -67,7 +81,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeItem = 'home', onItemClick }) =
     <aside
       className={`fixed left-0 top-0 h-screen bg-white/40 backdrop-blur-xl border-r border-white/30 flex flex-col py-6 z-50 transition-all duration-300 ease-in-out overflow-hidden
         ${isExpanded ? 'w-64' : 'w-16'}`}
-      onMouseEnter={() => setIsExpanded(true)}
+      onMouseEnter={() => !notifOpen && setIsExpanded(true)}
       onMouseLeave={() => setIsExpanded(false)}
     >
       {/* User Icon Header */}
@@ -115,6 +129,15 @@ const Sidebar: React.FC<SidebarProps> = ({ activeItem = 'home', onItemClick }) =
             </button>
           );
         })}
+
+        {/* Campana de notificaciones (tiempo real + bandeja persistida) */}
+        <NotificationBell
+          expanded={isExpanded}
+          onOpenChange={(open) => {
+            setNotifOpen(open);
+            if (open) setIsExpanded(false); // comprimir el sidebar al abrir
+          }}
+        />
 
         {/* Vendor section */}
         {isVendor() && (
