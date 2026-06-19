@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { io, Socket } from 'socket.io-client';
-import { ArrowLeft, RefreshCw, Wifi, MessageCircle, RotateCcw, XCircle, Star, CheckCircle2, Clock } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Wifi, MessageCircle, RotateCcw, XCircle, Star, CheckCircle2, Clock, Plus } from 'lucide-react';
 import Sidebar from '../../components/home/Sidebar';
 import ModalShell from '../../components/wallet/ModalShell';
+import FormInput from '../../components/ui/FormInput';
 import { useAuth } from '../../context/AuthContext';
 import { useOrdersApi } from '../../hooks/useOrdersApi';
 import { ORDERS_API_BASE_URL, type OrderResponse, type OrderStatus } from '../../lib/orders-api';
@@ -37,6 +38,15 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
 
   const [rating, setRating] = useState<{ open: boolean; score: number; comment: string }>({ open: false, score: 5, comment: '' });
   const [actionMsg, setActionMsg] = useState<string | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [draft, setDraft] = useState({
+    storeName: 'Café Central',
+    storeId: crypto.randomUUID(),
+    productName: 'Capuccino',
+    price: '6500', // en pesos; se convierte a centavos al enviar
+    quantity: '1',
+    paymentMethod: 'wallet' as 'wallet' | 'cash' | 'card' | 'transfer',
+  });
 
   const socketRef = useRef<Socket | null>(null);
 
@@ -142,6 +152,32 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
     }
   };
 
+  const handleCreate = async () => {
+    setActionMsg(null);
+    try {
+      const created = await api.createOrder({
+        storeId: draft.storeId,
+        storeName: draft.storeName,
+        items: [{
+          productId: crypto.randomUUID(),
+          name: draft.productName,
+          unitPrice: Math.round(Number(draft.price) * 100), // pesos -> centavos
+          quantity: Number(draft.quantity) || 1,
+        }],
+        paymentMethod: draft.paymentMethod,
+        deliveryMethod: 'pickup',
+        currency: 'COP',
+      });
+      upsertOrder(created);
+      setSelectedId(created.id);
+      socketRef.current?.emit('order:subscribe', { orderId: created.id });
+      setCreateOpen(false);
+      setActionMsg(`Pedido creado: ${created.orderNumber} (${created.status})`);
+    } catch (e) {
+      setActionMsg(e instanceof Error ? e.message : 'No se pudo crear el pedido');
+    }
+  };
+
   const submitRating = async () => {
     if (!selected) return;
     try {
@@ -174,8 +210,11 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
               <span className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium ${connected ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-600'}`}>
                 <Wifi size={14} /> {connected ? 'En vivo' : 'Sin conexión'}
               </span>
-              <button onClick={load} className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-yellow-400 text-white font-semibold shadow-md shadow-yellow-200/60 hover:bg-yellow-500 transition-all">
+              <button onClick={load} className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white/70 border border-white/50 text-gray-700 font-semibold hover:bg-white transition-all">
                 <RefreshCw size={16} /> Refrescar
+              </button>
+              <button onClick={() => setCreateOpen(true)} className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-yellow-400 text-white font-semibold shadow-md shadow-yellow-200/60 hover:bg-yellow-500 transition-all">
+                <Plus size={16} /> Nuevo pedido
               </button>
             </div>
           </div>
@@ -303,6 +342,36 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
           </div>
         </div>
       </main>
+
+      {/* Modal crear pedido (para pruebas / flujo directo) */}
+      <ModalShell open={createOpen} onClose={() => setCreateOpen(false)} title="Nuevo pedido" subtitle="Crea un pedido contra el microservicio">
+        <div className="space-y-3">
+          <FormInput label="Tienda" value={draft.storeName} onChange={(v) => setDraft((d) => ({ ...d, storeName: v }))} />
+          <FormInput label="Store ID (UUID)" value={draft.storeId} onChange={(v) => setDraft((d) => ({ ...d, storeId: v }))} />
+          <FormInput label="Producto" value={draft.productName} onChange={(v) => setDraft((d) => ({ ...d, productName: v }))} />
+          <div className="grid grid-cols-2 gap-3">
+            <FormInput label="Precio (COP)" type="number" value={draft.price} onChange={(v) => setDraft((d) => ({ ...d, price: v }))} />
+            <FormInput label="Cantidad" type="number" value={draft.quantity} onChange={(v) => setDraft((d) => ({ ...d, quantity: v }))} />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">Método de pago</label>
+            <select
+              value={draft.paymentMethod}
+              onChange={(e) => setDraft((d) => ({ ...d, paymentMethod: e.target.value as typeof d.paymentMethod }))}
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm bg-white/60 outline-none focus:border-yellow-400 focus:ring-2 focus:ring-yellow-100"
+            >
+              <option value="wallet">Billetera (pago digital)</option>
+              <option value="cash">Efectivo</option>
+              <option value="card">Tarjeta</option>
+              <option value="transfer">Transferencia</option>
+            </select>
+            <p className="text-xs text-gray-400 mt-1">Con billetera/tarjeta el pedido queda "Pago pendiente" hasta que financial confirme.</p>
+          </div>
+          <button onClick={handleCreate} className="w-full py-3 rounded-xl bg-gradient-to-r from-yellow-400 to-yellow-500 text-white font-semibold hover:from-yellow-500 hover:to-yellow-600 transition-all">
+            Crear pedido
+          </button>
+        </div>
+      </ModalShell>
 
       {/* Modal de calificación (RF-10) */}
       <ModalShell open={rating.open} onClose={() => setRating((r) => ({ ...r, open: false }))} title="Calificar pedido" subtitle="¿Cómo estuvo tu experiencia?">
