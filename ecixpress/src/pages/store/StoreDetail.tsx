@@ -20,7 +20,7 @@ interface StoreDetailProps {
   onMessagesClick?: () => void;
 }
 
-const StoreDetail: React.FC<StoreDetailProps> = ({ storeId: storeIdProp, onBack, onOrdersClick, onMessagesClick }) => {
+const StoreDetail: React.FC<StoreDetailProps> = ({ storeId: storeIdProp, onBack }) => {
   const { storeId: routeStoreId } = useParams<{ storeId: string }>();
   const navigate = useNavigate();
   const { getToken } = useAuth();

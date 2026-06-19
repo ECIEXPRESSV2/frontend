@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, Plus, Grid, ShoppingCart, Clipboard, MessageCircle, LogOut, Wallet, Shield, Store } from 'lucide-react';
+import { User, Plus, Grid, ShoppingCart, Clipboard, MessageCircle, LogOut, Wallet, Shield, Store, PackageCheck } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useWallet } from '../../context/WalletContext';
 import NotificationBell from '../notifications/NotificationBell';
@@ -46,6 +46,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   const vendorItems = [
     { id: 'vendor-stores', icon: Store, label: 'Mis Tiendas', path: '/vendor/stores' },
+    { id: 'deliveries', icon: PackageCheck, label: 'Entregas', path: '/fulfillment/deliveries' },
   ];
 
   const handleLogout = async () => {

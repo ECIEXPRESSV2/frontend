@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { io, Socket } from 'socket.io-client';
-import { ArrowLeft, RefreshCw, Wifi, MessageCircle, RotateCcw, XCircle, Star, CheckCircle2, Clock, Plus } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Wifi, MessageCircle, RotateCcw, XCircle, Star, CheckCircle2, Clock, Plus, QrCode } from 'lucide-react';
 import Sidebar from '../../components/home/Sidebar';
 import ModalShell from '../../components/wallet/ModalShell';
 import FormInput from '../../components/ui/FormInput';
@@ -9,7 +9,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useOrdersApi } from '../../hooks/useOrdersApi';
 import { ORDERS_API_BASE_URL, type OrderResponse, type OrderStatus } from '../../lib/orders-api';
 import { formatCOP, formatDateTime } from '../../lib/format';
-import { ORDER_FLOW, isCancellable, isRateable, statusLabel, statusTone } from '../../lib/orders-ui';
+import { ORDER_FLOW, hasPickupCode, isCancellable, isRateable, statusLabel, statusTone } from '../../lib/orders-ui';
 
 interface OrdersPageProps {
   onBack?: () => void;
@@ -41,7 +41,7 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
   const [createOpen, setCreateOpen] = useState(false);
   const [draft, setDraft] = useState({
     storeName: 'Café Central',
-    storeId: crypto.randomUUID(),
+    storeId: crypto.randomUUID() as string,
     productName: 'Capuccino',
     price: '6500', // en pesos; se convierte a centavos al enviar
     quantity: '1',
@@ -315,6 +315,11 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
 
                   {/* Acciones */}
                   <div className="flex flex-wrap gap-3">
+                    {hasPickupCode(selected.status) && (
+                      <button onClick={() => navigate(`/fulfillment/code/${selected.id}`)} className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 text-white font-semibold px-4 py-2.5 hover:bg-emerald-600 transition-all">
+                        <QrCode size={16} /> Ver código de retiro
+                      </button>
+                    )}
                     <button onClick={() => navigate(`/messages?orderId=${selected.id}`)} className="inline-flex items-center gap-2 rounded-xl bg-yellow-400 text-white font-semibold px-4 py-2.5 hover:bg-yellow-500 transition-all">
                       <MessageCircle size={16} /> Chat con la tienda
                     </button>

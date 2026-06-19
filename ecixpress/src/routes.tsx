@@ -14,6 +14,8 @@ import AuditPage from './pages/admin/AuditPage';
 import VendorStoresPage from './pages/vendor/VendorStoresPage';
 import OrdersPage from './pages/orders/OrdersPage';
 import MessagesPage from './pages/messages/MessagesPage';
+import PickupCodePage from './pages/fulfillment/PickupCodePage';
+import DeliveriesPage from './pages/fulfillment/DeliveriesPage';
 
 const AppRoutes: React.FC = () => {
   const navigate = useNavigate();
@@ -37,6 +39,10 @@ const AppRoutes: React.FC = () => {
       <Route path="/cart" element={<ProtectedRoute><CartPage onBack={goHome} onOrdersClick={openOrdersDemo} onMessagesClick={openMessagesDemo} /></ProtectedRoute>} />
       <Route path="/orders" element={<ProtectedRoute><OrdersPage onBack={goHome} /></ProtectedRoute>} />
       <Route path="/messages" element={<ProtectedRoute><MessagesPage onBack={goHome} /></ProtectedRoute>} />
+
+      {/* Fulfillment */}
+      <Route path="/fulfillment/code/:orderId" element={<ProtectedRoute><PickupCodePage onBack={openOrdersDemo} /></ProtectedRoute>} />
+      <Route path="/fulfillment/deliveries" element={<ProtectedRoute requireVendor><DeliveriesPage onBack={goHome} /></ProtectedRoute>} />
 
       {/* Admin */}
       <Route path="/admin/users" element={<ProtectedRoute requireAdmin><UsersPage /></ProtectedRoute>} />

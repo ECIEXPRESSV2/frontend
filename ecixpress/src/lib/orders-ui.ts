@@ -41,3 +41,10 @@ export const isCancellable = (status: OrderStatus): boolean =>
 
 export const isRateable = (status: OrderStatus): boolean =>
   status === 'DELIVERED' || status === 'READY_FOR_PICKUP';
+
+/**
+ * ¿El pedido ya tiene (o tuvo) código de retiro? Fulfillment lo genera al confirmarse el
+ * pedido, así que el comprador puede consultarlo desde CONFIRMED en adelante.
+ */
+export const hasPickupCode = (status: OrderStatus): boolean =>
+  ['CONFIRMED', 'IN_PREPARATION', 'READY_FOR_PICKUP', 'DELIVERED'].includes(status);
