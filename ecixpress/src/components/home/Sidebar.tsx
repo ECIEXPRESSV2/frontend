@@ -58,13 +58,13 @@ const Sidebar: React.FC<SidebarProps> = ({
 
     if (item.id === 'orders') {
       onOrdersClick?.();
-      if (!onOrdersClick) navigate('/backend-demo');
+      if (!onOrdersClick) navigate('/orders');
       return;
     }
 
     if (item.id === 'messages') {
       onMessagesClick?.();
-      if (!onMessagesClick) navigate('/backend-demo/messages');
+      if (!onMessagesClick) navigate('/messages');
       return;
     }
 
