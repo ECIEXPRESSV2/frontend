@@ -12,12 +12,13 @@ import RolesPage from './pages/admin/RolesPage';
 import StoresPage from './pages/admin/StoresPage';
 import AuditPage from './pages/admin/AuditPage';
 import VendorStoresPage from './pages/vendor/VendorStoresPage';
-import BackendDemoPage from './pages/demo/BackendDemoPage';
+import OrdersPage from './pages/orders/OrdersPage';
+import MessagesPage from './pages/messages/MessagesPage';
 
 const AppRoutes: React.FC = () => {
   const navigate = useNavigate();
-  const openOrdersDemo = () => navigate('/backend-demo');
-  const openMessagesDemo = () => navigate('/backend-demo/messages');
+  const openOrdersDemo = () => navigate('/orders');
+  const openMessagesDemo = () => navigate('/messages');
   const goHome = () => navigate('/home');
 
   return (
@@ -34,8 +35,8 @@ const AppRoutes: React.FC = () => {
       <Route path="/store/:storeId" element={<ProtectedRoute><StoreDetail onBack={goHome} onOrdersClick={openOrdersDemo} onMessagesClick={openMessagesDemo} /></ProtectedRoute>} />
       <Route path="/profile" element={<ProtectedRoute><UserProfile onBack={goHome} onOrdersClick={openOrdersDemo} onMessagesClick={openMessagesDemo} /></ProtectedRoute>} />
       <Route path="/cart" element={<ProtectedRoute><CartPage onBack={goHome} onOrdersClick={openOrdersDemo} onMessagesClick={openMessagesDemo} /></ProtectedRoute>} />
-      <Route path="/backend-demo" element={<ProtectedRoute><BackendDemoPage onBack={goHome} initialTab="orders" /></ProtectedRoute>} />
-      <Route path="/backend-demo/messages" element={<ProtectedRoute><BackendDemoPage onBack={goHome} initialTab="messages" /></ProtectedRoute>} />
+      <Route path="/orders" element={<ProtectedRoute><OrdersPage onBack={goHome} /></ProtectedRoute>} />
+      <Route path="/messages" element={<ProtectedRoute><MessagesPage onBack={goHome} /></ProtectedRoute>} />
 
       {/* Admin */}
       <Route path="/admin/users" element={<ProtectedRoute requireAdmin><UsersPage /></ProtectedRoute>} />

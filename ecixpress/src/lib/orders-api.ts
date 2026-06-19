@@ -10,17 +10,16 @@ export type OrderStatus =
   | 'FAILED';
 
 export interface OrderItemInput {
-  productId: number;
+  productId: string;
   name: string;
   description?: string;
   imageUrl?: string;
-  unitPrice: number;
+  unitPrice: number; // centavos COP
   quantity: number;
 }
 
 export interface CreateOrderRequest {
-  customerId: string;
-  storeId: number;
+  storeId: string;
   storeName: string;
   items: OrderItemInput[];
   paymentMethod: 'cash' | 'wallet' | 'card' | 'transfer';
@@ -54,7 +53,7 @@ export interface OrderRating {
 
 export interface OrderItemResponse {
   id: string;
-  productId: number;
+  productId: string;
   name: string;
   description?: string;
   imageUrl?: string;
@@ -67,7 +66,7 @@ export interface OrderResponse {
   id: string;
   orderNumber: string;
   customerId: string;
-  storeId: number;
+  storeId: string;
   storeName: string;
   status: OrderStatus;
   paymentMethod: 'cash' | 'wallet' | 'card' | 'transfer';
@@ -81,15 +80,18 @@ export interface OrderResponse {
   items: OrderItemResponse[];
   statusHistory: OrderHistoryItem[];
   rating?: OrderRating;
+  pickupExpiresAt?: string;
   createdAt: string;
   updatedAt: string;
   cancelledAt?: string;
 }
 
+export type ParticipantRole = 'customer' | 'vendor' | 'support' | 'system';
+
 export interface ConversationParticipant {
   conversationId: string;
   userId: string;
-  role: 'customer' | 'vendor' | 'support' | 'system';
+  role: ParticipantRole;
   joinedAt: string;
   leftAt?: string;
   lastReadAt?: string;
@@ -100,7 +102,7 @@ export interface ConversationParticipant {
 export interface ConversationResponse {
   id: string;
   orderId: string;
-  storeId: number;
+  storeId: string;
   customerId: string;
   vendorId: string;
   status: 'active' | 'archived' | 'closed';
@@ -121,7 +123,7 @@ export interface MessageResponse {
   id: string;
   conversationId: string;
   senderId: string;
-  senderRole: 'customer' | 'vendor' | 'support' | 'system';
+  senderRole: ParticipantRole;
   content: string;
   messageType: 'text' | 'system' | 'status-update';
   status: 'sent' | 'delivered' | 'read' | 'deleted';
@@ -131,17 +133,10 @@ export interface MessageResponse {
 }
 
 export interface FrequentProduct {
-  productId: number;
+  productId: string;
   name: string;
   imageUrl?: string;
   totalOrders: number;
-}
-
-export interface OrdersHistoryResponse {
-  items: OrderResponse[];
-  total: number;
-  page: number;
-  pageSize: number;
 }
 
 export interface MessagesResponse {
@@ -153,96 +148,95 @@ export interface MessagesResponse {
 
 export const ORDERS_API_BASE_URL = import.meta.env.VITE_ORDERS_SERVICE_URL ?? 'http://localhost:3000';
 
-async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
+async function requestJson<T>(path: string, token?: string | null, init?: RequestInit): Promise<T> {
   const response = await fetch(`${ORDERS_API_BASE_URL}${path}`, {
     headers: {
       'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(init?.headers ?? {}),
     },
     ...init,
   });
 
   if (!response.ok) {
-    const fallbackMessage = `Request failed with status ${response.status}`;
-    let message = fallbackMessage;
-
+    let message = `Request failed with status ${response.status}`;
     try {
-      const payload = await response.json() as { message?: string | string[] };
-      if (Array.isArray(payload.message)) {
-        message = payload.message.join(', ');
-      } else if (payload.message) {
-        message = payload.message;
-      }
+      const payload = (await response.json()) as { message?: string | string[] };
+      if (Array.isArray(payload.message)) message = payload.message.join(', ');
+      else if (payload.message) message = payload.message;
     } catch {
-      try {
-        const text = await response.text();
-        if (text) {
-          message = text;
-        }
-      } catch {
-        // keep fallback
-      }
+      /* keep fallback */
     }
-
     throw new Error(message);
   }
 
-  return response.json() as Promise<T>;
+  if (response.status === 204) return undefined as T;
+  return (await response.json()) as Promise<T>;
 }
 
+/**
+ * Cliente REST del microservicio Order & Communication. Cada método recibe el
+ * token Firebase (lo inyecta el hook useOrdersApi a partir de useAuth).
+ */
 export const ordersApi = {
-  health: async () => requestJson<{ status: string; service: string; timestamp: string }>('/health'),
-  createOrder: async (payload: CreateOrderRequest) => requestJson<OrderResponse>('/orders', {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  }),
-  getOrders: async () => requestJson<OrderResponse[]>('/orders'),
-  getOrderById: async (id: string) => requestJson<OrderResponse>(`/orders/${id}`),
-  updateOrderStatus: async (id: string, payload: { status: OrderStatus; actorType: string; actorId?: string; reason?: string }) =>
-    requestJson<OrderResponse>(`/orders/${id}/status`, {
-      method: 'PATCH',
-      body: JSON.stringify(payload),
-    }),
-  cancelOrder: async (id: string, payload: { actorType: string; actorId?: string; reason?: string }) =>
-    requestJson<OrderResponse>(`/orders/${id}/cancel`, {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    }),
-  rateOrder: async (id: string, payload: { customerId: string; score: number; comment?: string }) =>
-    requestJson<OrderResponse>(`/orders/${id}/rating`, {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    }),
-  getHistory: async (customerId?: string) => {
-    const query = customerId ? `?customerId=${encodeURIComponent(customerId)}` : '';
-    return requestJson<OrderResponse[]>(`/orders/history${query}`);
+  health: () => requestJson<{ status: string; service: string; timestamp: string }>('/health'),
+
+  createOrder: (payload: CreateOrderRequest, token?: string | null) =>
+    requestJson<OrderResponse>('/orders', token, { method: 'POST', body: JSON.stringify(payload) }),
+
+  getOrders: (token?: string | null, params?: { customerId?: string; status?: string }) => {
+    const q = new URLSearchParams();
+    if (params?.customerId) q.set('customerId', params.customerId);
+    if (params?.status) q.set('status', params.status);
+    const qs = q.toString();
+    return requestJson<OrderResponse[]>(`/orders${qs ? `?${qs}` : ''}`, token);
   },
-  getFrequent: async (customerId?: string) => {
-    const query = customerId ? `?customerId=${encodeURIComponent(customerId)}` : '';
-    return requestJson<FrequentProduct[]>(`/orders/frequent${query}`);
+
+  getOrderById: (id: string, token?: string | null) => requestJson<OrderResponse>(`/orders/${id}`, token),
+
+  getHistory: (customerId: string | undefined, token?: string | null) => {
+    const qs = customerId ? `?customerId=${encodeURIComponent(customerId)}` : '';
+    return requestJson<OrderResponse[]>(`/orders/history${qs}`, token);
   },
-  getConversations: async (customerId?: string) => {
-    const query = customerId ? `?customerId=${encodeURIComponent(customerId)}` : '';
-    return requestJson<ConversationResponse[]>(`/conversations${query}`);
+
+  getFrequent: (customerId: string | undefined, token?: string | null) => {
+    const qs = customerId ? `?customerId=${encodeURIComponent(customerId)}` : '';
+    return requestJson<FrequentProduct[]>(`/orders/frequent${qs}`, token);
   },
-  getConversationById: async (id: string) => requestJson<ConversationResponse>(`/conversations/${id}`),
-  getMessages: async (conversationId: string) => {
-    const query = `?conversationId=${encodeURIComponent(conversationId)}`;
-    return requestJson<MessagesResponse>(`/messages${query}`);
+
+  updateOrderStatus: (
+    id: string,
+    payload: { status: OrderStatus; actorType: string; actorId?: string; reason?: string },
+    token?: string | null,
+  ) => requestJson<OrderResponse>(`/orders/${id}/status`, token, { method: 'PATCH', body: JSON.stringify(payload) }),
+
+  cancelOrder: (id: string, payload: { actorType?: string; reason?: string }, token?: string | null) =>
+    requestJson<OrderResponse>(`/orders/${id}/cancel`, token, { method: 'POST', body: JSON.stringify(payload) }),
+
+  rateOrder: (id: string, payload: { score: number; comment?: string }, token?: string | null) =>
+    requestJson<OrderResponse>(`/orders/${id}/rating`, token, { method: 'POST', body: JSON.stringify(payload) }),
+
+  getConversations: (token?: string | null, params?: { orderId?: string; customerId?: string }) => {
+    const q = new URLSearchParams();
+    if (params?.orderId) q.set('orderId', params.orderId);
+    if (params?.customerId) q.set('customerId', params.customerId);
+    const qs = q.toString();
+    return requestJson<ConversationResponse[]>(`/conversations${qs ? `?${qs}` : ''}`, token);
   },
-  sendMessage: async (payload: { conversationId: string; senderId: string; senderRole: 'customer' | 'vendor' | 'support' | 'system'; content: string }) =>
-    requestJson<MessageResponse>('/messages', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    }),
-  markMessageRead: async (payload: { conversationId: string; messageId: string; participantId: string }) =>
-    requestJson<MessageResponse>('/messages/read', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    }),
-  setTyping: async (payload: { conversationId: string; userId: string; role: 'customer' | 'vendor' | 'support' | 'system'; typing: boolean }) =>
-    requestJson<void>('/messages/typing', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    }),
+
+  getConversationById: (id: string, token?: string | null) =>
+    requestJson<ConversationResponse>(`/conversations/${id}`, token),
+
+  getMessages: (conversationId: string, token?: string | null) =>
+    requestJson<MessagesResponse>(`/messages?conversationId=${encodeURIComponent(conversationId)}`, token),
+
+  sendMessage: (
+    payload: { conversationId: string; senderRole: ParticipantRole; content: string },
+    token?: string | null,
+  ) => requestJson<MessageResponse>('/messages', token, { method: 'POST', body: JSON.stringify(payload) }),
+
+  setTyping: (
+    payload: { conversationId: string; role: ParticipantRole; typing: boolean },
+    token?: string | null,
+  ) => requestJson<void>('/messages/typing', token, { method: 'POST', body: JSON.stringify(payload) }),
 };
