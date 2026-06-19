@@ -19,7 +19,15 @@ const FALLBACK_PRODUCTS = [
 
 const STORE_FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=200&auto=format&fit=crop';
 
-const Home: React.FC = () => {
+interface HomeProps {
+  onUserClick?: () => void;
+  onCartClick?: () => void;
+  onOrdersClick?: () => void;
+  onMessagesClick?: () => void;
+  onStoreClick?: (storeId: number) => void;
+}
+
+const Home: React.FC<HomeProps> = ({ onUserClick, onCartClick, onOrdersClick, onMessagesClick, onStoreClick }) => {
   const navigate = useNavigate();
   const { getToken } = useAuth();
   const [activeCategory, setActiveCategory] = useState('Cafetería');
@@ -57,6 +65,10 @@ const Home: React.FC = () => {
       <Sidebar
         activeItem={activeSidebarItem}
         onItemClick={setActiveSidebarItem}
+        onUserClick={onUserClick}
+        onCartClick={onCartClick}
+        onOrdersClick={onOrdersClick}
+        onMessagesClick={onMessagesClick}
       />
 
       <main className="ml-16 p-6 md:p-8">
