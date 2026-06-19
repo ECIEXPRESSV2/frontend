@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, ArrowLeft, ExternalLink, Loader2, CheckCircle2 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import ModalShell from './ModalShell';
+import NonRefundableModal from './NonRefundableModal';
 import { useWallet } from '../../context/WalletContext';
 import {
   PAYMENT_METHODS,
@@ -82,6 +83,8 @@ const WalletRechargeModal: React.FC<Props> = ({ open, onClose }) => {
   const [result, setResult] = useState<CreateTopupResponse | null>(null);
   const [details, setDetails] = useState<TopupDetails | null>(null);
   const [checking, setChecking] = useState(false);
+  // Aviso bloqueante de "no reembolsable" que aparece al entrar a confirmar.
+  const [showWarning, setShowWarning] = useState(false);
 
   const meta = getMethodMeta(method);
   const amountCents = Math.round((Number(amountPesos) || 0) * 100);
@@ -95,6 +98,7 @@ const WalletRechargeModal: React.FC<Props> = ({ open, onClose }) => {
       setResult(null);
       setDetails(null);
       setSubmitting(false);
+      setShowWarning(false);
     }
   }, [open, defaultMethod]);
 
@@ -392,7 +396,10 @@ const WalletRechargeModal: React.FC<Props> = ({ open, onClose }) => {
       <button
         type="button"
         disabled={!!fieldsError}
-        onClick={() => setStep('confirm')}
+        onClick={() => {
+          setStep('confirm');
+          setShowWarning(true); // aviso bloqueante no reembolsable
+        }}
         className="w-full py-3 rounded-xl bg-gradient-to-r from-yellow-400 to-yellow-500 text-white font-semibold shadow-md shadow-yellow-200/60 hover:from-yellow-500 hover:to-yellow-600 transition disabled:opacity-40 disabled:cursor-not-allowed"
       >
         Continuar
@@ -402,15 +409,9 @@ const WalletRechargeModal: React.FC<Props> = ({ open, onClose }) => {
 
   const renderConfirm = () => (
     <div className="space-y-5">
-      <div className="flex items-start gap-3 p-4 rounded-2xl bg-red-50 border border-red-100">
-        <AlertTriangle className="text-red-500 flex-shrink-0 mt-0.5" size={22} />
-        <div className="text-sm text-red-700">
-          <p className="font-semibold mb-1">Esta recarga no es reembolsable</p>
-          <p className="text-red-600/90">
-            El saldo cargado a tu billetera ECIExpress <strong>no se puede devolver a
-            dinero real</strong>. Solo podrás usarlo dentro de la plataforma.
-          </p>
-        </div>
+      <div className="flex items-center gap-2 text-xs text-red-600 font-medium">
+        <AlertTriangle size={14} className="flex-shrink-0" />
+        Recarga no reembolsable a dinero real.
       </div>
 
       <div className="rounded-2xl bg-gray-50 border border-gray-100 p-4 space-y-2 text-sm">
@@ -560,11 +561,17 @@ const WalletRechargeModal: React.FC<Props> = ({ open, onClose }) => {
   };
 
   return (
-    <ModalShell open={open} onClose={handleClose} title={titles[step].t} subtitle={titles[step].s}>
-      {step === 'form' && renderForm()}
-      {step === 'confirm' && renderConfirm()}
-      {step === 'result' && renderResult()}
-    </ModalShell>
+    <>
+      <ModalShell open={open} onClose={handleClose} title={titles[step].t} subtitle={titles[step].s}>
+        {step === 'form' && renderForm()}
+        {step === 'confirm' && renderConfirm()}
+        {step === 'result' && renderResult()}
+      </ModalShell>
+      <NonRefundableModal
+        open={open && showWarning && step === 'confirm'}
+        onAccept={() => setShowWarning(false)}
+      />
+    </>
   );
 };
 
