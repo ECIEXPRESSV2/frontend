@@ -58,7 +58,7 @@ const SignInPage: React.FC = () => {
   return (
     <div className="w-full min-h-screen bg-gradient-to-br from-yellow-50 via-white to-yellow-100">
       <button
-        onClick={() => navigate(-1)}
+        onClick={() => navigate('/')}
         className="fixed top-6 left-6 z-50 px-4 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-900 font-semibold transition"
       >
         ← Volver
@@ -76,7 +76,7 @@ const SignUpPage: React.FC = () => {
   return (
     <div className="w-full min-h-screen bg-gradient-to-br from-yellow-50 via-white to-yellow-100">
       <button
-        onClick={() => navigate(-1)}
+        onClick={() => navigate('/')}
         className="fixed top-6 left-6 z-50 px-4 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-900 font-semibold transition"
       >
         ← Volver

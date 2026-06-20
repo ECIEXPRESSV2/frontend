@@ -1,5 +1,6 @@
 import React from 'react';
 import { ArrowRight } from 'lucide-react';
+import FloatingShape from './FloatingShapes';
 
 interface HeroProps {
   onGetStartedClick?: () => void;
@@ -63,6 +64,64 @@ const HeroSection: React.FC<HeroProps> = ({ onGetStartedClick, onSignInClick }) 
             {/* Decorative circles */}
             <div className="absolute top-0 right-0 w-72 h-72 bg-yellow-100 rounded-full opacity-30 blur-3xl animate-float" />
             <div className="absolute bottom-0 left-0 w-72 h-72 bg-blue-100 rounded-full opacity-20 blur-3xl animate-float-delay" />
+
+            {/* Floating shapes */}
+            <FloatingShape
+                type="circle"
+                size={80}
+                color="rgba(251, 191, 36, 0.35)"
+                blur={20}
+                position="top-right"
+                animation="pulse"
+                animationDuration="3s"
+            />
+            <FloatingShape
+                type="diamond"
+                size={50}
+                color="rgba(251, 146, 60, 0.3)"
+                position="bottom-left"
+                animation="spin"
+                animationDuration="15s"
+            />
+            <FloatingShape
+                type="circle"
+                size={40}
+                color="rgba(251, 191, 36, 0.28)"
+                blur={12}
+                position="center-right"
+                animation="pulse"
+                animationDuration="4s"
+                animationDelay="0.5s"
+            />
+            <FloatingShape
+                type="square"
+                size={35}
+                color="rgba(245, 158, 11, 0.25)"
+                blur={10}
+                position="top-left"
+                animation="float"
+                animationDuration="6s"
+                animationDelay="1s"
+            />
+            <FloatingShape
+                type="circle"
+                size={25}
+                color="rgba(251, 191, 36, 0.4)"
+                blur={8}
+                position="bottom-right"
+                animation="pulse"
+                animationDuration="3.5s"
+                animationDelay="1.5s"
+            />
+            <FloatingShape
+                type="diamond"
+                size={30}
+                color="rgba(251, 146, 60, 0.25)"
+                position="center"
+                animation="spin"
+                animationDuration="20s"
+                animationDelay="2s"
+            />
 
             {/* iPhone Mockup */}
             <div className="relative z-10 animate-fade-in-up">
