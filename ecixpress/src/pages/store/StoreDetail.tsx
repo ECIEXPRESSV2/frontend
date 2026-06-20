@@ -24,7 +24,7 @@ interface StoreDetailProps {
 const StoreDetail: React.FC<StoreDetailProps> = ({ storeId: storeIdProp, onBack }) => {
   const { storeId: routeStoreId } = useParams<{ storeId: string }>();
   const navigate = useNavigate();
-  const { getToken } = useAuth();
+  const { getToken, userProfile } = useAuth();
   const [activeSidebarItem, setActiveSidebarItem] = useState('home');
   const [store, setStore] = useState<Store | null>(null);
   const [schedules, setSchedules] = useState<StoreSchedule[]>([]);
@@ -160,7 +160,17 @@ const StoreDetail: React.FC<StoreDetailProps> = ({ storeId: storeIdProp, onBack 
 
           {/* Menú + carrito — catálogo de products-service, carrito como orden DRAFT */}
           <div className="rounded-2xl bg-white/60 backdrop-blur-xl shadow-sm p-6">
-            <h2 className="text-lg font-bold text-gray-900 mb-4">Menú</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold text-gray-900">Menú</h2>
+              {(userProfile?.roles?.includes('VENDOR') || userProfile?.roles?.includes('ADMIN')) && (
+                <button
+                  onClick={() => navigate(`/vendor/stores/${store.id}/products`)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-900 text-white text-sm font-semibold hover:bg-gray-800"
+                >
+                  <Tag size={14} /> Gestionar productos
+                </button>
+              )}
+            </div>
             <StoreCatalogCart storeId={store.id} storeName={store.name} />
           </div>
         </div>

@@ -38,12 +38,51 @@ export interface Product {
 export const priceToCents = (price: string | number): number =>
   Math.round(parseFloat(String(price)) * 100);
 
-async function requestJson<T>(path: string, token?: string | null): Promise<T> {
+/** Genera un slug URL-friendly a partir de un nombre (único por tienda). */
+export const slugify = (text: string): string =>
+  text
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '') // quita acentos (marcas diacríticas)
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 100);
+
+export interface CreateCategoryInput {
+  storeId: string;
+  name: string;
+  slug: string;
+  parentId?: string;
+  description?: string;
+  sortOrder?: number;
+  isActive?: boolean;
+}
+
+export interface CreateProductInput {
+  storeId: string;
+  categoryId: string;
+  name: string;
+  slug: string;
+  /** Precio en PESOS COP (number, hasta 2 decimales). */
+  price: number;
+  description?: string;
+  sku?: string;
+  imageUrl?: string;
+  stock?: number;
+  minStock?: number;
+  isActive?: boolean;
+}
+
+export type StockOperation = 'set' | 'add' | 'subtract';
+
+async function requestJson<T>(path: string, token?: string | null, init?: RequestInit): Promise<T> {
   const response = await fetch(`${PRODUCTS_API_BASE_URL}${path}`, {
     headers: {
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(init?.headers ?? {}),
     },
+    ...init,
   });
   if (!response.ok) {
     let message = `Request failed with status ${response.status}`;
@@ -56,6 +95,7 @@ async function requestJson<T>(path: string, token?: string | null): Promise<T> {
     }
     throw new Error(message);
   }
+  if (response.status === 204) return undefined as T;
   return (await response.json()) as Promise<T>;
 }
 
@@ -70,12 +110,35 @@ export const productsApi = {
    */
   getProducts: (
     storeId: string,
-    params: { categoryId?: string; search?: string } = {},
+    params: { categoryId?: string; search?: string; includeInactive?: boolean } = {},
     token?: string | null,
   ) => {
     const q = new URLSearchParams({ storeId });
     if (params.search) q.set('search', params.search);
     else if (params.categoryId) q.set('categoryId', params.categoryId);
+    if (params.includeInactive) q.set('includeInactive', 'true');
     return requestJson<Product[]>(`/products?${q.toString()}`, token);
   },
+
+  // ─── Gestión (VENDOR / ADMIN) ──────────────────────────────────────────
+  createCategory: (input: CreateCategoryInput, token?: string | null) =>
+    requestJson<ProductCategory>('/categories', token, { method: 'POST', body: JSON.stringify(input) }),
+
+  createProduct: (input: CreateProductInput, token?: string | null) =>
+    requestJson<Product>('/products', token, { method: 'POST', body: JSON.stringify(input) }),
+
+  updateProduct: (id: string, input: Partial<CreateProductInput>, token?: string | null) =>
+    requestJson<Product>(`/products/${id}`, token, { method: 'PATCH', body: JSON.stringify(input) }),
+
+  adjustStock: (
+    id: string,
+    payload: { operation: StockOperation; quantity: number; notes?: string },
+    token?: string | null,
+  ) => requestJson<Product>(`/products/${id}/stock`, token, { method: 'PATCH', body: JSON.stringify(payload) }),
+
+  setActive: (id: string, active: boolean, token?: string | null) =>
+    requestJson<Product>(`/products/${id}/${active ? 'activate' : 'deactivate'}`, token, { method: 'PATCH' }),
+
+  deleteProduct: (id: string, token?: string | null) =>
+    requestJson<void>(`/products/${id}`, token, { method: 'DELETE' }),
 };

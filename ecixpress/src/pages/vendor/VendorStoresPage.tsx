@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { MapPin, Clock, RefreshCw, Tag } from 'lucide-react';
+import { MapPin, Clock, RefreshCw, Tag, Package } from 'lucide-react';
 import Sidebar from '../../components/home/Sidebar';
 import { CardSkeleton } from '../../components/common/LoadingSkeleton';
 import { useAuth } from '../../context/AuthContext';
@@ -22,6 +23,7 @@ const getStoreLabel = (store: Store): { label: string; color: string } => {
 
 const VendorStoresPage: React.FC = () => {
   const { getToken } = useAuth();
+  const navigate = useNavigate();
   const [stores, setStores] = useState<Store[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -85,7 +87,15 @@ const VendorStoresPage: React.FC = () => {
                       </div>
                       {store.description && <p className="text-sm text-gray-400 mt-1">{store.description}</p>}
                     </div>
-                    <span className="text-gray-400 text-sm">{expanded === store.id ? '▲' : '▼'}</span>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); navigate(`/vendor/stores/${store.id}/products`); }}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-yellow-400 text-white text-sm font-semibold hover:bg-yellow-500"
+                      >
+                        <Package size={14} /> Productos
+                      </button>
+                      <span className="text-gray-400 text-sm">{expanded === store.id ? '▲' : '▼'}</span>
+                    </div>
                   </div>
 
                   {/* Schedules accordion */}
