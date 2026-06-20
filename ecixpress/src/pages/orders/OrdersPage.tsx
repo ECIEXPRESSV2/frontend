@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { io, Socket } from 'socket.io-client';
-import { ArrowLeft, RefreshCw, Wifi, MessageCircle, RotateCcw, XCircle, Star, CheckCircle2, Clock, Plus, QrCode } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Wifi, MessageCircle, RotateCcw, XCircle, Star, CheckCircle2, Clock, Plus, QrCode, Undo2 } from 'lucide-react';
 import Sidebar from '../../components/home/Sidebar';
 import ModalShell from '../../components/wallet/ModalShell';
 import FormInput from '../../components/ui/FormInput';
@@ -9,7 +9,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useOrdersApi } from '../../hooks/useOrdersApi';
 import { ORDERS_API_BASE_URL, type OrderResponse, type OrderStatus } from '../../lib/orders-api';
 import { formatCOP, formatDateTime } from '../../lib/format';
-import { ORDER_FLOW, hasPickupCode, isCancellable, isRateable, statusLabel, statusTone } from '../../lib/orders-ui';
+import { ORDER_FLOW, hasPickupCode, isCancellable, isRateable, isReturnable, statusLabel, statusTone } from '../../lib/orders-ui';
 
 interface OrdersPageProps {
   onBack?: () => void;
@@ -37,6 +37,7 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
   const [connected, setConnected] = useState(false);
 
   const [rating, setRating] = useState<{ open: boolean; score: number; comment: string }>({ open: false, score: 5, comment: '' });
+  const [returnModal, setReturnModal] = useState<{ open: boolean; full: boolean; qty: Record<string, number> }>({ open: false, full: true, qty: {} });
   const [actionMsg, setActionMsg] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [draft, setDraft] = useState({
@@ -175,6 +176,34 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
       setActionMsg(`Pedido creado: ${created.orderNumber} (${created.status})`);
     } catch (e) {
       setActionMsg(e instanceof Error ? e.message : 'No se pudo crear el pedido');
+    }
+  };
+
+  const openReturn = () => {
+    if (!selected) return;
+    setReturnModal({ open: true, full: true, qty: Object.fromEntries(selected.items.map((i) => [i.productId, 0])) });
+  };
+
+  const submitReturn = async () => {
+    if (!selected) return;
+    try {
+      const payload = returnModal.full
+        ? { full: true }
+        : {
+            full: false,
+            items: Object.entries(returnModal.qty)
+              .filter(([, q]) => q > 0)
+              .map(([productId, quantity]) => ({ productId, quantity })),
+          };
+      if (!returnModal.full && (!payload.items || payload.items.length === 0)) {
+        setActionMsg('Selecciona al menos un producto a devolver');
+        return;
+      }
+      await api.requestReturn(selected.id, payload);
+      setReturnModal({ open: false, full: true, qty: {} });
+      setActionMsg('Devolución solicitada. Se reembolsará a tu billetera al confirmarse.');
+    } catch (e) {
+      setActionMsg(e instanceof Error ? e.message : 'No se pudo solicitar la devolución');
     }
   };
 
@@ -331,6 +360,11 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
                         <Star size={16} /> Calificar
                       </button>
                     )}
+                    {isReturnable(selected.status) && (
+                      <button onClick={openReturn} className="inline-flex items-center gap-2 rounded-xl bg-purple-500 text-white font-semibold px-4 py-2.5 hover:bg-purple-600 transition-all">
+                        <Undo2 size={16} /> Devolver
+                      </button>
+                    )}
                     {isCancellable(selected.status) && (
                       <button onClick={() => handleCancel(selected)} className="inline-flex items-center gap-2 rounded-xl bg-red-500 text-white font-semibold px-4 py-2.5 hover:bg-red-600 transition-all">
                         <XCircle size={16} /> Cancelar
@@ -376,6 +410,59 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
             Crear pedido
           </button>
         </div>
+      </ModalShell>
+
+      {/* Modal de devolución (total o parcial) */}
+      <ModalShell open={returnModal.open} onClose={() => setReturnModal((r) => ({ ...r, open: false }))} title="Solicitar devolución" subtitle="Elige qué devolver; products calcula el monto y financial lo reembolsa">
+        {selected && (
+          <div className="space-y-4">
+            <div className="flex gap-2">
+              <button
+                onClick={() => setReturnModal((r) => ({ ...r, full: true }))}
+                className={`flex-1 py-2 rounded-xl text-sm font-semibold transition ${returnModal.full ? 'bg-purple-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+              >
+                Devolución total
+              </button>
+              <button
+                onClick={() => setReturnModal((r) => ({ ...r, full: false }))}
+                className={`flex-1 py-2 rounded-xl text-sm font-semibold transition ${!returnModal.full ? 'bg-purple-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+              >
+                Parcial
+              </button>
+            </div>
+
+            {!returnModal.full && (
+              <ul className="space-y-2 max-h-72 overflow-auto">
+                {selected.items.map((item) => {
+                  const q = returnModal.qty[item.productId] ?? 0;
+                  return (
+                    <li key={item.id} className="flex items-center justify-between gap-2 text-sm">
+                      <div className="min-w-0">
+                        <p className="font-medium text-gray-800 truncate">{item.name}</p>
+                        <p className="text-xs text-gray-400">comprados: {item.quantity}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => setReturnModal((r) => ({ ...r, qty: { ...r.qty, [item.productId]: Math.max(0, (r.qty[item.productId] ?? 0) - 1) } }))}
+                          className="w-7 h-7 rounded-lg bg-white border border-gray-200 flex items-center justify-center hover:bg-gray-50"
+                        >–</button>
+                        <span className="w-6 text-center font-semibold">{q}</span>
+                        <button
+                          onClick={() => setReturnModal((r) => ({ ...r, qty: { ...r.qty, [item.productId]: Math.min(item.quantity, (r.qty[item.productId] ?? 0) + 1) } }))}
+                          className="w-7 h-7 rounded-lg bg-purple-500 text-white flex items-center justify-center hover:bg-purple-600"
+                        >+</button>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+
+            <button onClick={submitReturn} className="w-full py-3 rounded-xl bg-gradient-to-r from-purple-500 to-purple-600 text-white font-semibold hover:from-purple-600 hover:to-purple-700 transition-all">
+              Confirmar devolución
+            </button>
+          </div>
+        )}
       </ModalShell>
 
       {/* Modal de calificación (RF-10) */}

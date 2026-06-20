@@ -1,4 +1,5 @@
 export type OrderStatus =
+  | 'DRAFT'
   | 'CREATED'
   | 'PENDING_PAYMENT'
   | 'PAYMENT_APPROVED'
@@ -7,7 +8,9 @@ export type OrderStatus =
   | 'READY_FOR_PICKUP'
   | 'DELIVERED'
   | 'CANCELLED'
-  | 'FAILED';
+  | 'FAILED'
+  | 'PARTIALLY_RETURNED'
+  | 'RETURNED';
 
 export interface OrderItemInput {
   productId: string;
@@ -28,6 +31,35 @@ export interface CreateOrderRequest {
   notes?: string;
   source?: 'web' | 'mobile' | 'admin';
   discountAmount?: number;
+}
+
+export interface CreateDraftRequest {
+  storeId: string;
+  storeName: string;
+  paymentMethod: 'cash' | 'wallet' | 'card' | 'transfer';
+  deliveryMethod: 'pickup' | 'delivery';
+  currency?: string;
+  source?: 'web' | 'mobile' | 'admin';
+  notes?: string;
+}
+
+export interface UpsertCartItemRequest {
+  productId: string;
+  /** Cantidad deseada. 0 elimina la línea del carrito. */
+  quantity: number;
+  name?: string;
+  imageUrl?: string;
+}
+
+export interface ReturnItem {
+  productId: string;
+  quantity: number;
+}
+
+export interface RequestReturnRequest {
+  full?: boolean;
+  items?: ReturnItem[];
+  reason?: string;
 }
 
 export interface OrderHistoryItem {
@@ -183,6 +215,19 @@ export const ordersApi = {
 
   createOrder: (payload: CreateOrderRequest, token?: string | null) =>
     requestJson<OrderResponse>('/orders', token, { method: 'POST', body: JSON.stringify(payload) }),
+
+  // ─── Carrito (orden DRAFT) ─────────────────────────────────────────────
+  createDraft: (payload: CreateDraftRequest, token?: string | null) =>
+    requestJson<OrderResponse>('/orders/draft', token, { method: 'POST', body: JSON.stringify(payload) }),
+
+  setCartItem: (orderId: string, payload: UpsertCartItemRequest, token?: string | null) =>
+    requestJson<OrderResponse>(`/orders/${orderId}/items`, token, { method: 'POST', body: JSON.stringify(payload) }),
+
+  checkout: (orderId: string, token?: string | null) =>
+    requestJson<OrderResponse>(`/orders/${orderId}/checkout`, token, { method: 'POST' }),
+
+  requestReturn: (orderId: string, payload: RequestReturnRequest, token?: string | null) =>
+    requestJson<OrderResponse>(`/orders/${orderId}/returns`, token, { method: 'POST', body: JSON.stringify(payload) }),
 
   getOrders: (token?: string | null, params?: { customerId?: string; status?: string }) => {
     const q = new URLSearchParams();

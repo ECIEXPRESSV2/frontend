@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, MapPin, Clock, Tag } from 'lucide-react';
 import { toast } from 'react-toastify';
 import Sidebar from '../../components/home/Sidebar';
+import StoreCatalogCart from '../../components/store/StoreCatalogCart';
 import { useAuth } from '../../context/AuthContext';
 import { getStoreById, getStoreSchedules, getDayName, type Store, type StoreSchedule } from '../../services/storeService';
 import { getStoreImage } from '../../services/storeImageStore';
@@ -157,12 +158,10 @@ const StoreDetail: React.FC<StoreDetailProps> = ({ storeId: storeIdProp, onBack 
             )}
           </div>
 
-          {/* Productos — gestionados por Product Management (otro microservicio) */}
+          {/* Menú + carrito — catálogo de products-service, carrito como orden DRAFT */}
           <div className="rounded-2xl bg-white/60 backdrop-blur-xl shadow-sm p-6">
-            <h2 className="text-lg font-bold text-gray-900 mb-3">Productos</h2>
-            <p className="text-gray-400 text-sm">
-              Los productos de esta tienda se cargan desde el módulo de catálogo (Product Management).
-            </p>
+            <h2 className="text-lg font-bold text-gray-900 mb-4">Menú</h2>
+            <StoreCatalogCart storeId={store.id} storeName={store.name} />
           </div>
         </div>
       </main>
