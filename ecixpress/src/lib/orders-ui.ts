@@ -2,6 +2,7 @@ import type { OrderStatus } from './orders-api';
 
 /** Colores de badge por estado, en la paleta de la app. */
 export const statusTone: Record<OrderStatus, string> = {
+  DRAFT: 'bg-slate-100 text-slate-600',
   CREATED: 'bg-gray-100 text-gray-700',
   PENDING_PAYMENT: 'bg-amber-100 text-amber-700',
   PAYMENT_APPROVED: 'bg-blue-100 text-blue-700',
@@ -11,9 +12,12 @@ export const statusTone: Record<OrderStatus, string> = {
   DELIVERED: 'bg-green-100 text-green-700',
   CANCELLED: 'bg-red-100 text-red-700',
   FAILED: 'bg-rose-100 text-rose-700',
+  PARTIALLY_RETURNED: 'bg-purple-100 text-purple-700',
+  RETURNED: 'bg-fuchsia-100 text-fuchsia-700',
 };
 
 export const statusLabel: Record<OrderStatus, string> = {
+  DRAFT: 'Carrito',
   CREATED: 'Creado',
   PENDING_PAYMENT: 'Pago pendiente',
   PAYMENT_APPROVED: 'Pago aprobado',
@@ -23,6 +27,8 @@ export const statusLabel: Record<OrderStatus, string> = {
   DELIVERED: 'Entregado',
   CANCELLED: 'Cancelado',
   FAILED: 'Fallido',
+  PARTIALLY_RETURNED: 'Devolución parcial',
+  RETURNED: 'Devuelto',
 };
 
 /** Flujo "feliz" para la línea de seguimiento (RF-08). */
@@ -48,3 +54,7 @@ export const isRateable = (status: OrderStatus): boolean =>
  */
 export const hasPickupCode = (status: OrderStatus): boolean =>
   ['CONFIRMED', 'IN_PREPARATION', 'READY_FOR_PICKUP', 'DELIVERED'].includes(status);
+
+/** ¿El pedido admite solicitar una devolución (total o parcial)? */
+export const isReturnable = (status: OrderStatus): boolean =>
+  ['CONFIRMED', 'READY_FOR_PICKUP', 'DELIVERED', 'PARTIALLY_RETURNED'].includes(status);
