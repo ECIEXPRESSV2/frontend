@@ -13,9 +13,11 @@ import {
   ChevronRight,
   Store,
   AlertTriangle,
+  Camera,
 } from 'lucide-react';
 import Sidebar from '../../components/home/Sidebar';
 import ModalShell from '../../components/wallet/ModalShell';
+import QrScannerModal from '../../components/fulfillment/QrScannerModal';
 import FormInput from '../../components/ui/FormInput';
 import { useAuth } from '../../context/AuthContext';
 import { useFulfillmentApi } from '../../hooks/useFulfillmentApi';
@@ -60,6 +62,7 @@ const DeliveriesPage: React.FC<DeliveriesPageProps> = ({ onBack }) => {
   const [validating, setValidating] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [scannerOpen, setScannerOpen] = useState(false);
 
   // ── Gestión manual por pedido ────────────────────────────────
   const [orderId, setOrderId] = useState('');
@@ -79,8 +82,8 @@ const DeliveriesPage: React.FC<DeliveriesPageProps> = ({ onBack }) => {
     setValidation({ kind: 'idle' });
   };
 
-  const handleValidate = async () => {
-    const trimmed = code.trim();
+  const handleValidate = async (override?: string) => {
+    const trimmed = (override ?? code).trim();
     if (!trimmed) return;
     setValidating(true);
     setValidation({ kind: 'idle' });
@@ -105,6 +108,15 @@ const DeliveriesPage: React.FC<DeliveriesPageProps> = ({ onBack }) => {
       setValidating(false);
     }
   };
+
+  // Resultado del escáner de cámara (UC-03): el QR trae el token; lo dejamos en el input y
+  // validamos automáticamente para que el vendedor confirme en un solo paso.
+  const handleScanResult = useCallback((token: string) => {
+    setScannerOpen(false);
+    setCode(token);
+    void handleValidate(token);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleConfirm = async () => {
     const trimmed = code.trim();
@@ -196,9 +208,24 @@ const DeliveriesPage: React.FC<DeliveriesPageProps> = ({ onBack }) => {
                   <h2 className="text-lg font-bold text-gray-900">Validar código de retiro</h2>
                 </div>
                 <p className="text-sm text-gray-500">
-                  Escanea el QR o pide al cliente su código corto (formato <code className="text-gray-700">XXXX-XXXX</code>).
+                  Escanea el QR con la cámara o pide al cliente su código corto (formato <code className="text-gray-700">XXXX-XXXX</code>).
                   Validar no confirma la entrega.
                 </p>
+
+                {/* Camino principal: escanear con la cámara real del dispositivo */}
+                <button
+                  onClick={() => setScannerOpen(true)}
+                  className="w-full inline-flex items-center justify-center gap-2 py-3 rounded-xl bg-gradient-to-r from-yellow-400 to-yellow-500 text-white font-semibold shadow-md shadow-yellow-200/60 hover:from-yellow-500 hover:to-yellow-600 transition-all"
+                >
+                  <Camera size={18} /> Escanear QR con la cámara
+                </button>
+
+                {/* Separador hacia el ingreso manual */}
+                <div className="flex items-center gap-3 text-xs text-gray-400">
+                  <span className="h-px flex-1 bg-gray-200" />
+                  o ingresa el código manualmente
+                  <span className="h-px flex-1 bg-gray-200" />
+                </div>
 
                 <div className="flex flex-col sm:flex-row gap-3">
                   <input
@@ -212,7 +239,7 @@ const DeliveriesPage: React.FC<DeliveriesPageProps> = ({ onBack }) => {
                     className="flex-1 px-4 py-3 rounded-xl border border-gray-200 text-sm bg-white/60 outline-none focus:border-yellow-400 focus:ring-2 focus:ring-yellow-100"
                   />
                   <button
-                    onClick={handleValidate}
+                    onClick={() => handleValidate()}
                     disabled={validating || !code.trim()}
                     className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-white border border-gray-200 text-gray-700 font-semibold hover:bg-yellow-50 hover:text-yellow-600 transition-all disabled:opacity-50"
                   >
@@ -402,6 +429,16 @@ const DeliveriesPage: React.FC<DeliveriesPageProps> = ({ onBack }) => {
           </div>
         </div>
       </main>
+
+      {/* Escáner de QR con la cámara (UC-03). Se monta solo al abrir para arrancar con
+          estado limpio y liberar la cámara al cerrar. */}
+      {scannerOpen && (
+        <QrScannerModal
+          open
+          onClose={() => setScannerOpen(false)}
+          onResult={handleScanResult}
+        />
+      )}
 
       {/* Confirmar entrega (error prevention: acción irreversible) */}
       <ModalShell
