@@ -13,6 +13,7 @@ import StoresPage from './pages/admin/StoresPage';
 import AuditPage from './pages/admin/AuditPage';
 import VendorStoresPage from './pages/vendor/VendorStoresPage';
 import ProductsManagementPage from './pages/vendor/ProductsManagementPage';
+import PromotionsPage from './pages/vendor/PromotionsPage';
 import OrdersPage from './pages/orders/OrdersPage';
 import MessagesPage from './pages/messages/MessagesPage';
 import PickupCodePage from './pages/fulfillment/PickupCodePage';
@@ -54,6 +55,7 @@ const AppRoutes: React.FC = () => {
       {/* Vendor */}
       <Route path="/vendor/stores" element={<ProtectedRoute requireVendor><VendorStoresPage /></ProtectedRoute>} />
       <Route path="/vendor/stores/:storeId/products" element={<ProtectedRoute requireVendor><ProductsManagementPage /></ProtectedRoute>} />
+      <Route path="/vendor/stores/:storeId/promotions" element={<ProtectedRoute requireVendor><PromotionsPage /></ProtectedRoute>} />
 
       {/* Catch all */}
       <Route path="*" element={<Navigate to="/" replace />} />

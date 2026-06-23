@@ -7,6 +7,7 @@ export default {
                 secondary: "#5EC0D9",    // botones
                 background: "#F5F5F5",   // gris fondo
                 surface: "#FFFFFF",      // cards
+                danger: "#E2725B",       // terracota: acciones destructivas
             },
 
             borderRadius: {
