@@ -6,7 +6,11 @@
  */
 
 export const CATALOG_API_BASE_URL =
+<<<<<<< Updated upstream
   (import.meta.env.VITE_PRODUCTS_SERVICE_URL ?? 'http://localhost:3002').replace(/\/$/, '');
+=======
+  import.meta.env.VITE_PRODUCTS_SERVICE_URL ?? 'http://localhost:3000';
+>>>>>>> Stashed changes
 
 /**
  * Construye un query string a partir de un objeto, omitiendo claves

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-toastify';
-import { Plus, Pencil, Trash2, Tag, ChevronRight, ChevronDown } from 'lucide-react';
+import { Plus, Pencil, Trash2, Tag, ChevronRight, ChevronDown, FolderTree } from 'lucide-react';
 import ModalShell from '../wallet/ModalShell';
 import FormInput from '../ui/FormInput';
 import { useAuth } from '../../context/AuthContext';
@@ -16,6 +16,8 @@ interface CategoryManagerProps {
   storeId: string;
   categories: ProductCategory[];
   onCategoriesChange: (categories: ProductCategory[]) => void;
+  /** Cantidad de productos por categoría, para el chip informativo de cada fila. */
+  productCounts?: Record<string, number>;
 }
 
 const emptyForm = {
@@ -25,11 +27,13 @@ const emptyForm = {
   slug: '',
   parentId: '',
   description: '',
-  sortOrder: '0',
 };
 
+/** Paleta cíclica para distinguir ramas de categorías de un vistazo (no es decoración: cada color identifica una raíz distinta). */
+const BRANCH_COLORS = ['#F4B942', '#5EC0D9', '#E2725B', '#8E7FD1', '#5BAE82'];
+
 /** Tarjeta de gestión de categorías: árbol + alta/edición/borrado inline. */
-const CategoryManager: React.FC<CategoryManagerProps> = ({ storeId, categories, onCategoriesChange }) => {
+const CategoryManager: React.FC<CategoryManagerProps> = ({ storeId, categories, onCategoriesChange, productCounts }) => {
   const { getToken } = useAuth();
   const [tree, setTree] = useState<Category[]>([]);
   const [loadingTree, setLoadingTree] = useState(false);
@@ -76,7 +80,6 @@ const CategoryManager: React.FC<CategoryManagerProps> = ({ storeId, categories, 
       slug: c.slug,
       parentId: c.parentId ?? '',
       description: c.description ?? '',
-      sortOrder: String(c.sortOrder ?? 0),
     });
   };
 
@@ -96,18 +99,17 @@ const CategoryManager: React.FC<CategoryManagerProps> = ({ storeId, categories, 
     try {
       const token = await getToken();
       const slug = form.slug.trim() || slugify(name);
-      const input: CreateCategoryInput = {
-        storeId,
+      const base = {
         name,
         slug,
         parentId: form.parentId || undefined,
         description: form.description.trim() || undefined,
-        sortOrder: Number(form.sortOrder) || 0,
       };
       if (form.editingId) {
-        await categoriesApi.update(form.editingId, input, token);
+        await categoriesApi.update(form.editingId, base, token);
         toast.success('Categoría actualizada');
       } else {
+        const input: CreateCategoryInput = { storeId, ...base };
         await categoriesApi.create(input, token);
         toast.success(`Categoría "${name}" creada`);
       }
@@ -132,13 +134,15 @@ const CategoryManager: React.FC<CategoryManagerProps> = ({ storeId, categories, 
     }
   };
 
-  const renderNode = (node: Category, depth: number): React.ReactNode => {
+  const renderNode = (node: Category, depth: number, branchColor: string): React.ReactNode => {
     const hasChildren = (node.children?.length ?? 0) > 0;
     const isExpanded = expanded.has(node.id);
     const isRoot = depth === 0;
+    const count = productCounts?.[node.id];
+
     const row = (
       <div
-        className={`flex items-center gap-2 py-2 px-2 rounded-lg hover:bg-primary/5 group ${!isRoot ? 'relative' : ''}`}
+        className={`flex items-center gap-2.5 py-2.5 px-2 rounded-lg hover:bg-gray-50 group ${!isRoot ? 'relative' : ''}`}
         style={{ paddingLeft: isRoot ? '0.5rem' : `${depth * 1.25 + 0.75}rem` }}
       >
         {!isRoot && (
@@ -148,17 +152,26 @@ const CategoryManager: React.FC<CategoryManagerProps> = ({ storeId, categories, 
           />
         )}
         {hasChildren ? (
-          <button onClick={() => toggleExpanded(node.id)} className="text-gray-400 hover:text-gray-700">
+          <button onClick={() => toggleExpanded(node.id)} className="text-gray-400 hover:text-gray-700 shrink-0">
             {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
           </button>
         ) : (
-          <span className="w-[14px]" />
+          <span className="w-[14px] shrink-0" />
         )}
+        <span
+          className="w-2 h-2 rounded-full shrink-0"
+          style={{ background: node.isActive ? branchColor : '#D1D5DB' }}
+        />
         <span className={`text-sm ${node.isActive ? 'text-gray-800' : 'text-gray-400 italic'} ${isRoot ? 'font-semibold' : 'font-medium'} flex-1 truncate`}>
           {node.name}
         </span>
-        {!node.isActive && <span className="text-[10px] uppercase font-bold text-gray-400">inactiva</span>}
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        {typeof count === 'number' && (
+          <span className="text-[11px] font-semibold text-gray-400 tabular-nums shrink-0">
+            {count} {count === 1 ? 'producto' : 'productos'}
+          </span>
+        )}
+        {!node.isActive && <span className="text-[10px] uppercase font-bold text-gray-400 shrink-0">inactiva</span>}
+        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
           <button onClick={() => openEdit(node)} title="Editar" className="w-7 h-7 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-500">
             <Pencil size={13} />
           </button>
@@ -171,13 +184,13 @@ const CategoryManager: React.FC<CategoryManagerProps> = ({ storeId, categories, 
 
     if (isRoot) {
       return (
-        <div key={node.id} className="relative overflow-hidden rounded-2xl bg-surface shadow-card flex items-stretch">
-          <div className={`w-1 shrink-0 rounded-l-2xl ${node.isActive ? 'bg-primary' : 'bg-gray-300'}`} />
+        <div key={node.id} className="relative overflow-hidden rounded-2xl bg-surface border border-gray-100 flex items-stretch transition-shadow hover:shadow-card">
+          <div className="w-1 shrink-0 rounded-l-2xl" style={{ background: node.isActive ? branchColor : '#D1D5DB' }} />
           <div className="flex-1">
             {row}
             {hasChildren && isExpanded && (
               <div className="border-t border-dashed border-gray-200 py-1">
-                {node.children!.map((child) => renderNode(child as Category, depth + 1))}
+                {node.children!.map((child) => renderNode(child as Category, depth + 1, branchColor))}
               </div>
             )}
           </div>
@@ -188,7 +201,7 @@ const CategoryManager: React.FC<CategoryManagerProps> = ({ storeId, categories, 
     return (
       <div key={node.id}>
         {row}
-        {hasChildren && isExpanded && node.children!.map((child) => renderNode(child as Category, depth + 1))}
+        {hasChildren && isExpanded && node.children!.map((child) => renderNode(child as Category, depth + 1, branchColor))}
       </div>
     );
   };
@@ -212,9 +225,12 @@ const CategoryManager: React.FC<CategoryManagerProps> = ({ storeId, categories, 
           ))}
         </div>
       ) : tree.length === 0 ? (
-        <span className="text-sm text-gray-400">Aún no hay categorías. Crea una para empezar.</span>
+        <div className="flex flex-col items-center text-center gap-2 py-8 text-gray-400">
+          <FolderTree size={28} className="text-gray-300" />
+          <p className="text-sm">Aún no hay categorías. Crea la primera para empezar a organizar tu catálogo.</p>
+        </div>
       ) : (
-        <div className="space-y-2">{tree.map((node) => renderNode(node, 0))}</div>
+        <div className="space-y-2">{tree.map((node, i) => renderNode(node, 0, BRANCH_COLORS[i % BRANCH_COLORS.length]))}</div>
       )}
 
       <ModalShell open={form.open} onClose={closeForm} title={form.editingId ? 'Editar categoría' : 'Nueva categoría'} subtitle="Catálogo de la tienda">
@@ -241,7 +257,6 @@ const CategoryManager: React.FC<CategoryManagerProps> = ({ storeId, categories, 
             </select>
           </div>
           <FormInput label="Descripción (opcional)" value={form.description} onChange={(v) => setForm((f) => ({ ...f, description: v }))} />
-          <FormInput label="Orden" type="number" value={form.sortOrder} onChange={(v) => setForm((f) => ({ ...f, sortOrder: v }))} />
           <button onClick={submitForm} className="w-full py-3 rounded-xl bg-primary text-white font-semibold hover:bg-primary/90">
             {form.editingId ? 'Guardar cambios' : 'Crear categoría'}
           </button>
