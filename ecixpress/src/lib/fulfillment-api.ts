@@ -100,7 +100,7 @@ export interface FulfillmentIdentity {
 }
 
 export const FULFILLMENT_API_BASE_URL =
-  (import.meta.env.VITE_FULFILLMENT_API_URL ?? 'http://localhost:3005').replace(/\/$/, '');
+  import.meta.env.VITE_FULFILLMENT_API_URL ?? 'http://localhost:3005';
 
 const API_PREFIX = '/api/v1';
 

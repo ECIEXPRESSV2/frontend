@@ -8,7 +8,7 @@
  */
 
 const NOTIFICATIONS_URL =
-  (import.meta.env.VITE_NOTIFICATIONS_API_URL || 'http://localhost:3006').replace(/\/$/, '');
+  import.meta.env.VITE_NOTIFICATIONS_API_URL || 'http://localhost:3006';
 
 export interface InboxNotification {
   id: string;
