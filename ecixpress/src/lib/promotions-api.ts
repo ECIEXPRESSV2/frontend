@@ -13,10 +13,12 @@ export type DiscountType = 'PERCENTAGE' | 'FIXED_AMOUNT';
 export interface Promotion {
   id: string;
   storeId: string;
+  name: string;
+  description?: string | null;
   scope: PromotionScope;
   targetId: string;
-  discountType: DiscountType;
-  discountValue: number;
+  type: DiscountType;
+  value: number;
   startsAt: string;
   endsAt: string;
   isActive: boolean;
@@ -24,10 +26,12 @@ export interface Promotion {
 
 export interface CreatePromotionInput {
   storeId: string;
+  name: string;
+  description?: string;
   scope: PromotionScope;
   targetId: string;
-  discountType: DiscountType;
-  discountValue: number;
+  type: DiscountType;
+  value: number;
   startsAt: string;
   endsAt: string;
   isActive?: boolean;
@@ -107,9 +111,9 @@ export function pickBestPromotion(
   let best: { promotion: Promotion; effectivePrice: number } | null = null;
   for (const promotion of applicable) {
     const discount =
-      promotion.discountType === 'PERCENTAGE'
-        ? (basePrice * promotion.discountValue) / 100
-        : Math.min(promotion.discountValue, basePrice);
+      promotion.type === 'PERCENTAGE'
+        ? (basePrice * promotion.value) / 100
+        : Math.min(promotion.value, basePrice);
     const effectivePrice = Math.max(basePrice - discount, 0);
     if (!best || effectivePrice < best.effectivePrice) {
       best = { promotion, effectivePrice };

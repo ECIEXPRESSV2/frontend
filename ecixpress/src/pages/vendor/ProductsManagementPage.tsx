@@ -1,7 +1,22 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { ArrowLeft, Plus, Minus, Package, Trash2, Pencil, Eye, EyeOff, RefreshCw, Boxes, BadgePercent, History, AlertTriangle } from 'lucide-react';
+import {
+  ArrowLeft,
+  Plus,
+  Minus,
+  Package,
+  Trash2,
+  Pencil,
+  Eye,
+  EyeOff,
+  RefreshCw,
+  Boxes,
+  BadgePercent,
+  History,
+  AlertTriangle,
+  LayoutGrid,
+} from 'lucide-react';
 import Sidebar from '../../components/home/Sidebar';
 import ModalShell from '../../components/wallet/ModalShell';
 import FormInput from '../../components/ui/FormInput';
@@ -25,9 +40,43 @@ const emptyForm = {
   categoryId: '',
   price: '',
   stock: '0',
+  minStock: '0',
   description: '',
   imageUrl: '',
   sku: '',
+};
+
+/** Estado visual de inventario derivado de stock vs. minStock — alimenta el color del anillo y el badge. */
+type StockHealth = 'out' | 'low' | 'ok';
+
+const stockHealth = (stock: number, minStock: number): StockHealth => {
+  if (stock <= 0) return 'out';
+  if (stock <= minStock) return 'low';
+  return 'ok';
+};
+
+const HEALTH_COLOR: Record<StockHealth, string> = {
+  out: '#E2725B',
+  low: '#F4B942',
+  ok: '#5EC0D9',
+};
+
+/** Anillo de inventario: progreso circular puro CSS, sin librerías. Codifica stock real, no decora. */
+const StockRing: React.FC<{ stock: number; minStock: number }> = ({ stock, minStock }) => {
+  const health = stockHealth(stock, minStock);
+  const ceiling = Math.max(minStock * 3, 6);
+  const percent = Math.max(0, Math.min(1, stock / ceiling));
+  const color = HEALTH_COLOR[health];
+  return (
+    <div
+      className="relative w-12 h-12 rounded-full shrink-0"
+      style={{ background: `conic-gradient(${color} ${percent * 360}deg, #E5E7EB 0deg)` }}
+    >
+      <div className="absolute inset-[3px] rounded-full bg-surface flex items-center justify-center">
+        <span className="text-[12px] font-bold tabular-nums text-gray-800">{stock}</span>
+      </div>
+    </div>
+  );
 };
 
 const ProductsManagementPage: React.FC = () => {
@@ -40,6 +89,7 @@ const ProductsManagementPage: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [lowStockIds, setLowStockIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
+  const [categoryFilter, setCategoryFilter] = useState<string>('');
   const [form, setForm] = useState(emptyForm);
   const [stockModal, setStockModal] = useState<{ open: boolean; product: Product | null; value: string }>({ open: false, product: null, value: '' });
   const [historyModal, setHistoryModal] = useState<{ open: boolean; product: Product | null }>({ open: false, product: null });
@@ -48,6 +98,17 @@ const ProductsManagementPage: React.FC = () => {
     const map = new Map(categories.map((c) => [c.id, c.name]));
     return (id: string) => map.get(id) ?? '—';
   }, [categories]);
+
+  const productCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const p of products) counts[p.categoryId] = (counts[p.categoryId] ?? 0) + 1;
+    return counts;
+  }, [products]);
+
+  const visibleProducts = useMemo(
+    () => (categoryFilter ? products.filter((p) => p.categoryId === categoryFilter) : products),
+    [products, categoryFilter],
+  );
 
   const load = async () => {
     if (!storeId) return;
@@ -78,7 +139,7 @@ const ProductsManagementPage: React.FC = () => {
       toast.info('Crea primero una categoría');
       return;
     }
-    setForm({ ...emptyForm, open: true, categoryId: categories[0].id });
+    setForm({ ...emptyForm, open: true, categoryId: categoryFilter || categories[0].id });
   };
 
   const openEdit = (p: Product) => {
@@ -89,6 +150,7 @@ const ProductsManagementPage: React.FC = () => {
       categoryId: p.categoryId,
       price: String(parseFloat(p.price)),
       stock: String(p.stock),
+      minStock: String(p.minStock ?? 0),
       description: p.description ?? '',
       imageUrl: p.imageUrl ?? '',
       sku: '',
@@ -107,6 +169,7 @@ const ProductsManagementPage: React.FC = () => {
         name: form.name.trim(),
         categoryId: form.categoryId,
         price,
+        minStock: Number(form.minStock) || 0,
         description: form.description.trim() || undefined,
         imageUrl: form.imageUrl.trim() || undefined,
       };
@@ -179,11 +242,13 @@ const ProductsManagementPage: React.FC = () => {
     }
   };
 
+  const activeCount = products.filter((p) => p.isActive).length;
+
   return (
     <div className="min-h-screen bg-background">
       <Sidebar activeItem="vendor-stores" />
       <main className="ml-16 p-6 md:p-8">
-        <div className="max-w-5xl mx-auto space-y-6">
+        <div className="max-w-6xl mx-auto space-y-6">
           {/* Header */}
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div className="flex items-center gap-3">
@@ -208,14 +273,53 @@ const ProductsManagementPage: React.FC = () => {
             </div>
           </div>
 
+          {/* Resumen rápido */}
+          {!loading && products.length > 0 && (
+            <div className="grid grid-cols-3 gap-3">
+              <div className="rounded-2xl bg-surface border border-gray-100 p-4">
+                <p className="text-2xl font-display font-semibold text-gray-900 tabular-nums">{activeCount}</p>
+                <p className="text-xs text-gray-500">Productos activos</p>
+              </div>
+              <div className="rounded-2xl bg-surface border border-gray-100 p-4">
+                <p className="text-2xl font-display font-semibold text-gray-900 tabular-nums">{categories.length}</p>
+                <p className="text-xs text-gray-500">Categorías</p>
+              </div>
+              <div className={`rounded-2xl border p-4 ${lowStockIds.size > 0 ? 'bg-danger/5 border-danger/20' : 'bg-surface border-gray-100'}`}>
+                <p className={`text-2xl font-display font-semibold tabular-nums ${lowStockIds.size > 0 ? 'text-danger' : 'text-gray-900'}`}>{lowStockIds.size}</p>
+                <p className={`text-xs ${lowStockIds.size > 0 ? 'text-danger/80' : 'text-gray-500'}`}>Con stock bajo</p>
+              </div>
+            </div>
+          )}
+
           {/* Categorías */}
-          <CategoryManager storeId={storeId} categories={categories} onCategoriesChange={setCategories} />
+          <CategoryManager storeId={storeId} categories={categories} onCategoriesChange={setCategories} productCounts={productCounts} />
+
+          {/* Filtro por categoría */}
+          {categories.length > 0 && products.length > 0 && (
+            <div className="flex items-center gap-2 overflow-x-auto pb-1">
+              <button
+                onClick={() => setCategoryFilter('')}
+                className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${categoryFilter === '' ? 'bg-gray-900 text-white' : 'bg-surface border border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+              >
+                <LayoutGrid size={13} /> Todas
+              </button>
+              {categories.map((c) => (
+                <button
+                  key={c.id}
+                  onClick={() => setCategoryFilter(c.id)}
+                  className={`shrink-0 px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${categoryFilter === c.id ? 'bg-gray-900 text-white' : 'bg-surface border border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+                >
+                  {c.name}
+                </button>
+              ))}
+            </div>
+          )}
 
           {/* Productos */}
           {loading ? (
-            <div className="space-y-2 animate-pulse">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="h-20 rounded-2xl bg-white border border-gray-100" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 animate-pulse">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <div key={i} className="h-40 rounded-2xl bg-white border border-gray-100" />
               ))}
             </div>
           ) : products.length === 0 ? (
@@ -223,20 +327,31 @@ const ProductsManagementPage: React.FC = () => {
               <Package className="mx-auto mb-2 text-primary" />
               No hay productos en esta tienda. Crea el primero con "Nuevo producto".
             </div>
+          ) : visibleProducts.length === 0 ? (
+            <div className="rounded-2xl bg-surface border border-gray-100 shadow-card p-10 text-center text-gray-500">
+              Esta categoría todavía no tiene productos.
+            </div>
           ) : (
-            <div className="space-y-3">
-              {products.map((p) => (
-                <div key={p.id} className={`relative overflow-hidden rounded-2xl bg-surface shadow-card flex items-stretch ${!p.isActive ? 'opacity-60' : ''}`}>
-                  <div className={`w-1 shrink-0 rounded-l-2xl ${p.isActive ? 'bg-primary' : 'bg-gray-300'}`} />
-                  <div className="flex-1 flex items-center gap-4 p-4">
-                    {p.imageUrl ? (
-                      <img src={p.imageUrl} alt={p.name} className="w-14 h-14 rounded-xl object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-                    ) : (
-                      <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center text-primary"><Package size={20} /></div>
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-semibold text-gray-900 truncate">{p.name}</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {visibleProducts.map((p) => (
+                <div key={p.id} className={`relative overflow-hidden rounded-2xl bg-surface border border-gray-100 shadow-card transition-shadow hover:shadow-lg ${!p.isActive ? 'opacity-60' : ''}`}>
+                  <div className="p-4 space-y-3">
+                    <div className="flex items-start gap-3">
+                      {p.imageUrl ? (
+                        <img src={p.imageUrl} alt={p.name} className="w-12 h-12 rounded-xl object-cover shrink-0" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                      ) : (
+                        <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0"><Package size={18} /></div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold text-gray-900 leading-tight truncate">{p.name}</h3>
+                        <p className="text-xs text-gray-500 truncate">{categoryName(p.categoryId)}</p>
+                      </div>
+                      <StockRing stock={p.stock} minStock={p.minStock} />
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-lg font-display font-semibold text-gray-900 tabular-nums">{formatCOP(priceToCents(p.price))}</span>
+                      <div className="flex items-center gap-1.5">
                         {!p.isActive && <span className="text-[10px] uppercase font-bold text-gray-400">inactivo</span>}
                         {lowStockIds.has(p.id) && (
                           <span title="Stock bajo" className="inline-flex items-center gap-1 text-[10px] uppercase font-bold text-danger">
@@ -244,24 +359,22 @@ const ProductsManagementPage: React.FC = () => {
                           </span>
                         )}
                       </div>
-                      <p className="text-xs text-gray-500 tabular-nums tracking-wide">{categoryName(p.categoryId)} · {formatCOP(priceToCents(p.price))}</p>
                     </div>
 
-                    {/* Stock */}
-                    <div className="flex items-center gap-1 pl-3 border-l border-dashed border-gray-200">
-                      <button onClick={() => quickStock(p, -1)} disabled={p.stock <= 0} className="w-7 h-7 rounded-lg bg-white border border-gray-200 flex items-center justify-center hover:bg-gray-50 disabled:opacity-40"><Minus size={13} /></button>
-                      <button onClick={() => setStockModal({ open: true, product: p, value: String(p.stock) })} title="Stock exacto" className="min-w-[3rem] px-2 py-1 rounded-lg bg-gray-100 text-sm font-semibold text-gray-800 tabular-nums tracking-wide hover:bg-gray-200">
-                        <span className="flex items-center gap-1 justify-center"><Boxes size={12} /> {p.stock}</span>
-                      </button>
-                      <button onClick={() => quickStock(p, 1)} className="w-7 h-7 rounded-lg bg-primary text-white flex items-center justify-center hover:bg-primary/90"><Plus size={13} /></button>
-                    </div>
-
-                    {/* Acciones */}
-                    <div className="flex items-center gap-1">
-                      <button onClick={() => setHistoryModal({ open: true, product: p })} title="Ver historial de inventario" className="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-500"><History size={15} /></button>
-                      <button onClick={() => openEdit(p)} title="Editar" className="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-500"><Pencil size={15} /></button>
-                      <button onClick={() => toggleActive(p)} title={p.isActive ? 'Desactivar' : 'Activar'} className="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-500">{p.isActive ? <EyeOff size={15} /> : <Eye size={15} />}</button>
-                      <button onClick={() => removeProduct(p)} title="Eliminar" className="w-8 h-8 rounded-lg hover:bg-danger/10 flex items-center justify-center text-danger"><Trash2 size={15} /></button>
+                    <div className="flex items-center justify-between pt-2 border-t border-dashed border-gray-200">
+                      <div className="flex items-center gap-1">
+                        <button onClick={() => quickStock(p, -1)} disabled={p.stock <= 0} className="w-7 h-7 rounded-lg bg-gray-50 border border-gray-200 flex items-center justify-center hover:bg-gray-100 disabled:opacity-40"><Minus size={13} /></button>
+                        <button onClick={() => setStockModal({ open: true, product: p, value: String(p.stock) })} title="Fijar stock exacto" className="px-2 py-1 rounded-lg bg-gray-100 text-xs font-semibold text-gray-700 tabular-nums hover:bg-gray-200">
+                          <span className="flex items-center gap-1"><Boxes size={11} /> stock</span>
+                        </button>
+                        <button onClick={() => quickStock(p, 1)} className="w-7 h-7 rounded-lg bg-primary text-white flex items-center justify-center hover:bg-primary/90"><Plus size={13} /></button>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <button onClick={() => setHistoryModal({ open: true, product: p })} title="Ver historial de inventario" className="w-7 h-7 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-500"><History size={14} /></button>
+                        <button onClick={() => openEdit(p)} title="Editar" className="w-7 h-7 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-500"><Pencil size={14} /></button>
+                        <button onClick={() => toggleActive(p)} title={p.isActive ? 'Desactivar' : 'Activar'} className="w-7 h-7 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-500">{p.isActive ? <EyeOff size={14} /> : <Eye size={14} />}</button>
+                        <button onClick={() => removeProduct(p)} title="Eliminar" className="w-7 h-7 rounded-lg hover:bg-danger/10 flex items-center justify-center text-danger"><Trash2 size={14} /></button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -273,20 +386,33 @@ const ProductsManagementPage: React.FC = () => {
 
       {/* Modal crear/editar producto */}
       <ModalShell open={form.open} onClose={() => setForm(emptyForm)} title={form.editingId ? 'Editar producto' : 'Nuevo producto'} subtitle="Catálogo de la tienda">
-        <div className="space-y-3">
-          <FormInput label="Nombre" value={form.name} onChange={(v) => setForm((f) => ({ ...f, name: v }))} />
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">Categoría</label>
-            <select value={form.categoryId} onChange={(e) => setForm((f) => ({ ...f, categoryId: e.target.value }))} className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm bg-white outline-none focus:border-primary focus:ring-2 focus:ring-primary/20">
-              {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-4">
+          <div className="space-y-3">
+            <p className="text-[11px] font-bold uppercase tracking-wide text-gray-400">Datos generales</p>
+            <FormInput label="Nombre" value={form.name} onChange={(v) => setForm((f) => ({ ...f, name: v }))} />
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">Categoría</label>
+              <select value={form.categoryId} onChange={(e) => setForm((f) => ({ ...f, categoryId: e.target.value }))} className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm bg-white outline-none focus:border-primary focus:ring-2 focus:ring-primary/20">
+                {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </div>
             <FormInput label="Precio (COP)" type="number" value={form.price} onChange={(v) => setForm((f) => ({ ...f, price: v }))} />
-            {!form.editingId && <FormInput label="Stock inicial" type="number" value={form.stock} onChange={(v) => setForm((f) => ({ ...f, stock: v }))} />}
+            <FormInput label="Descripción (opcional)" value={form.description} onChange={(v) => setForm((f) => ({ ...f, description: v }))} />
           </div>
-          <FormInput label="Descripción (opcional)" value={form.description} onChange={(v) => setForm((f) => ({ ...f, description: v }))} />
-          <FormInput label="URL de imagen (opcional)" value={form.imageUrl} onChange={(v) => setForm((f) => ({ ...f, imageUrl: v }))} />
+
+          <div className="space-y-3 pt-3 border-t border-gray-100">
+            <p className="text-[11px] font-bold uppercase tracking-wide text-gray-400">Inventario</p>
+            <div className="grid grid-cols-2 gap-3">
+              {!form.editingId && <FormInput label="Stock inicial" type="number" value={form.stock} onChange={(v) => setForm((f) => ({ ...f, stock: v }))} />}
+              <FormInput label="Stock mínimo (alerta)" type="number" value={form.minStock} onChange={(v) => setForm((f) => ({ ...f, minStock: v }))} />
+            </div>
+          </div>
+
+          <div className="space-y-3 pt-3 border-t border-gray-100">
+            <p className="text-[11px] font-bold uppercase tracking-wide text-gray-400">Multimedia</p>
+            <FormInput label="URL de imagen (opcional)" value={form.imageUrl} onChange={(v) => setForm((f) => ({ ...f, imageUrl: v }))} />
+          </div>
+
           <button onClick={submitForm} className="w-full py-3 rounded-xl bg-primary text-white font-semibold hover:bg-primary/90">
             {form.editingId ? 'Guardar cambios' : 'Crear producto'}
           </button>

@@ -20,6 +20,8 @@ import { formatCOP, formatDateTime } from '../../lib/format';
 const emptyForm = {
   open: false,
   editingId: null as string | null,
+  name: '',
+  description: '',
   scope: 'PRODUCT' as PromotionScope,
   targetId: '',
   discountType: 'PERCENTAGE' as DiscountType,
@@ -99,10 +101,12 @@ const PromotionsPage: React.FC = () => {
     setForm({
       open: true,
       editingId: p.id,
+      name: p.name,
+      description: p.description ?? '',
       scope: p.scope,
       targetId: p.targetId,
-      discountType: p.discountType,
-      discountValue: String(p.discountValue),
+      discountType: p.type,
+      discountValue: String(p.value),
       startsAt: toDatetimeLocal(p.startsAt),
       endsAt: toDatetimeLocal(p.endsAt),
     });
@@ -112,8 +116,8 @@ const PromotionsPage: React.FC = () => {
 
   const submitForm = async () => {
     const discountValue = Number(form.discountValue);
-    if (!form.targetId || !(discountValue > 0) || !form.startsAt || !form.endsAt) {
-      toast.error('Completa destino, valor de descuento y fechas válidas');
+    if (!form.name.trim() || !form.targetId || !(discountValue > 0) || !form.startsAt || !form.endsAt) {
+      toast.error('Completa nombre, destino, valor de descuento y fechas válidas');
       return;
     }
     if (new Date(form.endsAt) <= new Date(form.startsAt)) {
@@ -122,20 +126,22 @@ const PromotionsPage: React.FC = () => {
     }
     try {
       const token = await getToken();
-      const input: CreatePromotionInput = {
-        storeId,
+      const base = {
+        name: form.name.trim(),
+        description: form.description.trim() || undefined,
         scope: form.scope,
         targetId: form.targetId,
-        discountType: form.discountType,
-        discountValue,
+        type: form.discountType,
+        value: discountValue,
         startsAt: new Date(form.startsAt).toISOString(),
         endsAt: new Date(form.endsAt).toISOString(),
       };
       if (form.editingId) {
-        const updated = await promotionsApi.update(form.editingId, input, token);
+        const updated = await promotionsApi.update(form.editingId, base, token);
         setPromotions((list) => list.map((p) => (p.id === updated.id ? updated : p)));
         toast.success('Promoción actualizada');
       } else {
+        const input: CreatePromotionInput = { storeId, ...base };
         const created = await promotionsApi.create(input, token);
         setPromotions((list) => [created, ...list]);
         toast.success('Promoción creada');
@@ -173,7 +179,7 @@ const PromotionsPage: React.FC = () => {
   };
 
   const discountLabel = (p: Promotion) =>
-    p.discountType === 'PERCENTAGE' ? `${p.discountValue}%` : formatCOP(priceToCents(p.discountValue));
+    p.type === 'PERCENTAGE' ? `${p.value}%` : formatCOP(priceToCents(p.value));
 
   const isCurrentlyValid = (p: Promotion) => {
     const now = Date.now();
@@ -240,10 +246,11 @@ const PromotionsPage: React.FC = () => {
                         </div>
                         <div className="flex-1 min-w-0 border-l border-dashed border-gray-200 pl-4">
                           <div className="flex items-center gap-2">
-                            <h3 className="font-semibold text-gray-900 truncate">{targetName(p.scope, p.targetId)}</h3>
+                            <h3 className="font-semibold text-gray-900 truncate">{p.name}</h3>
                             <span className="text-[10px] uppercase font-bold text-gray-400">{p.scope === 'PRODUCT' ? 'producto' : 'categoría'}</span>
                             {!p.isActive && <span className="text-[10px] uppercase font-bold text-gray-400">inactiva</span>}
                           </div>
+                          <p className="text-xs text-gray-500 truncate">{targetName(p.scope, p.targetId)}</p>
                           <p className="text-xs text-gray-500 tabular-nums tracking-wide">
                             {formatDateTime(p.startsAt)} → {formatDateTime(p.endsAt)}
                           </p>
@@ -265,6 +272,16 @@ const PromotionsPage: React.FC = () => {
 
       <ModalShell open={form.open} onClose={closeForm} title={form.editingId ? 'Editar promoción' : 'Nueva promoción'} subtitle="Catálogo de la tienda">
         <div className="space-y-3">
+          <FormInput
+            label="Nombre"
+            value={form.name}
+            onChange={(v) => setForm((f) => ({ ...f, name: v }))}
+          />
+          <FormInput
+            label="Descripción (opcional)"
+            value={form.description}
+            onChange={(v) => setForm((f) => ({ ...f, description: v }))}
+          />
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1">Tipo de destino</label>
             <select

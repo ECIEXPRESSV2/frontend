@@ -40,6 +40,7 @@ export interface Product {
   stock: number;
   reservedStock: number;
   minStock: number;
+  sortOrder?: number;
   isActive: boolean;
   category?: ProductCategory;
 }
@@ -87,6 +88,7 @@ export interface CreateProductInput {
   imageUrl?: string;
   stock?: number;
   minStock?: number;
+  sortOrder?: number;
   isActive?: boolean;
 }
 
