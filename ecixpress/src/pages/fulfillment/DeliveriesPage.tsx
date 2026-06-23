@@ -34,6 +34,7 @@ import {
   validationErrorLabel,
 } from '../../lib/fulfillment-ui';
 import { formatDateTime } from '../../lib/format';
+import { getStoreById } from '../../services/storeService';
 
 interface DeliveriesPageProps {
   onBack?: () => void;
@@ -63,6 +64,7 @@ const DeliveriesPage: React.FC<DeliveriesPageProps> = ({ onBack }) => {
   const [confirming, setConfirming] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [scannerOpen, setScannerOpen] = useState(false);
+  const [storeName, setStoreName] = useState<string | null>(null);
 
   // ── Gestión manual por pedido ────────────────────────────────
   const [orderId, setOrderId] = useState('');
@@ -80,6 +82,7 @@ const DeliveriesPage: React.FC<DeliveriesPageProps> = ({ onBack }) => {
 
   const resetValidation = () => {
     setValidation({ kind: 'idle' });
+    setStoreName(null);
   };
 
   const handleValidate = async (override?: string) => {
@@ -92,6 +95,11 @@ const DeliveriesPage: React.FC<DeliveriesPageProps> = ({ onBack }) => {
       if (result.valid && result.order) {
         setValidation({ kind: 'valid', order: result.order });
         setOrderId(result.order.orderId); // prefill para gestión manual
+        // Resuelve el nombre de la tienda (endpoint público de identity) para no mostrar el UUID.
+        setStoreName(null);
+        void getStoreById(result.order.storeId, null)
+          .then((s) => setStoreName(s.name))
+          .catch(() => setStoreName(null));
       } else {
         const reason = result.validationError;
         setValidation({
@@ -124,7 +132,11 @@ const DeliveriesPage: React.FC<DeliveriesPageProps> = ({ onBack }) => {
     setConfirming(true);
     try {
       const delivery = await api.confirmCode(trimmed);
-      toast.success(`Entrega confirmada para el pedido ${delivery.orderId}.`);
+      if (delivery.alreadyDelivered) {
+        toast.warning(`Este pedido ya había sido entregado.`);
+      } else {
+        toast.success(`Entrega confirmada para el pedido ${delivery.orderId}.`);
+      }
       setCode('');
       resetValidation();
       setConfirmOpen(false);
@@ -223,7 +235,7 @@ const DeliveriesPage: React.FC<DeliveriesPageProps> = ({ onBack }) => {
                 {/* Separador hacia el ingreso manual */}
                 <div className="flex items-center gap-3 text-xs text-gray-400">
                   <span className="h-px flex-1 bg-gray-200" />
-                  o ingresa el código manualmente
+                  o escribe el código a mano
                   <span className="h-px flex-1 bg-gray-200" />
                 </div>
 
@@ -255,22 +267,22 @@ const DeliveriesPage: React.FC<DeliveriesPageProps> = ({ onBack }) => {
                     </div>
                     <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-sm">
                       <div>
-                        <dt className="text-gray-400">Pedido</dt>
-                        <dd className="font-medium text-gray-800 break-all">{validation.order.orderId}</dd>
-                      </div>
-                      <div>
                         <dt className="text-gray-400">Tienda</dt>
-                        <dd className="font-medium text-gray-800 break-all">{validation.order.storeId}</dd>
-                      </div>
-                      <div>
-                        <dt className="text-gray-400">Comprador</dt>
-                        <dd className="font-medium text-gray-800 break-all">{validation.order.buyerId}</dd>
+                        <dd className="font-medium text-gray-800 break-all">
+                          {storeName ?? `${validation.order.storeId.slice(0, 8)}…`}
+                        </dd>
                       </div>
                       <div>
                         <dt className="text-gray-400">Vence</dt>
                         <dd className="font-medium text-gray-800">{formatDateTime(validation.order.expiresAt)}</dd>
                       </div>
+                      <div className="sm:col-span-2">
+                        <dt className="text-gray-400">Pedido</dt>
+                        <dd className="font-medium text-gray-800 break-all">{validation.order.orderId}</dd>
+                      </div>
                     </dl>
+                    {/* Con un código válido, la única acción es confirmar por QR/código (UC-04).
+                        La entrega manual y la fallida viven abajo, para el caso SIN código. */}
                     <button
                       onClick={() => setConfirmOpen(true)}
                       className="w-full inline-flex items-center justify-center gap-2 py-3 rounded-xl bg-gradient-to-r from-yellow-400 to-yellow-500 text-white font-semibold hover:from-yellow-500 hover:to-yellow-600 transition-all"
@@ -292,11 +304,12 @@ const DeliveriesPage: React.FC<DeliveriesPageProps> = ({ onBack }) => {
               <section className="rounded-2xl bg-white/70 backdrop-blur-xl border border-white/60 shadow-sm p-6 space-y-4">
                 <div className="flex items-center gap-2">
                   <ClipboardX size={20} className="text-yellow-500" />
-                  <h2 className="text-lg font-bold text-gray-900">Gestión manual del pedido</h2>
+                  <h2 className="text-lg font-bold text-gray-900">Entrega sin código</h2>
                 </div>
                 <p className="text-sm text-gray-500">
-                  Cuando el QR no funciona, registra la entrega manualmente o marca el pedido como no entregado.
-                  Requiere acceso a la tienda del pedido.
+                  Úsala cuando <strong>no hay un código que validar</strong>: el comprador no puede mostrar el QR
+                  (cámara falla, código vencido) o no se presentó. Solo necesitas el ID del pedido. Requiere
+                  acceso a la tienda del pedido.
                 </p>
                 <FormInput label="ID del pedido" value={orderId} onChange={setOrderId} placeholder="ord_123" />
                 <div className="flex flex-col sm:flex-row gap-3">
@@ -521,8 +534,15 @@ const ManualDeliveryModal: React.FC<{
     if (!reason.trim()) return;
     setSaving(true);
     try {
-      await api.manualDelivery(orderId, { reason: reason.trim(), note: note.trim() || undefined });
-      toast.success(`Entrega manual registrada para ${orderId}.`);
+      const result = await api.manualDelivery(orderId, {
+        reason: reason.trim(),
+        note: note.trim() || undefined,
+      });
+      if (result.alreadyDelivered) {
+        toast.warning(`Este pedido ya había sido entregado.`);
+      } else {
+        toast.success(`Entrega manual registrada para ${orderId}.`);
+      }
       onDone();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'No pudimos registrar la entrega manual.');

@@ -62,6 +62,8 @@ export interface DeliveryResponse {
   failureReason: DeliveryFailureReason | null;
   deliveredAt: string;
   note: string | null;
+  /** `true` cuando el pedido ya estaba entregado (operación idempotente, no se creó una entrega nueva). */
+  alreadyDelivered: boolean;
 }
 
 /** UC-09: estado del proceso de retiro de un pedido (no el estado del pedido). */
