@@ -191,7 +191,7 @@ export interface MessagesResponse {
   pageSize: number;
 }
 
-export const ORDERS_API_BASE_URL = import.meta.env.VITE_ORDERS_SERVICE_URL ?? 'http://localhost:3000';
+export const ORDERS_API_BASE_URL = (import.meta.env.VITE_ORDERS_SERVICE_URL ?? 'http://localhost:3000').replace(/\/$/, '');
 
 async function requestJson<T>(path: string, token?: string | null, init?: RequestInit): Promise<T> {
   const response = await fetch(`${ORDERS_API_BASE_URL}${path}`, {
