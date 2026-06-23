@@ -16,6 +16,8 @@ export interface OrderItemInput {
   productId: string;
   name: string;
   description?: string;
+  /** Observación del comprador para esta línea (ej. "sin cebolla"). */
+  notes?: string;
   imageUrl?: string;
   unitPrice: number; // centavos COP
   quantity: number;
@@ -31,6 +33,10 @@ export interface CreateOrderRequest {
   notes?: string;
   source?: 'web' | 'mobile' | 'admin';
   discountAmount?: number;
+  /** Hora de recogida programada (ISO-8601). */
+  scheduledPickupAt?: string;
+  /** Clave de idempotencia; se envía como header Idempotency-Key. */
+  idempotencyKey?: string;
 }
 
 export interface CreateDraftRequest {
@@ -41,6 +47,8 @@ export interface CreateDraftRequest {
   currency?: string;
   source?: 'web' | 'mobile' | 'admin';
   notes?: string;
+  /** Hora de recogida programada (ISO-8601). */
+  scheduledPickupAt?: string;
 }
 
 export interface UpsertCartItemRequest {
@@ -48,6 +56,8 @@ export interface UpsertCartItemRequest {
   /** Cantidad deseada. 0 elimina la línea del carrito. */
   quantity: number;
   name?: string;
+  /** Observación del comprador para esta línea. */
+  notes?: string;
   imageUrl?: string;
 }
 
@@ -88,6 +98,7 @@ export interface OrderItemResponse {
   productId: string;
   name: string;
   description?: string;
+  notes?: string;
   imageUrl?: string;
   unitPrice: number;
   quantity: number;
@@ -112,6 +123,8 @@ export interface OrderResponse {
   items: OrderItemResponse[];
   statusHistory: OrderHistoryItem[];
   rating?: OrderRating;
+  scheduledPickupAt?: string;
+  estimatedReadyAt?: string;
   pickupExpiresAt?: string;
   createdAt: string;
   updatedAt: string;
@@ -182,12 +195,14 @@ export const ORDERS_API_BASE_URL = import.meta.env.VITE_ORDERS_SERVICE_URL ?? 'h
 
 async function requestJson<T>(path: string, token?: string | null, init?: RequestInit): Promise<T> {
   const response = await fetch(`${ORDERS_API_BASE_URL}${path}`, {
+    // `...init` va primero para que su `headers` (que puede venir como undefined)
+    // no pise el objeto de headers que armamos justo debajo con el Authorization.
+    ...init,
     headers: {
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(init?.headers ?? {}),
     },
-    ...init,
   });
 
   if (!response.ok) {
@@ -214,7 +229,12 @@ export const ordersApi = {
   health: () => requestJson<{ status: string; service: string; timestamp: string }>('/health'),
 
   createOrder: (payload: CreateOrderRequest, token?: string | null) =>
-    requestJson<OrderResponse>('/orders', token, { method: 'POST', body: JSON.stringify(payload) }),
+    requestJson<OrderResponse>('/orders', token, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+      // Idempotencia de creación: evita pedidos duplicados ante reintentos/doble clic.
+      headers: payload.idempotencyKey ? { 'Idempotency-Key': payload.idempotencyKey } : undefined,
+    }),
 
   // ─── Carrito (orden DRAFT) ─────────────────────────────────────────────
   createDraft: (payload: CreateDraftRequest, token?: string | null) =>
