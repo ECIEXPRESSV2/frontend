@@ -58,3 +58,29 @@ export const hasPickupCode = (status: OrderStatus): boolean =>
 /** ¿El pedido admite solicitar una devolución (total o parcial)? */
 export const isReturnable = (status: OrderStatus): boolean =>
   ['CONFIRMED', 'READY_FOR_PICKUP', 'DELIVERED', 'PARTIALLY_RETURNED'].includes(status);
+
+/**
+ * Estados "cerrados" que el comprador puede ocultar de su vista de "Mis pedidos"
+ * (no se borra del backend, solo deja de mostrarse para el cliente).
+ */
+export const isHideable = (status: OrderStatus): boolean =>
+  ['DELIVERED', 'CANCELLED', 'FAILED'].includes(status);
+
+/**
+ * ¿El pedido admite "reordenar"? Solo tiene sentido sobre pedidos ya cerrados
+ * (entregado, cancelado o fallido); reordenar genera un pedido nuevo (otro id).
+ */
+export const isReorderable = (status: OrderStatus): boolean =>
+  ['DELIVERED', 'CANCELLED', 'FAILED'].includes(status);
+
+/** ¿El pedido está pendiente de pago y el comprador puede ir a pagarlo? */
+export const isPayable = (status: OrderStatus): boolean =>
+  status === 'PENDING_PAYMENT';
+
+/**
+ * Nombre amigable del pedido para mostrar al cliente: nombre de la tienda + los
+ * últimos 4 caracteres del código (p. ej. "Café Central · #9558"). El código
+ * completo (orderNumber) se sigue mostrando como referencia secundaria.
+ */
+export const orderDisplayName = (order: { storeName: string; orderNumber: string }): string =>
+  `${order.storeName} · #${order.orderNumber.slice(-4)}`;
