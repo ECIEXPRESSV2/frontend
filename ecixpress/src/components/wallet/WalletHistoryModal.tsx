@@ -1,15 +1,25 @@
 import React, { useEffect, useState } from 'react';
-import { Loader2, Clock, RefreshCw, ExternalLink } from 'lucide-react';
+import {
+  Loader2,
+  Clock,
+  RefreshCw,
+  ExternalLink,
+  ArrowUpRight,
+  RotateCcw,
+} from 'lucide-react';
 import { toast } from 'react-toastify';
 import ModalShell from './ModalShell';
 import { useWallet } from '../../context/WalletContext';
-import { PaymentMethodIcon, getMethodMeta } from './paymentMethods';
+import { useNotifications } from '../../context/NotificationsContext';
+import { PaymentMethodIcon } from './paymentMethods';
 import {
   getTopups,
+  getWalletTransactions,
   getTopupDetails,
+  buildWalletHistory,
   formatCOP,
-  type WalletTopup,
-  type TopupStatus,
+  type WalletMovement,
+  type WalletMovementStatus,
 } from '../../services/financialService';
 
 interface Props {
@@ -17,10 +27,19 @@ interface Props {
   onClose: () => void;
 }
 
-const STATUS_STYLE: Record<TopupStatus, { label: string; cls: string }> = {
-  PENDING: { label: 'Pendiente', cls: 'bg-amber-100 text-amber-700' },
-  APPROVED: { label: 'Aprobada', cls: 'bg-emerald-100 text-emerald-700' },
-  FAILED: { label: 'Fallida', cls: 'bg-red-100 text-red-600' },
+// Eventos en vivo que cambian el historial: al llegar, recargamos la lista.
+const HISTORY_AFFECTING_EVENTS = new Set([
+  'wallet.topup_approved',
+  'wallet.topup_failed',
+  'payment.processed',
+  'order.confirmed',
+  'refund.issued',
+]);
+
+const STATUS_CHIP: Record<WalletMovementStatus, { label: string; cls: string } | null> = {
+  pending: { label: 'Pendiente', cls: 'bg-amber-100 text-amber-700' },
+  failed: { label: 'Fallida', cls: 'bg-red-100 text-red-600' },
+  completed: null, // el color del monto ya comunica el éxito; sin chip.
 };
 
 const formatDate = (iso: string) =>
@@ -32,9 +51,30 @@ const formatDate = (iso: string) =>
     minute: '2-digit',
   });
 
+/** Ícono de la izquierda según el tipo de movimiento. */
+const MovementIcon: React.FC<{ m: WalletMovement }> = ({ m }) => {
+  if (m.kind === 'topup' && m.paymentMethod) {
+    return <PaymentMethodIcon method={m.paymentMethod} size={36} />;
+  }
+  if (m.kind === 'refund') {
+    return (
+      <span className="w-9 h-9 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
+        <RotateCcw size={18} className="text-emerald-600" />
+      </span>
+    );
+  }
+  // payment (débito)
+  return (
+    <span className="w-9 h-9 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0">
+      <ArrowUpRight size={18} className="text-gray-600" />
+    </span>
+  );
+};
+
 const WalletHistoryModal: React.FC<Props> = ({ open, onClose }) => {
   const { userId, refresh } = useWallet();
-  const [topups, setTopups] = useState<WalletTopup[]>([]);
+  const { liveEvent } = useNotifications();
+  const [movements, setMovements] = useState<WalletMovement[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [actingId, setActingId] = useState<string | null>(null);
@@ -45,7 +85,11 @@ const WalletHistoryModal: React.FC<Props> = ({ open, onClose }) => {
     setLoading(true);
     setError(null);
     try {
-      setTopups(await getTopups(userId));
+      const [topups, transactions] = await Promise.all([
+        getTopups(userId),
+        getWalletTransactions(userId),
+      ]);
+      setMovements(buildWalletHistory(topups, transactions));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo cargar el historial');
     } finally {
@@ -84,12 +128,20 @@ const WalletHistoryModal: React.FC<Props> = ({ open, onClose }) => {
     if (open) void load();
   }, [open, load]);
 
+  // Si el modal está abierto y llega un evento que cambia el historial, lo recargamos.
+  useEffect(() => {
+    if (!open || !liveEvent) return;
+    if (HISTORY_AFFECTING_EVENTS.has(liveEvent.type ?? '')) {
+      void load();
+    }
+  }, [liveEvent, open, load]);
+
   return (
     <ModalShell
       open={open}
       onClose={onClose}
-      title="Historial de recargas"
-      subtitle="Tus últimas recargas de saldo"
+      title="Historial de la billetera"
+      subtitle="Recargas, pagos y reembolsos de tu saldo"
       maxWidth="max-w-lg"
     >
       <div className="flex justify-end mb-3">
@@ -107,43 +159,56 @@ const WalletHistoryModal: React.FC<Props> = ({ open, onClose }) => {
         </div>
       ) : error ? (
         <p className="text-center text-sm text-red-500 py-8">{error}</p>
-      ) : topups.length === 0 ? (
+      ) : movements.length === 0 ? (
         <div className="flex flex-col items-center gap-2 py-10 text-center">
           <Clock className="text-gray-300" size={32} />
-          <p className="text-sm text-gray-500">Aún no has hecho recargas.</p>
+          <p className="text-sm text-gray-500">Aún no tienes movimientos en tu billetera.</p>
         </div>
       ) : (
         <ul className="space-y-2.5">
-          {topups.map((t) => {
-            const st = STATUS_STYLE[t.status];
-            const isPending = t.status === 'PENDING';
+          {movements.map((m) => {
+            const chip = STATUS_CHIP[m.status];
+            const isPendingTopup = m.kind === 'topup' && m.status === 'pending';
+            const credit = m.direction === 'in';
+            const amountCls =
+              m.status === 'failed'
+                ? 'text-gray-400 line-through'
+                : credit
+                  ? 'text-emerald-600'
+                  : 'text-gray-900';
             return (
               <li
-                key={t.id}
+                key={m.id}
                 className="flex flex-col gap-3 p-3 rounded-2xl bg-gray-50 border border-gray-100"
               >
                 <div className="flex items-center gap-3">
-                  <PaymentMethodIcon method={t.paymentMethod} size={36} />
+                  <MovementIcon m={m} />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-gray-900">
-                      {formatCOP(t.amount)}
+                    <p className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                      {m.title}
+                      {chip && (
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${chip.cls}`}>
+                          {chip.label}
+                        </span>
+                      )}
                     </p>
                     <p className="text-xs text-gray-500 truncate">
-                      {getMethodMeta(t.paymentMethod).label} · {formatDate(t.createdAt)}
+                      {m.subtitle ? `${m.subtitle} · ` : ''}
+                      {formatDate(m.date)}
                     </p>
                   </div>
-                  <span className={`px-2.5 py-1 rounded-full text-[11px] font-semibold ${st.cls}`}>
-                    {st.label}
+                  <span className={`text-sm font-bold whitespace-nowrap ${amountCls}`}>
+                    {credit ? '+' : '−'} {formatCOP(m.amount)}
                   </span>
                 </div>
 
-                {isPending && (
+                {isPendingTopup && m.topupId && (
                   <button
-                    onClick={() => void completePending(t.id)}
-                    disabled={actingId === t.id}
+                    onClick={() => void completePending(m.topupId!)}
+                    disabled={actingId === m.topupId}
                     className="inline-flex items-center justify-center gap-1.5 w-full py-2 rounded-xl bg-yellow-400 text-white text-xs font-semibold hover:bg-yellow-500 transition disabled:opacity-50"
                   >
-                    {actingId === t.id ? (
+                    {actingId === m.topupId ? (
                       <Loader2 size={14} className="animate-spin" />
                     ) : (
                       <ExternalLink size={14} />
@@ -152,7 +217,7 @@ const WalletHistoryModal: React.FC<Props> = ({ open, onClose }) => {
                   </button>
                 )}
 
-                {qrFor?.id === t.id && (
+                {qrFor && qrFor.id === m.topupId && (
                   <div className="flex flex-col items-center gap-2 pt-1">
                     <p className="text-xs text-gray-600">Escanea con tu app Bancolombia:</p>
                     <img
