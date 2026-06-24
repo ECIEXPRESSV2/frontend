@@ -4,6 +4,7 @@ import { toast } from 'react-toastify';
 import ModalShell from './ModalShell';
 import NonRefundableModal from './NonRefundableModal';
 import { useWallet } from '../../context/WalletContext';
+import { useNotifications } from '../../context/NotificationsContext';
 import {
   PAYMENT_METHODS,
   getMethodMeta,
@@ -57,6 +58,7 @@ const SANDBOX_DEFAULTS: Record<TopupPaymentMethod, {
 
 const WalletRechargeModal: React.FC<Props> = ({ open, onClose }) => {
   const { userId, defaultMethod, refresh } = useWallet();
+  const { liveEvent } = useNotifications();
 
   const [step, setStep] = useState<Step>('form');
   const [amountPesos, setAmountPesos] = useState<string>('');
@@ -183,6 +185,21 @@ const WalletRechargeModal: React.FC<Props> = ({ open, onClose }) => {
       setChecking(false);
     }
   };
+
+  // Auto-verificar el estado al recibir la notificación en vivo de la pasarela: cuando
+  // llega `wallet.topup_approved` / `wallet.topup_failed`, re-consultamos la transacción
+  // para reflejar el resultado en el modal sin que el usuario pulse «Verificar estado».
+  useEffect(() => {
+    if (step !== 'result' || !result || !liveEvent) return;
+    if (
+      liveEvent.type === 'wallet.topup_approved' ||
+      liveEvent.type === 'wallet.topup_failed'
+    ) {
+      void loadDetails(result.topupId);
+    }
+    // loadDetails se recrea en cada render; el disparador real es `liveEvent`.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [liveEvent, step, result]);
 
   const handleSubmit = async () => {
     if (!userId) return;

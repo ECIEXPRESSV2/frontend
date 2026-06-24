@@ -1,6 +1,5 @@
 import React from 'react';
 import { Check } from 'lucide-react';
-import { toast } from 'react-toastify';
 import ModalShell from './ModalShell';
 import { useWallet } from '../../context/WalletContext';
 import { PAYMENT_METHODS } from './paymentMethods';
@@ -29,7 +28,6 @@ const PaymentMethodPickerModal: React.FC<Props> = ({ open, onClose }) => {
                 type="button"
                 onClick={() => {
                   chooseDefaultMethod(m.key);
-                  toast.success(`Método por defecto: ${m.label}`);
                   onClose();
                 }}
                 className={`w-full flex items-center gap-3 p-3 rounded-2xl border text-left transition ${
