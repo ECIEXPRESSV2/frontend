@@ -3,6 +3,7 @@ import { toast } from 'react-toastify';
 import { Search, RefreshCw, UserCheck, UserX, UserMinus } from 'lucide-react';
 import Sidebar from '../../components/home/Sidebar';
 import { TableSkeleton } from '../../components/common/LoadingSkeleton';
+import ProfileCard from '../../components/ui/info-card';
 import { useAuth } from '../../context/AuthContext';
 import { getUsers, updateUserStatus, assignRole, revokeRole, type UserItem } from '../../services/userService';
 import { getRoles, type Role } from '../../services/roleService';
@@ -42,6 +43,7 @@ const UsersPage: React.FC = () => {
   const [search, setSearch] = useState('');
   const [selectedUser, setSelectedUser] = useState<UserItem | null>(null);
   const [assigningRole, setAssigningRole] = useState('');
+  const [viewMode, setViewMode] = useState<'table' | 'cards'>('cards');
 
   const load = async ({ searchValue = search, showLoading = false } = {}) => {
     const cacheKey = pageCacheKeys.adminUsers(searchValue);
@@ -118,6 +120,18 @@ const UsersPage: React.FC = () => {
     return (user.roles as Array<{ name: string }>).map(r => r.name);
   };
 
+  const mapUserToCard = (user: UserItem) => ({
+    name: user.fullName,
+    role: getRoleNames(user).join(', ') || 'Usuario',
+    status: user.status === 'ACTIVE' ? 'online' as const : user.status === 'SUSPENDED' ? 'away' as const : 'offline' as const,
+    avatar: user.avatarUrl,
+    tags: getRoleNames(user),
+    isVerified: user.status === 'ACTIVE',
+    email: user.email,
+    onMessageClick: () => setSelectedUser(user),
+    onAddClick: () => setSelectedUser(user),
+  });
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-white to-yellow-100">
       <Sidebar activeItem="admin-users" />
@@ -125,9 +139,23 @@ const UsersPage: React.FC = () => {
         <div className="max-w-6xl mx-auto space-y-6">
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold text-gray-900">Gestión de Usuarios</h1>
-            <button onClick={() => load({ searchValue: search })} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-yellow-400 text-white font-medium text-sm hover:bg-yellow-500 transition">
-              <RefreshCw size={15} /> Actualizar
-            </button>
+            <div className="flex gap-2">
+              <button 
+                onClick={() => setViewMode('cards')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition ${viewMode === 'cards' ? 'bg-yellow-400 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+              >
+                Tarjetas
+              </button>
+              <button 
+                onClick={() => setViewMode('table')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition ${viewMode === 'table' ? 'bg-yellow-400 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+              >
+                Tabla
+              </button>
+              <button onClick={() => load({ searchValue: search })} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-yellow-400 text-white font-medium text-sm hover:bg-yellow-500 transition">
+                <RefreshCw size={15} /> Actualizar
+              </button>
+            </div>
           </div>
 
           {/* Search */}
@@ -147,74 +175,91 @@ const UsersPage: React.FC = () => {
             </button>
           </div>
 
-          {/* Table */}
-          <div className="rounded-2xl bg-white/70 backdrop-blur-xl shadow-sm overflow-hidden">
-            {loading && users.length === 0 ? (
-              <TableSkeleton rows={6} columns={4} />
-            ) : users.length === 0 ? (
-              <p className="text-center py-12 text-gray-400">No hay usuarios</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-gray-100 bg-gray-50/50">
-                      <th className="text-left px-6 py-3 font-semibold text-gray-600">Usuario</th>
-                      <th className="text-left px-6 py-3 font-semibold text-gray-600">Roles</th>
-                      <th className="text-left px-6 py-3 font-semibold text-gray-600">Estado</th>
-                      <th className="text-left px-6 py-3 font-semibold text-gray-600">Acciones</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {users.map(user => (
-                      <tr key={user.id} className="border-b border-gray-50 hover:bg-yellow-50/30 transition">
-                        <td className="px-6 py-4">
-                          <p className="font-medium text-gray-900">{user.fullName}</p>
-                          <p className="text-xs text-gray-400">{user.email}</p>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="flex flex-wrap gap-1">
-                            {getRoleNames(user).map(r => (
-                              <span key={r} className="px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700 text-xs font-medium">{ROLE_DISPLAY[r] ?? r}</span>
-                            ))}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${STATUS_COLORS[user.status] || ''}`}>
-                            {STATUS_LABEL[user.status] ?? user.status}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="flex gap-2">
-                            {user.status !== 'ACTIVE' && (
-                              <button onClick={() => handleStatusChange(user, 'ACTIVE')} title="Activar" className="p-1.5 rounded-lg bg-green-50 text-green-600 hover:bg-green-100">
-                                <UserCheck size={15} />
-                              </button>
-                            )}
-                            {user.status !== 'SUSPENDED' && (
-                              <button onClick={() => handleStatusChange(user, 'SUSPENDED')} title="Suspender" className="p-1.5 rounded-lg bg-orange-50 text-orange-600 hover:bg-orange-100">
-                                <UserMinus size={15} />
-                              </button>
-                            )}
-                            {user.status !== 'INACTIVE' && (
-                              <button onClick={() => handleStatusChange(user, 'INACTIVE')} title="Desactivar" className="p-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-100">
-                                <UserX size={15} />
-                              </button>
-                            )}
-                            <button
-                              onClick={() => setSelectedUser(user)}
-                              className="px-3 py-1 rounded-lg bg-gray-100 text-gray-700 text-xs hover:bg-gray-200"
-                            >
-                              Roles
-                            </button>
-                          </div>
-                        </td>
+          {/* Cards View */}
+          {viewMode === 'cards' ? (
+            <div className="rounded-2xl bg-white/70 backdrop-blur-xl shadow-sm p-6">
+              {loading && users.length === 0 ? (
+                <TableSkeleton rows={6} columns={4} />
+              ) : users.length === 0 ? (
+                <p className="text-center py-12 text-gray-400">No hay usuarios</p>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+                  {users.map(user => (
+                    <ProfileCard key={user.id} {...mapUserToCard(user)} />
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            /* Table View */
+            <div className="rounded-2xl bg-white/70 backdrop-blur-xl shadow-sm overflow-hidden">
+              {loading && users.length === 0 ? (
+                <TableSkeleton rows={6} columns={4} />
+              ) : users.length === 0 ? (
+                <p className="text-center py-12 text-gray-400">No hay usuarios</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-gray-100 bg-gray-50/50">
+                        <th className="text-left px-6 py-3 font-semibold text-gray-600">Usuario</th>
+                        <th className="text-left px-6 py-3 font-semibold text-gray-600">Roles</th>
+                        <th className="text-left px-6 py-3 font-semibold text-gray-600">Estado</th>
+                        <th className="text-left px-6 py-3 font-semibold text-gray-600">Acciones</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
+                    </thead>
+                    <tbody>
+                      {users.map(user => (
+                        <tr key={user.id} className="border-b border-gray-50 hover:bg-yellow-50/30 transition">
+                          <td className="px-6 py-4">
+                            <p className="font-medium text-gray-900">{user.fullName}</p>
+                            <p className="text-xs text-gray-400">{user.email}</p>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="flex flex-wrap gap-1">
+                              {getRoleNames(user).map(r => (
+                                <span key={r} className="px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700 text-xs font-medium">{ROLE_DISPLAY[r] ?? r}</span>
+                              ))}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${STATUS_COLORS[user.status] || ''}`}>
+                              {STATUS_LABEL[user.status] ?? user.status}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="flex gap-2">
+                              {user.status !== 'ACTIVE' && (
+                                <button onClick={() => handleStatusChange(user, 'ACTIVE')} title="Activar" className="p-1.5 rounded-lg bg-green-50 text-green-600 hover:bg-green-100">
+                                  <UserCheck size={15} />
+                                </button>
+                              )}
+                              {user.status !== 'SUSPENDED' && (
+                                <button onClick={() => handleStatusChange(user, 'SUSPENDED')} title="Suspender" className="p-1.5 rounded-lg bg-orange-50 text-orange-600 hover:bg-orange-100">
+                                  <UserMinus size={15} />
+                                </button>
+                              )}
+                              {user.status !== 'INACTIVE' && (
+                                <button onClick={() => handleStatusChange(user, 'INACTIVE')} title="Desactivar" className="p-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-100">
+                                  <UserX size={15} />
+                                </button>
+                              )}
+                              <button
+                                onClick={() => setSelectedUser(user)}
+                                className="px-3 py-1 rounded-lg bg-gray-100 text-gray-700 text-xs hover:bg-gray-200"
+                              >
+                                Roles
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </main>
 

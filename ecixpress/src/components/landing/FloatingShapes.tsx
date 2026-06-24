@@ -69,7 +69,7 @@ const FloatingShape: React.FC<FloatingShapeProps> = ({
   };
 
   const getTransform = () => {
-    let transforms = [];
+    const transforms = [];
 
     // Add shape-specific transform
     if (type === 'diamond') {
