@@ -44,11 +44,25 @@ function toastVariantFor(type?: string | null) {
   return toast[variant];
 }
 
+/**
+ * Evento recibido en vivo por el socket. Se expone para que otros contextos (p. ej. la
+ * billetera) reaccionen al instante sin esperar a que el usuario abra un modal. El
+ * contador `seq` cambia en cada evento, de modo que un `useEffect` se dispara aunque
+ * lleguen dos eventos del mismo `type` seguidos.
+ */
+export interface LiveNotificationEvent {
+  type: string | null;
+  data: Record<string, unknown> | null;
+  seq: number;
+}
+
 interface NotificationsContextValue {
   /** True si el socket está conectado al notifications-service. */
   connected: boolean;
   /** Bandeja completa (histórico persistido), más recientes primero. */
   notifications: InboxNotification[];
+  /** Último evento recibido en vivo por el socket (null hasta que llegue el primero). */
+  liveEvent: LiveNotificationEvent | null;
   /** Notificaciones sin leer. */
   unreadCount: number;
   /** Cargando la bandeja desde el backend. */
@@ -81,8 +95,10 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
   const userId = userProfile?.id ?? null;
 
   const socketRef = useRef<Socket | null>(null);
+  const seqRef = useRef(0);
   const [connected, setConnected] = useState(false);
   const [notifications, setNotifications] = useState<InboxNotification[]>([]);
+  const [liveEvent, setLiveEvent] = useState<LiveNotificationEvent | null>(null);
   const [loading, setLoading] = useState(false);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
@@ -178,6 +194,14 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
             <div style={{ fontSize: '0.875rem' }}>{payload.body}</div>
           </div>,
         );
+        // Publicar el evento en vivo para que otros contextos reaccionen (la billetera
+        // refresca su saldo, el modal de recarga auto-verifica el estado, etc.).
+        seqRef.current += 1;
+        setLiveEvent({
+          type: payload.type ?? null,
+          data: payload.data ?? null,
+          seq: seqRef.current,
+        });
         // Recargar la bandeja para traer la notificación ya persistida (con su id y
         // estado). El evento en vivo no incluye el id, por eso se refresca.
         void refresh();
@@ -196,6 +220,7 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
       value={{
         connected,
         notifications,
+        liveEvent,
         unreadCount,
         loading,
         refresh,

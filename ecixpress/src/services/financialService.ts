@@ -41,6 +41,40 @@ export interface WalletTopup {
   updatedAt: string;
 }
 
+export type OrderTransactionStatus =
+  | 'PENDING'
+  | 'HELD'
+  | 'RELEASED'
+  | 'REFUNDED'
+  | 'PARTIALLY_REFUNDED'
+  | 'FAILED';
+
+/**
+ * Pago de una orden contra la billetera del comprador (endpoint `/wallet/transactions`).
+ * Todos los montos en centavos COP. El débito ocurre al pasar a HELD; `refundedAmount`
+ * acumula lo reintegrado en devoluciones totales/parciales.
+ */
+export interface OrderTransaction {
+  id: string;
+  orderId: string;
+  walletId: string;
+  storeId: string;
+  orderAmount: number;
+  peakFeeAmount: number;
+  /** Total debitado del wallet = orderAmount + peakFeeAmount. */
+  totalCharged: number;
+  status: OrderTransactionStatus;
+  /** Monto ya reembolsado al comprador (0 si no hubo devolución). */
+  refundedAmount: number;
+  isPeakHour: boolean;
+  failureReason?: string | null;
+  heldAt?: string | null;
+  releasedAt?: string | null;
+  refundedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 /** Datos específicos por método que recoge el frontend. */
 export interface PaymentData {
   // NEQUI / DAVIPLATA
@@ -147,6 +181,10 @@ export const getWallet = (userId: string) =>
 export const getTopups = (userId: string) =>
   financialFetch<WalletTopup[]>('/wallet/topups', userId);
 
+/** Pagos de órdenes (débitos) de la billetera, con su info de reembolsos. */
+export const getWalletTransactions = (userId: string) =>
+  financialFetch<OrderTransaction[]>('/wallet/transactions', userId);
+
 export const createTopup = (userId: string, dto: CreateTopupDto) =>
   financialFetch<CreateTopupResponse>('/wallet/topups', userId, {
     method: 'POST',
@@ -229,6 +267,118 @@ export const setDefaultPaymentMethod = (
 ): void => {
   localStorage.setItem(defaultMethodKey(userId), method);
 };
+
+// ─── Historial unificado de la billetera ──────────────────────────────────────
+// El backend no expone un timeline único: combinamos las recargas (`/wallet/topups`)
+// con los pagos de órdenes (`/wallet/transactions`) y derivamos de estos últimos
+// tanto el débito como, si lo hubo, el reembolso. Todo se normaliza a `WalletMovement`
+// para pintarlo en una sola lista ordenada por fecha.
+
+export type WalletMovementKind = 'topup' | 'payment' | 'refund';
+export type WalletMovementStatus = 'pending' | 'completed' | 'failed';
+
+export interface WalletMovement {
+  /** Clave única estable para el render. */
+  id: string;
+  kind: WalletMovementKind;
+  /** 'in' acredita saldo (recarga/reembolso); 'out' lo debita (pago). */
+  direction: 'in' | 'out';
+  /** Monto en centavos COP (siempre positivo; el signo lo da `direction`). */
+  amount: number;
+  status: WalletMovementStatus;
+  /** ISO de cuando ocurrió el movimiento. */
+  date: string;
+  title: string;
+  subtitle?: string;
+  /** Solo en recargas: método y id, para poder completar una recarga pendiente. */
+  paymentMethod?: TopupPaymentMethod;
+  topupId?: string;
+  orderId?: string;
+}
+
+const shortId = (id: string) => id.slice(0, 8);
+
+const TOPUP_STATUS: Record<TopupStatus, WalletMovementStatus> = {
+  PENDING: 'pending',
+  APPROVED: 'completed',
+  FAILED: 'failed',
+};
+
+function topupToMovement(t: WalletTopup): WalletMovement {
+  return {
+    id: `topup:${t.id}`,
+    kind: 'topup',
+    direction: 'in',
+    amount: t.amount,
+    status: TOPUP_STATUS[t.status],
+    date: t.createdAt,
+    title: 'Recarga de saldo',
+    paymentMethod: t.paymentMethod,
+    topupId: t.id,
+  };
+}
+
+/** Un pago de orden genera el débito y, si hubo devolución, también el reembolso. */
+function transactionToMovements(tx: OrderTransaction): WalletMovement[] {
+  const order = `Pedido #${shortId(tx.orderId)}`;
+  const movements: WalletMovement[] = [];
+
+  if (tx.status === 'FAILED') {
+    movements.push({
+      id: `pay:${tx.id}`,
+      kind: 'payment',
+      direction: 'out',
+      amount: tx.orderAmount,
+      status: 'failed',
+      date: tx.createdAt,
+      title: 'Pago de pedido',
+      subtitle: order,
+      orderId: tx.orderId,
+    });
+    return movements;
+  }
+
+  // El débito se realizó al retener (HELD); usamos esa fecha si está.
+  movements.push({
+    id: `pay:${tx.id}`,
+    kind: 'payment',
+    direction: 'out',
+    amount: tx.totalCharged,
+    status: 'completed',
+    date: tx.heldAt ?? tx.createdAt,
+    title: 'Pago de pedido',
+    subtitle: tx.isPeakHour ? `${order} · hora pico` : order,
+    orderId: tx.orderId,
+  });
+
+  if (tx.refundedAmount > 0) {
+    const full = tx.status === 'REFUNDED';
+    movements.push({
+      id: `refund:${tx.id}`,
+      kind: 'refund',
+      direction: 'in',
+      amount: tx.refundedAmount,
+      status: 'completed',
+      date: tx.refundedAt ?? tx.updatedAt,
+      title: full ? 'Reembolso' : 'Reembolso parcial',
+      subtitle: order,
+      orderId: tx.orderId,
+    });
+  }
+
+  return movements;
+}
+
+/** Fusiona recargas y pagos en un único historial ordenado (más reciente primero). */
+export function buildWalletHistory(
+  topups: WalletTopup[],
+  transactions: OrderTransaction[],
+): WalletMovement[] {
+  return [
+    ...topups.map(topupToMovement),
+    ...transactions.flatMap(transactionToMovements),
+  ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+}
 
 // ─── Utilidades de formato ─────────────────────────────────────────────────────
 
