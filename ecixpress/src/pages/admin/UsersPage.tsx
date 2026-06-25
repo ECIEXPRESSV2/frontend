@@ -3,7 +3,7 @@ import { toast } from 'react-toastify';
 import { Search, RefreshCw, UserCheck, UserX, UserMinus } from 'lucide-react';
 import Sidebar from '../../components/home/Sidebar';
 import { TableSkeleton } from '../../components/common/LoadingSkeleton';
-import ProfileCard from '../../components/ui/info-card';
+import UserCard from '../../components/ui/info-card';
 import { useAuth } from '../../context/AuthContext';
 import { getUsers, updateUserStatus, assignRole, revokeRole, type UserItem } from '../../services/userService';
 import { getRoles, type Role } from '../../services/roleService';
@@ -122,14 +122,11 @@ const UsersPage: React.FC = () => {
 
   const mapUserToCard = (user: UserItem) => ({
     name: user.fullName,
-    role: getRoleNames(user).join(', ') || 'Usuario',
-    status: user.status === 'ACTIVE' ? 'online' as const : user.status === 'SUSPENDED' ? 'away' as const : 'offline' as const,
-    avatar: user.avatarUrl,
-    tags: getRoleNames(user),
-    isVerified: user.status === 'ACTIVE',
     email: user.email,
-    onMessageClick: () => setSelectedUser(user),
-    onAddClick: () => setSelectedUser(user),
+    roles: getRoleNames(user),
+    status: user.status as "ACTIVE" | "INACTIVE" | "SUSPENDED",
+    avatar: user.avatarUrl,
+    onManageClick: () => setSelectedUser(user),
   });
 
   return (
@@ -185,7 +182,7 @@ const UsersPage: React.FC = () => {
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
                   {users.map(user => (
-                    <ProfileCard key={user.id} {...mapUserToCard(user)} />
+                    <UserCard key={user.id} {...mapUserToCard(user)} />
                   ))}
                 </div>
               )}
