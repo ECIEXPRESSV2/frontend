@@ -19,6 +19,9 @@ export async function apiFetch<T>(
   };
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
+  const sessionId = sessionStorage.getItem('sessionId');
+  if (sessionId) headers['X-Session-Id'] = sessionId;
+
   const res = await fetch(`${API_URL}${path}`, { ...options, headers });
 
   if (!res.ok) {
