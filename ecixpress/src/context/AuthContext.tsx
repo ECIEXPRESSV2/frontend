@@ -149,8 +149,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       if (e.data.type === 'PRIMARY_EXISTS' && e.data.forTabId === TAB_ID) {
         clearTimeout(claimTimeout);
-        sessionStorage.removeItem('sessionId');
-        window.location.href = '/';
+        void signOut();
       }
     };
 
