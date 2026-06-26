@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Users, BookOpen, Utensils, TrendingUp } from 'lucide-react';
+import FloatingShape from './FloatingShapes';
 
 const UniversityContextSection: React.FC = () => {
   const sectionRef = useRef<HTMLDivElement | null>(null);
@@ -59,6 +60,35 @@ const UniversityContextSection: React.FC = () => {
       >
         {/* glow fondo */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[900px] bg-yellow-300/10 blur-[120px] rounded-full" />
+
+        {/* Floating shapes */}
+        <FloatingShape
+            type="circle"
+            size={50}
+            color="rgba(251, 191, 36, 0.2)"
+            blur={12}
+            position="top-left"
+            animation="pulse"
+            animationDuration="4s"
+        />
+        <FloatingShape
+            type="diamond"
+            size={35}
+            color="rgba(34, 211, 238, 0.2)"
+            position="bottom-right"
+            animation="spin"
+            animationDuration="15s"
+        />
+        <FloatingShape
+            type="circle"
+            size={40}
+            color="rgba(52, 211, 153, 0.15)"
+            blur={10}
+            position="top-right"
+            animation="pulse"
+            animationDuration="5s"
+            animationDelay="2s"
+        />
 
         <div className="relative max-w-7xl mx-auto">
 
