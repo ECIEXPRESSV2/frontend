@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Mail, Phone, Edit, Save, X, User,
@@ -134,7 +134,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ onBack, onOrdersClick, onMess
         onMessagesClick={onMessagesClick}
       />
 
-      <main className="ml-16 p-7 md:p-10 relative z-10">
+      <main className="ml-16 px-7 pb-7 pt-20 md:px-10 md:pb-10 relative z-10">
         <div className="max-w-5xl mx-auto space-y-4">
 
           {/* Back */}

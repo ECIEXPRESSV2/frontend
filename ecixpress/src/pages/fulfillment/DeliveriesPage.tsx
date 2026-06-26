@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+﻿import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
@@ -194,7 +194,7 @@ const DeliveriesPage: React.FC<DeliveriesPageProps> = ({ onBack }) => {
     <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-white to-yellow-100">
       <Sidebar activeItem="deliveries" />
 
-      <main className="ml-16 p-6 md:p-8">
+      <main className="ml-16 px-6 pb-6 pt-20 md:px-8 md:pb-8">
         <div className="max-w-7xl mx-auto space-y-6">
           {/* Header */}
           <div className="flex items-center gap-3">

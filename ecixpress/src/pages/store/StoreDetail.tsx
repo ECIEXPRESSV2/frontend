@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, MapPin, Clock, Tag } from 'lucide-react';
 import { toast } from 'react-toastify';
@@ -91,7 +91,7 @@ const StoreDetail: React.FC<StoreDetailProps> = ({ storeId: storeIdProp, onBack 
         onItemClick={setActiveSidebarItem}
       />
 
-      <main className="ml-16 p-6 md:p-8">
+      <main className="ml-16 px-6 pb-6 pt-20 md:px-8 md:pb-8">
         <div className="max-w-4xl mx-auto space-y-6">
           <button
             onClick={() => onBack?.() ?? navigate('/home')}

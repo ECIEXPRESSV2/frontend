@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
 import { Plus, RefreshCw, Shield } from 'lucide-react';
 import Sidebar from '../../components/home/Sidebar';
@@ -102,7 +102,7 @@ const RolesPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-white to-yellow-100">
       <Sidebar activeItem="admin-roles" />
-      <main className="ml-16 p-6 md:p-8">
+      <main className="ml-16 px-6 pb-6 pt-20 md:px-8 md:pb-8">
         <div className="max-w-4xl mx-auto space-y-6">
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold text-gray-900">Roles y Permisos</h1>

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+﻿import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { io, Socket } from 'socket.io-client';
 import { ArrowLeft, RefreshCw, MessageCircle, RotateCcw, XCircle, Star, CheckCircle2, Clock, Plus, QrCode, Undo2, X, Eye, EyeOff, CreditCard, Loader2 } from 'lucide-react';
@@ -355,7 +355,7 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
     <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-white to-yellow-100">
       <Sidebar activeItem="orders" />
 
-      <main className="ml-16 p-6 md:p-8">
+      <main className="ml-16 px-6 pb-6 pt-20 md:px-8 md:pb-8">
         <div className="max-w-7xl mx-auto space-y-6">
           {/* Header */}
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
