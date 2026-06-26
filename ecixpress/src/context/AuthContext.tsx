@@ -11,6 +11,8 @@ import {
 } from 'firebase/auth';
 import { auth } from '../lib/firebase';
 import { apiFetch } from '../services/api';
+import { setCatalogIdentity } from '../lib/catalog-http';
+import { setOrdersIdentity } from '../lib/orders-api';
 
 export interface UserProfile {
   id: string;
@@ -50,6 +52,17 @@ function extractRoleNames(roles: unknown): string[] {
   return (roles as Array<{ name?: string; role?: { name: string } }>).map(
     r => r.name || r.role?.name || ''
   ).filter(Boolean);
+}
+
+/**
+ * Rol único a enviar en `x-user-role` a products-service. Usa `effectiveRole` si viene;
+ * si no, escoge el de mayor privilegio (ADMIN > VENDOR > ANALYST > BUYER) para que la
+ * autorización por rol de products no quede corta.
+ */
+const ROLE_PRIORITY = ['ADMIN', 'VENDOR', 'ANALYST', 'BUYER'];
+function pickPrimaryRole(roles: string[], effectiveRole?: string): string | undefined {
+  if (effectiveRole) return effectiveRole;
+  return ROLE_PRIORITY.find((r) => roles.includes(r)) ?? roles[0];
 }
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -94,6 +107,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // permisos: pueden venir del perfil o derivarlos de los roles
       const rawPerms = profile.permissions as string[] | undefined;
 
+      const effectiveRole = profile.effectiveRole as string | undefined;
+
       setUserProfile({
         id: profile.id as string,
         email: profile.email as string,
@@ -105,8 +120,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         createdAt: profile.createdAt as string,
         roles: roleNames,
         permissions: rawPerms || [],
-        effectiveRole: profile.effectiveRole as string | undefined,
+        effectiveRole,
       });
+
+      // products y orders confían en x-user-id / x-user-role (patrón gateway): publicamos
+      // la identidad para que sus clientes la envíen en cada request.
+      const gatewayIdentity = {
+        userId: profile.id as string,
+        role: pickPrimaryRole(roleNames, effectiveRole),
+      };
+      setCatalogIdentity(gatewayIdentity);
+      setOrdersIdentity(gatewayIdentity);
     } catch (err) {
       console.error('Failed to sync/load profile:', err);
     }
@@ -142,6 +166,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     sessionStorage.removeItem('sessionId');
     await firebaseSignOut(auth);
     setUserProfile(null);
+    setCatalogIdentity(null);
+    setOrdersIdentity(null);
   };
 
   const isAdmin = () => userProfile?.roles.includes('ADMIN') ?? false;
@@ -202,8 +228,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       if (isSecondaryTab.current) { setLoading(false); return; }
       setFirebaseUser(user);
-      if (user) await syncAndLoadProfile(user);
-      else setUserProfile(null);
+      if (user) {
+        await syncAndLoadProfile(user);
+      } else {
+        setUserProfile(null);
+        setCatalogIdentity(null);
+        setOrdersIdentity(null);
+      }
       setLoading(false);
     });
     return unsub;

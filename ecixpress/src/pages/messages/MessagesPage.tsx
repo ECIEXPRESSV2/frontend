@@ -136,7 +136,8 @@ const MessagesPage: React.FC<MessagesPageProps> = ({ onBack }) => {
               </button>
               <h1 className="text-2xl font-bold text-gray-900">Mensajes</h1>
             </div>
-            <span className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium ${connected ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-600'}`}>
+            {/* mr-14: corrido a la izquierda para no quedar detrás de la campana flotante. */}
+            <span className={`inline-flex items-center gap-2 mr-14 shrink-0 px-3 py-1.5 rounded-full text-sm font-medium ${connected ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-600'}`}>
               <Wifi size={14} /> {connected ? 'En vivo' : 'Sin conexión'}
             </span>
           </div>
