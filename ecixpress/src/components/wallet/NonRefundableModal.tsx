@@ -30,7 +30,7 @@ const NonRefundableModal: React.FC<Props> = ({ open, onAccept }) => {
 
   return (
     // z mayor que el ModalShell (z-[100]) para quedar por encima. El backdrop NO cierra.
-    <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-red-950/50 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-sm">
       <div className="w-full max-w-md rounded-3xl bg-white shadow-2xl border-2 border-red-500 overflow-hidden animate-[fadeIn_.15s_ease-out]">
         <div className="bg-red-600 px-6 py-5 flex items-center gap-3">
           <div className="w-11 h-11 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
@@ -42,15 +42,12 @@ const NonRefundableModal: React.FC<Props> = ({ open, onAccept }) => {
         </div>
 
         <div className="px-6 py-6 space-y-4">
-          <div className="rounded-2xl bg-red-50 border border-red-200 p-4 text-sm text-red-700">
-            <p className="font-semibold mb-1">Lee con atención antes de continuar</p>
-            <p className="text-red-600/90">
-              El saldo que cargues a tu billetera ECIExpress{' '}
-              <strong>no se puede devolver a dinero real</strong> bajo ninguna
-              circunstancia. Solo podrás usarlo dentro de la plataforma para tus
-              compras.
-            </p>
-          </div>
+          <p className="text-sm text-red-600/90 text-justify">
+            El saldo que cargues a tu billetera ECIExpress{' '}
+            <strong className="text-red-700">no se puede devolver a dinero real</strong> bajo ninguna
+            circunstancia. Solo podrás usarlo dentro de la plataforma para tus
+            compras.
+          </p>
 
           <button
             type="button"

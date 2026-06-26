@@ -25,9 +25,6 @@ const Sidebar: React.FC<SidebarProps> = ({
   const { userProfile, signOut, isAdmin, isVendor } = useAuth();
   const { balanceLabel, loading: walletLoading } = useWallet();
   const [isExpanded, setIsExpanded] = useState(false);
-  // Cuando el panel de notificaciones está abierto, el sidebar se comprime y no se
-  // vuelve a expandir con el hover hasta que se cierre.
-  const [notifOpen, setNotifOpen] = useState(false);
 
   const menuItems = [
     { id: 'home', icon: Grid, label: 'Inicio', path: '/home' },
@@ -74,7 +71,13 @@ const Sidebar: React.FC<SidebarProps> = ({
     <aside
       className={`fixed left-0 top-0 h-screen bg-white/40 backdrop-blur-xl border-r border-white/30 flex flex-col py-6 z-50 transition-all duration-300 ease-in-out overflow-hidden
         ${isExpanded ? 'w-64' : 'w-16'}`}
-      onMouseEnter={() => !notifOpen && setIsExpanded(true)}
+      // Solo expandir cuando el cursor entra al DOM real del sidebar. El panel de
+      // notificaciones vive en un portal (document.body) pero en el árbol de React
+      // es descendiente del aside, así que sus eventos de mouse se propagan hasta
+      // aquí; este guard evita que pasar el mouse por el panel expanda el sidebar.
+      onMouseEnter={(e) => {
+        if (e.currentTarget.contains(e.target as Node)) setIsExpanded(true);
+      }}
       onMouseLeave={() => setIsExpanded(false)}
     >
       {/* User Icon Header */}
@@ -127,7 +130,6 @@ const Sidebar: React.FC<SidebarProps> = ({
         <NotificationBell
           expanded={isExpanded}
           onOpenChange={(open) => {
-            setNotifOpen(open);
             if (open) setIsExpanded(false); // comprimir el sidebar al abrir
           }}
         />
