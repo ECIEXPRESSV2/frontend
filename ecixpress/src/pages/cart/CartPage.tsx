@@ -14,7 +14,7 @@ interface CartPageProps {
   onMessagesClick?: () => void;
 }
 
-const CartPage: React.FC<CartPageProps> = ({ onBack, onContinue, onOrdersClick, onMessagesClick }) => {
+const CartPage: React.FC<CartPageProps> = ({ onBack, onContinue }) => {
   const navigate = useNavigate();
   const [activeSidebarItem, setActiveSidebarItem] = useState('cart');
   

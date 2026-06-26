@@ -12,8 +12,12 @@ import RolesPage from './pages/admin/RolesPage';
 import StoresPage from './pages/admin/StoresPage';
 import AuditPage from './pages/admin/AuditPage';
 import VendorStoresPage from './pages/vendor/VendorStoresPage';
+import ProductsManagementPage from './pages/vendor/ProductsManagementPage';
+import PromotionsPage from './pages/vendor/PromotionsPage';
 import OrdersPage from './pages/orders/OrdersPage';
 import MessagesPage from './pages/messages/MessagesPage';
+import PickupCodePage from './pages/fulfillment/PickupCodePage';
+import DeliveriesPage from './pages/fulfillment/DeliveriesPage';
 
 const AppRoutes: React.FC = () => {
   const navigate = useNavigate();
@@ -38,6 +42,10 @@ const AppRoutes: React.FC = () => {
       <Route path="/orders" element={<ProtectedRoute><OrdersPage onBack={goHome} /></ProtectedRoute>} />
       <Route path="/messages" element={<ProtectedRoute><MessagesPage onBack={goHome} /></ProtectedRoute>} />
 
+      {/* Fulfillment */}
+      <Route path="/fulfillment/code/:orderId" element={<ProtectedRoute><PickupCodePage onBack={openOrdersDemo} /></ProtectedRoute>} />
+      <Route path="/fulfillment/deliveries" element={<ProtectedRoute requireVendor><DeliveriesPage onBack={goHome} /></ProtectedRoute>} />
+
       {/* Admin */}
       <Route path="/admin/users" element={<ProtectedRoute requireAdmin><UsersPage /></ProtectedRoute>} />
       <Route path="/admin/roles" element={<ProtectedRoute requireAdmin><RolesPage /></ProtectedRoute>} />
@@ -46,6 +54,8 @@ const AppRoutes: React.FC = () => {
 
       {/* Vendor */}
       <Route path="/vendor/stores" element={<ProtectedRoute requireVendor><VendorStoresPage /></ProtectedRoute>} />
+      <Route path="/vendor/stores/:storeId/products" element={<ProtectedRoute requireVendor><ProductsManagementPage /></ProtectedRoute>} />
+      <Route path="/vendor/stores/:storeId/promotions" element={<ProtectedRoute requireVendor><PromotionsPage /></ProtectedRoute>} />
 
       {/* Catch all */}
       <Route path="*" element={<Navigate to="/" replace />} />

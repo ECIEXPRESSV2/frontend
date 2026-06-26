@@ -2,9 +2,12 @@ import { useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import {
   ordersApi,
+  type CreateDraftRequest,
   type CreateOrderRequest,
   type OrderStatus,
   type ParticipantRole,
+  type RequestReturnRequest,
+  type UpsertCartItemRequest,
 } from '../lib/orders-api';
 
 /**
@@ -21,6 +24,12 @@ export function useOrdersApi() {
     getHistory: async (customerId?: string) => ordersApi.getHistory(customerId, await getToken()),
     getFrequent: async (customerId?: string) => ordersApi.getFrequent(customerId, await getToken()),
     createOrder: async (payload: CreateOrderRequest) => ordersApi.createOrder(payload, await getToken()),
+    createDraft: async (payload: CreateDraftRequest) => ordersApi.createDraft(payload, await getToken()),
+    setCartItem: async (orderId: string, payload: UpsertCartItemRequest) =>
+      ordersApi.setCartItem(orderId, payload, await getToken()),
+    checkout: async (orderId: string) => ordersApi.checkout(orderId, await getToken()),
+    requestReturn: async (orderId: string, payload: RequestReturnRequest) =>
+      ordersApi.requestReturn(orderId, payload, await getToken()),
     cancelOrder: async (id: string, payload: { actorType?: string; reason?: string }) =>
       ordersApi.cancelOrder(id, payload, await getToken()),
     updateOrderStatus: async (

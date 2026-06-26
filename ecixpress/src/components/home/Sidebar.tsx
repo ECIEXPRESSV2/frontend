@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, Plus, Grid, ShoppingCart, Clipboard, MessageCircle, LogOut, Wallet, Shield, Store } from 'lucide-react';
+import { User, Plus, Grid, Clipboard, MessageCircle, LogOut, Wallet, Shield, Store, PackageCheck } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useWallet } from '../../context/WalletContext';
 import NotificationBell from '../notifications/NotificationBell';
@@ -20,7 +20,6 @@ const Sidebar: React.FC<SidebarProps> = ({
   onUserClick,
   onOrdersClick,
   onMessagesClick,
-  onCartClick,
 }) => {
   const navigate = useNavigate();
   const { userProfile, signOut, isAdmin, isVendor } = useAuth();
@@ -33,7 +32,6 @@ const Sidebar: React.FC<SidebarProps> = ({
   const menuItems = [
     { id: 'home', icon: Grid, label: 'Inicio', path: '/home' },
     { id: 'orders', icon: Clipboard, label: 'Pedidos', path: null },
-    { id: 'cart', icon: ShoppingCart, label: 'Carrito', path: '/cart' },
     { id: 'messages', icon: MessageCircle, label: 'Mensajes', path: null },
   ];
 
@@ -46,6 +44,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   const vendorItems = [
     { id: 'vendor-stores', icon: Store, label: 'Mis Tiendas', path: '/vendor/stores' },
+    { id: 'deliveries', icon: PackageCheck, label: 'Entregas', path: '/fulfillment/deliveries' },
   ];
 
   const handleLogout = async () => {
@@ -65,12 +64,6 @@ const Sidebar: React.FC<SidebarProps> = ({
     if (item.id === 'messages') {
       onMessagesClick?.();
       if (!onMessagesClick) navigate('/messages');
-      return;
-    }
-
-    if (item.id === 'cart') {
-      onCartClick?.();
-      if (!onCartClick && item.path) navigate(item.path);
       return;
     }
 
@@ -213,6 +206,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       {/* Bottom */}
       <div className="flex flex-col gap-1 w-full px-3">
         <button
+          onClick={() => navigate('/orders?new=1')}
           className={`w-full h-11 rounded-xl flex items-center bg-gradient-to-r from-yellow-400 to-yellow-500 text-white shadow-md hover:from-yellow-500 hover:to-yellow-600 transition-all overflow-hidden
             ${isExpanded ? 'px-4' : 'justify-center'}`}
           title="Nuevo pedido"
