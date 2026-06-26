@@ -193,13 +193,31 @@ export interface MessagesResponse {
 
 export const ORDERS_API_BASE_URL = (import.meta.env.VITE_ORDERS_SERVICE_URL ?? 'http://localhost:3000').replace(/\/$/, '');
 
+/**
+ * Identidad del usuario para orders-service, que confía en los headers `x-user-id` /
+ * `x-user-role` (patrón gateway; en dev orders corre con AUTH_DISABLED=true y no valida
+ * el token). `AuthContext` la setea al cargar el perfil y la limpia al cerrar sesión.
+ */
+let ordersUserId: string | null = null;
+let ordersUserRole: string | null = null;
+
+export function setOrdersIdentity(
+  identity: { userId: string; role?: string | null } | null,
+): void {
+  ordersUserId = identity?.userId ?? null;
+  ordersUserRole = identity?.role ?? null;
+}
+
 async function requestJson<T>(path: string, token?: string | null, init?: RequestInit): Promise<T> {
   const response = await fetch(`${ORDERS_API_BASE_URL}${path}`, {
     // `...init` va primero para que su `headers` (que puede venir como undefined)
-    // no pise el objeto de headers que armamos justo debajo con el Authorization.
+    // no pise el objeto de headers que armamos justo debajo.
     ...init,
     headers: {
       'Content-Type': 'application/json',
+      ...(ordersUserId ? { 'x-user-id': ordersUserId } : {}),
+      ...(ordersUserRole ? { 'x-user-role': ordersUserRole } : {}),
+      // Se conserva el Bearer por compatibilidad; en modo gateway orders lo ignora.
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(init?.headers ?? {}),
     },
