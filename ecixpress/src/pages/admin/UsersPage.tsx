@@ -235,6 +235,7 @@ const UsersPage: React.FC = () => {
   const [bulkActionLoading, setBulkActionLoading] = useState(false);
   const [sidebarExpanded, setSidebarExpanded] = useState(true);
   const bulkRoleButtonRef = React.useRef<HTMLButtonElement>(null);
+  const searchTimerRef = React.useRef<number | null>(null);
   const PAGE_LIMIT = 20;
 
   const toggleSelectUser = (id: string) => {
@@ -678,25 +679,46 @@ const UsersPage: React.FC = () => {
             <div className="grid gap-3 lg:grid-cols-[1fr_auto_auto] lg:items-center">
               <label className="relative block">
                 <span className="sr-only">Buscar por nombre o correo electrónico</span>
-                <Search size={19} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" aria-hidden="true" />
                 <input
-                  className="min-h-12 w-full rounded-2xl border border-white/70 bg-white/85 py-3 pl-12 pr-4 text-base font-medium text-gray-900 shadow-sm outline-none backdrop-blur transition placeholder:text-gray-400 hover:border-yellow-200 focus:border-yellow-400 focus:ring-4 focus:ring-yellow-100"
+                  className="min-h-12 w-full rounded-2xl border border-white/70 bg-white/85 py-3 pl-5 pr-24 text-base font-medium text-gray-900 shadow-sm outline-none backdrop-blur transition placeholder:text-gray-400 hover:border-yellow-200 focus:border-yellow-400 focus:ring-4 focus:ring-yellow-100"
                   placeholder="Buscar por nombre o correo electrónico"
                   value={search}
-                  onChange={event => setSearch(event.target.value)}
+                  onChange={event => {
+                    const val = event.target.value;
+                    setSearch(val);
+                    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+                    searchTimerRef.current = window.setTimeout(() => {
+                      setPage(1);
+                      setSelectedUserIds(new Set());
+                      load({ searchValue: val.trim(), pageNum: 1 });
+                    }, 380);
+                  }}
                   onKeyDown={event => {
-                    if (event.key === 'Enter') handleSearch();
+                    if (event.key === 'Enter') {
+                      if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+                      handleSearch();
+                    }
                   }}
                 />
+                {search && (
+                  <button
+                    type="button"
+                    onClick={clearSearch}
+                    aria-label="Limpiar búsqueda"
+                    className="absolute right-12 top-1/2 -translate-y-1/2 inline-flex h-7 w-7 items-center justify-center rounded-full text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 focus:outline-none"
+                  >
+                    <X size={14} aria-hidden="true" />
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current); handleSearch(); }}
+                  aria-label="Buscar"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex h-8 w-8 items-center justify-center rounded-xl bg-yellow-400 text-white transition hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-300"
+                >
+                  <Search size={16} aria-hidden="true" />
+                </button>
               </label>
-
-              <button
-                type="button"
-                onClick={handleSearch}
-                className="inline-flex min-h-12 items-center justify-center rounded-2xl bg-gradient-to-r from-yellow-400 to-amber-500 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-yellow-500/20 transition hover:from-yellow-500 hover:to-amber-600 focus:outline-none focus:ring-2 focus:ring-yellow-300"
-              >
-                Buscar
-              </button>
 
               <div className="inline-flex min-h-12 rounded-2xl border border-white/60 bg-white/60 p-1 shadow-sm backdrop-blur">
                 <button
@@ -1407,7 +1429,7 @@ const UserDetailDrawer: React.FC<UserDetailDrawerProps> = ({
       />
 
       <aside
-        className="absolute right-0 top-0 flex h-full w-full max-w-md flex-col overflow-y-auto border-l border-gray-100 bg-white shadow-2xl shadow-gray-900/15"
+        className="absolute right-0 top-0 flex h-full w-full max-w-md flex-col overflow-y-auto rounded-l-[28px] bg-white shadow-2xl shadow-gray-900/20"
         aria-label="Detalle del usuario"
         onClick={() => { if (openRoleSelect) setOpenRoleSelect(false); }}
       >

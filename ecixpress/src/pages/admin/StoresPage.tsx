@@ -178,14 +178,6 @@ const getConfiguredScheduleSummary = (schedules?: StoreSchedule[]) => {
     .join(' · ');
 };
 
-const getScheduleSummary = (store: Store, loadedSchedules?: StoreSchedule[]) => {
-  if (store.status === 'TEMPORARILY_CLOSED') return 'Suspendida temporalmente';
-  if (store.status === 'CLOSED') return 'Cerrada manualmente';
-
-  const schedule = getTodaySchedule(loadedSchedules ?? store.schedules);
-  if (schedule) return `Hoy ${formatTime(schedule.openTime)} - ${formatTime(schedule.closeTime)}`;
-  return 'Horario por configurar';
-};
 
 const getPrimaryStatusAction = (store: Store) => {
   if (store.status === 'OPEN') return { label: 'Cerrar tienda', nextStatus: 'CLOSED' as Store['status'], tone: 'danger' };
@@ -1082,9 +1074,8 @@ const StoresPage: React.FC = () => {
                 <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto_auto] lg:items-center">
                   <label className="relative block">
                     <span className="sr-only">Buscar por nombre o ubicación</span>
-                    <Search size={19} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" aria-hidden="true" />
                     <input
-                      className="min-h-12 w-full rounded-2xl border border-gray-100 bg-gray-50 py-3 pl-12 pr-10 text-base font-medium text-gray-900 outline-none transition placeholder:text-gray-400 hover:border-yellow-200 focus:border-yellow-400 focus:bg-white focus:ring-4 focus:ring-yellow-100"
+                      className="min-h-12 w-full rounded-2xl border border-gray-100 bg-gray-50 py-3 pl-5 pr-24 text-base font-medium text-gray-900 outline-none transition placeholder:text-gray-400 hover:border-yellow-200 focus:border-yellow-400 focus:bg-white focus:ring-4 focus:ring-yellow-100"
                       placeholder="Buscar por nombre o ubicación"
                       value={search}
                       onChange={event => setSearch(event.target.value)}
@@ -1093,31 +1084,35 @@ const StoresPage: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => setSearch('')}
-                        className="absolute right-3 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-yellow-300"
+                        className="absolute right-12 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 focus:outline-none"
                         aria-label="Limpiar búsqueda"
                       >
-                        <X size={15} aria-hidden="true" />
+                        <X size={14} aria-hidden="true" />
                       </button>
                     )}
+                    <span className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex h-8 w-8 items-center justify-center rounded-xl bg-yellow-400 text-white" aria-hidden="true">
+                      <Search size={16} />
+                    </span>
                   </label>
                   <button
                     type="button"
                     onClick={() => setShowCreate(true)}
-                    className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-gray-950 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-gray-900/10 transition hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-yellow-300"
+                    className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-yellow-400 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-300"
                   >
                     <Plus size={16} aria-hidden="true" />
                     Nueva tienda
                   </button>
-                  <span className="text-sm font-semibold text-gray-500">
-                    {visibleStores.length} resultado{visibleStores.length === 1 ? '' : 's'}
-                  </span>
+                  {search && (
+                    <span className="text-sm font-semibold text-gray-500">
+                      {visibleStores.length} resultado{visibleStores.length === 1 ? '' : 's'}
+                    </span>
+                  )}
                 </div>
 
                 {recentStores.length > 0 && (
                   <div className="mt-5">
-                    <div className="mb-3 flex items-center justify-between gap-3">
+                    <div className="mb-3">
                       <h2 className="text-sm font-bold text-gray-950">Últimas tiendas creadas</h2>
-                      <span className="text-xs font-semibold text-gray-400">Nuevos registros</span>
                     </div>
                     <div className="-mx-1 flex gap-4 overflow-x-auto px-1 pb-2">
                       {recentStores.map(store => (
@@ -1386,28 +1381,28 @@ const StoresPage: React.FC = () => {
                               </div>
                               <ChevronRight size={18} className="mt-1 flex-shrink-0 text-gray-300 transition group-hover:text-amber-600" aria-hidden="true" />
                             </div>
-                            <div className="mt-4 flex items-center gap-2 rounded-xl bg-gray-50 px-3 py-2 text-sm text-gray-600">
-                              <Clock size={15} className="text-amber-600" aria-hidden="true" />
+                            <p className="mt-1.5 flex items-center gap-1.5 text-xs text-gray-400">
+                              <Clock size={12} className="flex-shrink-0 text-amber-500" aria-hidden="true" />
                               <span className="truncate">{getConfiguredScheduleSummary(store.schedules)}</span>
-                            </div>
+                            </p>
                           </div>
                         </button>
-                        <div className="flex items-center gap-2 border-t border-gray-100 px-4 py-3">
+                        <div className="flex items-center justify-between border-t border-gray-100 px-4 py-2">
                           <button
                             type="button"
                             onClick={e => openEditStore(store, e)}
-                            className="inline-flex min-h-10 flex-1 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-bold text-gray-700 transition hover:bg-yellow-50 hover:text-amber-700 focus:outline-none focus:ring-2 focus:ring-yellow-300"
+                            className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-medium text-gray-400 transition hover:bg-gray-50 hover:text-gray-700 focus:outline-none"
                           >
-                            <Pencil size={15} aria-hidden="true" />
+                            <Pencil size={13} aria-hidden="true" />
                             Editar
                           </button>
                           <button
                             type="button"
                             onClick={() => setStatusAction({ store, nextStatus: statusActionInfo.nextStatus })}
-                            className={`inline-flex min-h-10 flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-bold transition focus:outline-none focus:ring-2 ${
+                            className={`inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-medium transition focus:outline-none ${
                               statusActionInfo.tone === 'danger'
-                                ? 'border border-red-100 bg-red-50 text-red-700 hover:bg-red-100 focus:ring-red-300'
-                                : 'bg-yellow-400 text-gray-950 hover:bg-yellow-500 focus:ring-yellow-300'
+                                ? 'text-red-400 hover:bg-red-50 hover:text-red-600'
+                                : 'text-amber-500 hover:bg-amber-50 hover:text-amber-700'
                             }`}
                           >
                             {statusActionInfo.label}
@@ -1480,7 +1475,9 @@ const StoresPage: React.FC = () => {
       {/* Edit store modal */}
       {editingStore && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-gray-950/45 p-4 backdrop-blur-sm">
-          <div className="max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-2xl border border-white/80 bg-white p-6 shadow-2xl shadow-gray-900/20">
+          <div className="flex max-h-[92vh] w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-white/80 bg-white shadow-2xl shadow-gray-900/20">
+          <div className="h-1 flex-shrink-0 bg-[#F4B942]" />
+          <div className="overflow-y-auto p-6">
             <div className="mb-5 flex items-start justify-between gap-4">
               <div>
                 <p className="text-xs font-bold uppercase tracking-wide text-amber-600">Editar tienda</p>
@@ -1534,6 +1531,7 @@ const StoresPage: React.FC = () => {
                 {saving ? 'Guardando...' : 'Guardar cambios'}
               </button>
             </div>
+          </div>
           </div>
         </div>
       )}
