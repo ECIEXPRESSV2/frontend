@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { toast } from 'react-toastify';
 import {
   AlertCircle,
@@ -25,9 +26,10 @@ import {
 import Sidebar from '../../components/home/Sidebar';
 import { TableSkeleton } from '../../components/common/LoadingSkeleton';
 import { useAuth } from '../../context/AuthContext';
-import { assignRole, getUsers, revokeRole, updateUserStatus, type UserItem } from '../../services/userService';
+import { assignRole, bulkAssignRole, bulkUpdateStatus, getUsers, revokeRole, updateUserStatus, type UserItem } from '../../services/userService';
 import { getRoles, type Role } from '../../services/roleService';
 import { getPageCache, pageCacheKeys, setPageCache } from '../../services/pageCache';
+import { getStoresByUser, type Store as StoreData } from '../../services/storeService';
 
 type UsersCache = {
   users: UserItem[];
@@ -206,16 +208,26 @@ const UsersPage: React.FC = () => {
   const [search, setSearch] = useState('');
   const [appliedSearch, setAppliedSearch] = useState('');
   const [selectedUser, setSelectedUser] = useState<UserItem | null>(null);
+  const [drawerStores, setDrawerStores] = useState<StoreData[]>([]);
   const [assigningRole, setAssigningRole] = useState('');
   const [roleUpdating, setRoleUpdating] = useState(false);
   const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
   const [statusUpdating, setStatusUpdating] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('table');
   const [openMenuUserId, setOpenMenuUserId] = useState<string | null>(null);
+  const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
   const [filterRole, setFilterRole] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
-  const [openFilterMenu, setOpenFilterMenu] = useState<'role' | 'status' | null>(null);
+  const [openFilterMenu, setOpenFilterMenu] = useState<'role' | 'status' | 'sort' | null>(null);
   const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(new Set());
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [sortBy, setSortBy] = useState<'createdAt' | 'lastLoginAt'>('createdAt');
+  const [bulkRoleId, setBulkRoleId] = useState('');
+  const [openBulkRoleMenu, setOpenBulkRoleMenu] = useState(false);
+  const [bulkActionLoading, setBulkActionLoading] = useState(false);
+  const PAGE_LIMIT = 20;
 
   const toggleSelectUser = (id: string) => {
     setSelectedUserIds(prev => {
@@ -236,32 +248,45 @@ const UsersPage: React.FC = () => {
 
   const clearSelection = () => setSelectedUserIds(new Set());
 
-  const load = async ({ searchValue = appliedSearch, showLoading = false, silent = false } = {}) => {
+  const load = async ({
+    searchValue = appliedSearch,
+    pageNum = page,
+    roleFilter = filterRole,
+    statusFilter = filterStatus,
+    sortFilter = sortBy,
+    showLoading = false,
+    silent = false,
+  } = {}) => {
     const normalizedSearch = searchValue.trim();
-    const cacheKey = pageCacheKeys.adminUsers(normalizedSearch);
-    const cached = getPageCache<UsersCache>(cacheKey);
-
-    if (cached) {
-      setUsers(cached.users);
-      setRoles(cached.roles);
-    }
-
     setError('');
-    setLoading(showLoading && !cached);
+    setLoading(showLoading);
     setRefreshing(silent);
 
     try {
       const token = await getToken();
-      const [usersRes, rolesRes] = await Promise.all([
-        getUsers(token, normalizedSearch ? { search: normalizedSearch } : undefined),
-        getRoles(token),
-      ]);
-      const list = Array.isArray(usersRes) ? usersRes : (usersRes as { data: UserItem[] }).data ?? [];
+      const params: Record<string, string> = {
+        page: String(pageNum),
+        limit: String(PAGE_LIMIT),
+      };
+      if (normalizedSearch) params.search = normalizedSearch;
+      if (roleFilter) params.role = roleFilter;
+      if (statusFilter) params.status = statusFilter;
+      if (sortFilter !== 'createdAt') params.sortBy = sortFilter;
 
-      setUsers(list);
-      setRoles(rolesRes);
+      const [usersRes, rolesRes] = await Promise.all([
+        getUsers(token, params),
+        roles.length === 0 ? getRoles(token) : Promise.resolve(roles),
+      ]);
+
+      setUsers(usersRes.data ?? []);
+      setTotal(usersRes.meta?.total ?? 0);
+      setTotalPages(usersRes.meta?.totalPages ?? 1);
+      if (roles.length === 0) setRoles(rolesRes as typeof roles);
       setAppliedSearch(normalizedSearch);
-      setPageCache(cacheKey, { users: list, roles: rolesRes });
+      setPageCache(pageCacheKeys.adminUsers(normalizedSearch), {
+        users: usersRes.data ?? [],
+        roles: roles.length === 0 ? (rolesRes as typeof roles) : roles,
+      });
     } catch (err) {
       const message = err instanceof Error ? err.message : 'No se pudieron cargar los usuarios.';
       setError(message);
@@ -277,30 +302,42 @@ const UsersPage: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Reload cuando cambian filtros u orden, reseteando a página 1
+  useEffect(() => {
+    setPage(1);
+    setSelectedUserIds(new Set());
+    load({ pageNum: 1, roleFilter: filterRole, statusFilter: filterStatus, sortFilter: sortBy, showLoading: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterRole, filterStatus, sortBy]);
+
   useEffect(() => {
     if (!selectedUser) return;
     const updated = users.find(user => user.id === selectedUser.id);
     if (updated) setSelectedUser(updated);
   }, [users, selectedUser]);
 
-  const filteredUsers = useMemo(() => {
-    return users.filter(user => {
-      if (filterRole) {
-        const roleNames = getRoleNames(user).map(getCanonicalRoleKey);
-        if (!roleNames.includes(getCanonicalRoleKey(filterRole))) return false;
-      }
-      if (filterStatus) {
-        if (String(user.status).toUpperCase() !== filterStatus) return false;
-      }
-      return true;
-    });
-  }, [users, filterRole, filterStatus]);
+  // Carga tiendas asignadas cuando se abre el drawer de un VENDOR o ADMIN
+  useEffect(() => {
+    if (!selectedUser) { setDrawerStores([]); return; }
+    const roleKeys = getRoleNames(selectedUser).map(getCanonicalRoleKey);
+    if (!roleKeys.some(k => k === 'VENDOR' || k === 'ADMIN')) { setDrawerStores([]); return; }
+    let cancelled = false;
+    getToken().then(token => getStoresByUser(selectedUser.id, token)).then(stores => {
+      if (!cancelled) setDrawerStores(stores);
+    }).catch(() => { if (!cancelled) setDrawerStores([]); });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedUser?.id]);
+
+  // El backend ya filtra — `users` es siempre el resultado filtrado/paginado
+  const filteredUsers = users;
 
   const availableFilterRoles = useMemo(() => {
-    const roleSet = new Set<string>();
-    users.forEach(user => getRoleNames(user).forEach(role => roleSet.add(getRoleKey(role))));
-    return Array.from(roleSet).map(key => ({ value: key, label: ROLE_META[key]?.label ?? key }));
-  }, [users]);
+    return roles.map(role => ({
+      value: role.name,
+      label: ROLE_META[getRoleKey(role.name)]?.label ?? role.name,
+    }));
+  }, [roles]);
 
   const availableRoles = useMemo(() => {
     if (!selectedUser) return roles;
@@ -309,16 +346,60 @@ const UsersPage: React.FC = () => {
   }, [roles, selectedUser]);
 
   const handleSearch = () => {
-    load({ searchValue: search, showLoading: true });
+    setPage(1);
+    setSelectedUserIds(new Set());
+    load({ searchValue: search, pageNum: 1, showLoading: true });
   };
 
   const clearSearch = () => {
     setSearch('');
-    load({ searchValue: '', showLoading: true });
+    setPage(1);
+    setSelectedUserIds(new Set());
+    load({ searchValue: '', pageNum: 1, showLoading: true });
   };
 
   const handleRefresh = () => {
-    load({ searchValue: appliedSearch, silent: true });
+    load({ showLoading: false, silent: true });
+  };
+
+  const goToPage = (p: number) => {
+    setPage(p);
+    setSelectedUserIds(new Set());
+    load({ pageNum: p, showLoading: true });
+  };
+
+  const handleBulkStatus = async (status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED') => {
+    if (selectedUserIds.size === 0) return;
+    try {
+      setBulkActionLoading(true);
+      const token = await getToken();
+      await bulkUpdateStatus(Array.from(selectedUserIds), status, token);
+      const label = status === 'ACTIVE' ? 'reactivadas' : status === 'INACTIVE' ? 'marcadas inactivas' : 'suspendidas';
+      toast.success(`${selectedUserIds.size} cuenta${selectedUserIds.size !== 1 ? 's' : ''} ${label}.`);
+      clearSelection();
+      await load({ silent: true });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'No se pudo actualizar el estado.');
+    } finally {
+      setBulkActionLoading(false);
+    }
+  };
+
+  const handleBulkAssignRole = async () => {
+    if (selectedUserIds.size === 0 || !bulkRoleId) return;
+    try {
+      setBulkActionLoading(true);
+      const token = await getToken();
+      const res = await bulkAssignRole(Array.from(selectedUserIds), bulkRoleId, token);
+      toast.success(`Rol ${res.roleName} asignado a ${res.updated} usuario${res.updated !== 1 ? 's' : ''}.`);
+      setBulkRoleId('');
+      clearSelection();
+      await load({ silent: true });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'No se pudo asignar el rol.');
+    } finally {
+      setBulkActionLoading(false);
+    }
   };
 
   const handleAssignRole = async () => {
@@ -430,74 +511,75 @@ const UsersPage: React.FC = () => {
     );
   };
 
+  const closeMenu = () => { setOpenMenuUserId(null); setMenuPos(null); };
+
   const renderActionsMenu = (user: UserItem) => {
     const isOpen = openMenuUserId === user.id;
     const status = String(user.status).toUpperCase();
 
-    return (
-      <div className="relative" onClick={event => event.stopPropagation()}>
+    const menuContent = isOpen && menuPos ? createPortal(
+      <div
+        style={{ position: 'fixed', top: menuPos.top, right: menuPos.right, zIndex: 9999 }}
+        className="w-56 overflow-hidden rounded-2xl border border-white/70 bg-white/90 p-1.5 shadow-xl shadow-gray-200/70 backdrop-blur-xl"
+        onClick={e => e.stopPropagation()}
+      >
         <button
           type="button"
-          onClick={() => setOpenMenuUserId(isOpen ? null : user.id)}
+          onClick={() => { setSelectedUser(user); closeMenu(); }}
+          className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-medium text-gray-700 hover:bg-gray-50"
+        >
+          <Shield size={16} aria-hidden="true" />
+          Editar roles
+        </button>
+        {status === 'SUSPENDED' || status === 'INACTIVE' ? (
+          <button
+            type="button"
+            onClick={() => { closeMenu(); openStatusConfirmation(user, 'ACTIVE'); }}
+            className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-medium text-emerald-700 hover:bg-emerald-50"
+          >
+            <UserCheck size={16} aria-hidden="true" />
+            Reactivar cuenta
+          </button>
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={() => { closeMenu(); openStatusConfirmation(user, 'INACTIVE'); }}
+              className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              <Clock size={16} aria-hidden="true" />
+              Marcar inactiva
+            </button>
+            <button
+              type="button"
+              onClick={() => { closeMenu(); openStatusConfirmation(user, 'SUSPENDED'); }}
+              className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-medium text-red-700 hover:bg-red-50"
+            >
+              <UserMinus size={16} aria-hidden="true" />
+              Suspender cuenta
+            </button>
+          </>
+        )}
+      </div>,
+      document.body,
+    ) : null;
+
+    return (
+      <div onClick={e => e.stopPropagation()}>
+        <button
+          type="button"
+          onClick={e => {
+            if (isOpen) { closeMenu(); return; }
+            const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect();
+            setMenuPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+            setOpenMenuUserId(user.id);
+          }}
           className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/70 bg-white/80 text-gray-600 shadow-sm backdrop-blur transition hover:border-yellow-300 hover:bg-yellow-50 hover:text-amber-700 focus:outline-none focus:ring-2 focus:ring-yellow-300"
           aria-label={`Abrir acciones para ${user.fullName}`}
         >
           <MoreHorizontal size={18} aria-hidden="true" />
         </button>
-
-        {isOpen && (
-          <div className="absolute right-0 top-12 z-20 w-56 overflow-hidden rounded-2xl border border-white/70 bg-white/90 p-1.5 shadow-xl shadow-gray-200/70 backdrop-blur-xl">
-            <button
-              type="button"
-              onClick={() => {
-                setSelectedUser(user);
-                setOpenMenuUserId(null);
-              }}
-              className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-medium text-gray-700 hover:bg-gray-50"
-            >
-              <Shield size={16} aria-hidden="true" />
-              Editar roles
-            </button>
-            {status === 'SUSPENDED' || status === 'INACTIVE' ? (
-              <button
-                type="button"
-                onClick={() => {
-                  setOpenMenuUserId(null);
-                  openStatusConfirmation(user, 'ACTIVE');
-                }}
-                className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-medium text-emerald-700 hover:bg-emerald-50"
-              >
-                <UserCheck size={16} aria-hidden="true" />
-                Reactivar cuenta
-              </button>
-            ) : (
-              <>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setOpenMenuUserId(null);
-                    openStatusConfirmation(user, 'INACTIVE');
-                  }}
-                  className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-medium text-gray-700 hover:bg-gray-50"
-                >
-                  <Clock size={16} aria-hidden="true" />
-                  Marcar inactiva
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setOpenMenuUserId(null);
-                    openStatusConfirmation(user, 'SUSPENDED');
-                  }}
-                  className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-medium text-red-700 hover:bg-red-50"
-                >
-                  <UserMinus size={16} aria-hidden="true" />
-                  Suspender cuenta
-                </button>
-              </>
-            )}
-          </div>
-        )}
+        {menuContent}
       </div>
     );
   };
@@ -506,13 +588,14 @@ const UsersPage: React.FC = () => {
     <div
       className="min-h-screen bg-gradient-to-b from-white via-gray-50 to-white text-gray-900"
       onClick={() => {
-        if (openMenuUserId) setOpenMenuUserId(null);
+        if (openMenuUserId) closeMenu();
         if (openFilterMenu) setOpenFilterMenu(null);
+        if (openBulkRoleMenu) setOpenBulkRoleMenu(false);
       }}
     >
       <Sidebar activeItem="admin-users" defaultExpanded lockExpanded />
 
-      <main className="ml-16 min-h-screen px-4 py-5 transition-all duration-300 md:ml-64 md:px-8 lg:px-10">
+      <main className="relative z-[51] ml-16 min-h-screen px-4 py-5 transition-all duration-300 md:ml-64 md:px-8 lg:px-10">
         <div className="pointer-events-none fixed inset-0 overflow-hidden">
           <div className="absolute -top-52 left-1/2 h-[560px] w-[760px] -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgba(251,191,36,0.08)_0%,transparent_66%)] blur-3xl" />
           <div className="absolute right-[-220px] top-44 h-[420px] w-[420px] rounded-full bg-[radial-gradient(circle,rgba(94,192,217,0.10)_0%,transparent_68%)] blur-3xl" />
@@ -541,21 +624,20 @@ const UsersPage: React.FC = () => {
                 </h1>
               </div>
 
-              <div className="flex flex-col gap-2 sm:flex-row">
-                <button
-                  type="button"
-                  onClick={handleRefresh}
-                  disabled={refreshing}
-                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-white/70 bg-white/80 px-4 py-2.5 text-sm font-semibold text-gray-800 shadow-sm backdrop-blur transition hover:bg-white hover:text-gray-950 focus:outline-none focus:ring-2 focus:ring-white disabled:cursor-wait disabled:opacity-70"
-                >
-                  <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} aria-hidden="true" />
-                  {refreshing ? 'Actualizando...' : 'Actualizar datos'}
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={handleRefresh}
+                disabled={refreshing}
+                title={refreshing ? 'Actualizando...' : 'Actualizar datos'}
+                aria-label="Actualizar datos"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/70 bg-white/70 text-gray-700 shadow-sm backdrop-blur transition hover:bg-white hover:text-gray-950 focus:outline-none focus:ring-2 focus:ring-white disabled:cursor-wait disabled:opacity-60"
+              >
+                <RefreshCw size={15} className={refreshing ? 'animate-spin' : ''} aria-hidden="true" />
+              </button>
             </div>
           </header>
 
-          <section className="relative overflow-hidden rounded-3xl border border-white/70 bg-white/82 p-4 shadow-lg shadow-gray-200/60 backdrop-blur-xl md:p-5">
+          <section className="relative rounded-3xl border border-white/70 bg-white/82 p-4 shadow-lg shadow-gray-200/60 backdrop-blur-xl md:p-5">
             <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white to-transparent" />
             <div className="grid gap-3 lg:grid-cols-[1fr_auto_auto] lg:items-center">
               <label className="relative block">
@@ -606,7 +688,7 @@ const UsersPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="mt-3 flex flex-wrap items-center gap-2">
+            <div className="relative z-[200] mt-3 flex flex-wrap items-center gap-2">
               <FilterChip
                 label="Rol"
                 icon={Shield}
@@ -632,16 +714,22 @@ const UsersPage: React.FC = () => {
                 onSelect={val => { setFilterStatus(val); setOpenFilterMenu(null); }}
                 onClear={() => setFilterStatus('')}
               />
-              <button
-                type="button"
-                className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-gray-300 bg-white/70 px-3 py-1.5 text-xs font-semibold text-gray-500 transition hover:border-yellow-300 hover:bg-yellow-50 hover:text-amber-700 focus:outline-none focus:ring-2 focus:ring-yellow-300"
-              >
-                + Agregar filtro
-              </button>
-              {(filterRole || filterStatus) && (
+              <FilterChip
+                label="Ordenar"
+                icon={Clock}
+                value={sortBy === 'lastLoginAt' ? 'lastLoginAt' : ''}
+                options={[
+                  { value: 'lastLoginAt', label: 'Última conexión' },
+                ]}
+                isOpen={openFilterMenu === 'sort'}
+                onOpen={() => setOpenFilterMenu(openFilterMenu === 'sort' ? null : 'sort')}
+                onSelect={val => { setSortBy(val === 'lastLoginAt' ? 'lastLoginAt' : 'createdAt'); setOpenFilterMenu(null); }}
+                onClear={() => setSortBy('createdAt')}
+              />
+              {(filterRole || filterStatus || sortBy !== 'createdAt') && (
                 <button
                   type="button"
-                  onClick={() => { setFilterRole(''); setFilterStatus(''); }}
+                  onClick={() => { setFilterRole(''); setFilterStatus(''); setSortBy('createdAt'); }}
                   className="ml-1 inline-flex items-center gap-1 rounded-full px-2 py-1.5 text-xs font-semibold text-gray-500 transition hover:text-red-600 focus:outline-none"
                 >
                   <X size={12} aria-hidden="true" />
@@ -655,7 +743,7 @@ const UsersPage: React.FC = () => {
                 <span className="font-semibold text-gray-900">
                   {loading
                     ? 'Cargando usuarios...'
-                    : `${filteredUsers.length} usuario${filteredUsers.length === 1 ? '' : 's'}${filterRole || filterStatus ? ' filtrados' : ' encontrados'}`}
+                    : `${total} usuario${total === 1 ? '' : 's'}${filterRole || filterStatus ? ' filtrados' : ' encontrados'}`}
                 </span>
                 {appliedSearch && (
                   <span className="inline-flex items-center gap-2 rounded-full border border-yellow-200 bg-yellow-50 px-3 py-1 text-xs font-semibold text-amber-800">
@@ -678,23 +766,86 @@ const UsersPage: React.FC = () => {
                     {selectedUserIds.size} seleccionado{selectedUserIds.size !== 1 ? 's' : ''}
                   </span>
                   <span className="h-4 w-px bg-yellow-200" aria-hidden="true" />
+                  {/* Asignar rol en bulk — custom dropdown con puntos de color */}
+                  <div className="relative flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
+                    <button
+                      type="button"
+                      onClick={() => setOpenBulkRoleMenu(v => !v)}
+                      disabled={bulkActionLoading}
+                      className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold transition focus:outline-none focus:ring-2 focus:ring-yellow-300 disabled:cursor-wait ${
+                        bulkRoleId
+                          ? 'border-yellow-300 bg-yellow-50 text-amber-800'
+                          : 'border-gray-200 bg-white/80 text-gray-600 hover:border-yellow-200 hover:bg-yellow-50/50'
+                      }`}
+                      aria-label="Seleccionar rol para asignar"
+                    >
+                      <Shield size={13} aria-hidden="true" />
+                      {(() => {
+                        const r = roles.find(r => r.id === bulkRoleId);
+                        return r ? (
+                          <>
+                            <span className={`inline-block h-2 w-2 rounded-full ${getRoleDotClass(r.name)}`} />
+                            {ROLE_META[getRoleKey(r.name)]?.label ?? r.name}
+                          </>
+                        ) : 'Seleccionar rol';
+                      })()}
+                      <ChevronDown size={12} className={`transition-transform ${openBulkRoleMenu ? 'rotate-180' : ''}`} aria-hidden="true" />
+                    </button>
+                    {openBulkRoleMenu && (
+                      <div className="absolute bottom-[calc(100%+6px)] left-0 z-[300] min-w-[180px] overflow-hidden rounded-2xl border border-white/80 bg-white/95 p-1.5 shadow-xl shadow-gray-200/80 backdrop-blur-xl">
+                        {roles.map(r => (
+                          <button
+                            key={r.id}
+                            type="button"
+                            onClick={() => { setBulkRoleId(r.id); setOpenBulkRoleMenu(false); }}
+                            className={`flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-xs font-semibold transition ${
+                              bulkRoleId === r.id ? 'bg-yellow-50 text-amber-800' : 'text-gray-700 hover:bg-gray-50'
+                            }`}
+                          >
+                            <span className={`inline-block h-2 w-2 flex-shrink-0 rounded-full ${getRoleDotClass(r.name)}`} />
+                            {ROLE_META[getRoleKey(r.name)]?.label ?? r.name}
+                            {bulkRoleId === r.id && <Check size={13} className="ml-auto text-amber-700" aria-hidden="true" />}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      onClick={handleBulkAssignRole}
+                      disabled={!bulkRoleId || bulkActionLoading}
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-yellow-300 bg-yellow-50 px-3 py-1.5 text-xs font-semibold text-amber-800 transition hover:bg-yellow-100 focus:outline-none focus:ring-2 focus:ring-yellow-300 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Aplicar
+                    </button>
+                  </div>
+                  <span className="h-4 w-px bg-yellow-200" aria-hidden="true" />
+                  {/* Cambiar estado en bulk */}
                   <button
                     type="button"
-                    disabled
-                    title="Disponible próximamente"
-                    className="inline-flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white/80 px-3 py-1.5 text-xs font-semibold text-gray-500 opacity-60 cursor-not-allowed"
+                    onClick={() => handleBulkStatus('ACTIVE')}
+                    disabled={bulkActionLoading}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-300 disabled:cursor-wait disabled:opacity-50"
                   >
-                    <Shield size={13} aria-hidden="true" />
-                    Asignar rol
+                    <UserCheck size={13} aria-hidden="true" />
+                    Activar
                   </button>
                   <button
                     type="button"
-                    disabled
-                    title="Disponible próximamente"
-                    className="inline-flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white/80 px-3 py-1.5 text-xs font-semibold text-gray-500 opacity-60 cursor-not-allowed"
+                    onClick={() => handleBulkStatus('INACTIVE')}
+                    disabled={bulkActionLoading}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white/80 px-3 py-1.5 text-xs font-semibold text-gray-600 transition hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-300 disabled:cursor-wait disabled:opacity-50"
+                  >
+                    <Clock size={13} aria-hidden="true" />
+                    Inactivar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleBulkStatus('SUSPENDED')}
+                    disabled={bulkActionLoading}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700 transition hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-300 disabled:cursor-wait disabled:opacity-50"
                   >
                     <UserMinus size={13} aria-hidden="true" />
-                    Cambiar estado
+                    Suspender
                   </button>
                   <button
                     type="button"
@@ -915,15 +1066,63 @@ const UsersPage: React.FC = () => {
               </div>
             )}
 
-            {filteredUsers.length > 0 && !loading && (
+            {total > 0 && !loading && (
               <footer className="flex flex-col gap-3 border-t border-white/70 bg-white/75 px-5 py-4 text-sm text-gray-600 md:flex-row md:items-center md:justify-between">
                 <p>
-                  Mostrando <span className="font-bold text-gray-950">1-{filteredUsers.length}</span> de{' '}
-                  <span className="font-bold text-gray-950">{users.length}</span> usuarios cargados
+                  Mostrando{' '}
+                  <span className="font-bold text-gray-950">
+                    {(page - 1) * PAGE_LIMIT + 1}–{Math.min(page * PAGE_LIMIT, total)}
+                  </span>{' '}
+                  de <span className="font-bold text-gray-950">{total}</span> usuarios
                 </p>
-                <p className="text-xs font-medium text-gray-500">
-                  La paginación se habilitará cuando el flujo de backend esté listo para este módulo.
-                </p>
+                {totalPages > 1 && (
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => goToPage(page - 1)}
+                      disabled={page === 1}
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-600 transition hover:border-yellow-300 hover:text-amber-700 disabled:cursor-not-allowed disabled:opacity-40"
+                      aria-label="Página anterior"
+                    >
+                      ‹
+                    </button>
+                    {Array.from({ length: totalPages }, (_, i) => i + 1)
+                      .filter(p => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
+                      .reduce<(number | '…')[]>((acc, p, idx, arr) => {
+                        if (idx > 0 && p - (arr[idx - 1] as number) > 1) acc.push('…');
+                        acc.push(p);
+                        return acc;
+                      }, [])
+                      .map((p, idx) =>
+                        p === '…' ? (
+                          <span key={`ellipsis-${idx}`} className="px-1 text-gray-400">…</span>
+                        ) : (
+                          <button
+                            key={p}
+                            type="button"
+                            onClick={() => goToPage(p as number)}
+                            className={`inline-flex h-8 w-8 items-center justify-center rounded-xl border text-sm font-semibold transition ${
+                              p === page
+                                ? 'border-yellow-300 bg-yellow-50 text-amber-800'
+                                : 'border-gray-200 bg-white text-gray-600 hover:border-yellow-200 hover:text-amber-700'
+                            }`}
+                            aria-current={p === page ? 'page' : undefined}
+                          >
+                            {p}
+                          </button>
+                        ),
+                      )}
+                    <button
+                      type="button"
+                      onClick={() => goToPage(page + 1)}
+                      disabled={page === totalPages}
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-600 transition hover:border-yellow-300 hover:text-amber-700 disabled:cursor-not-allowed disabled:opacity-40"
+                      aria-label="Página siguiente"
+                    >
+                      ›
+                    </button>
+                  </div>
+                )}
               </footer>
             )}
           </section>
@@ -935,6 +1134,7 @@ const UsersPage: React.FC = () => {
           user={selectedUser}
           roles={roles}
           availableRoles={availableRoles}
+          stores={drawerStores}
           assigningRole={assigningRole}
           roleUpdating={roleUpdating}
           onAssigningRoleChange={setAssigningRole}
@@ -1098,6 +1298,7 @@ type UserDetailDrawerProps = {
   availableRoles: Role[];
   assigningRole: string;
   roleUpdating: boolean;
+  stores: StoreData[];
   onAssigningRoleChange: (roleId: string) => void;
   onAssignRole: () => void;
   onRevokeRole: (user: UserItem, roleId: string) => void;
@@ -1111,6 +1312,7 @@ const UserDetailDrawer: React.FC<UserDetailDrawerProps> = ({
   availableRoles,
   assigningRole,
   roleUpdating,
+  stores,
   onAssigningRoleChange,
   onAssignRole,
   onRevokeRole,
@@ -1174,11 +1376,17 @@ const UserDetailDrawer: React.FC<UserDetailDrawerProps> = ({
             <dl className="divide-y divide-gray-50">
               <InfoRow icon={Phone} label="Celular" value={(user as UserItem & { phone?: string }).phone ?? 'No registrado'} />
               <InfoRow icon={Calendar} label="Fecha de registro" value={formatDate(user.createdAt)} />
-              <InfoRow icon={Clock} label="Último acceso" value="No disponible" />
+              <InfoRow icon={Clock} label="Último acceso" value={formatDate(user.lastLoginAt ?? undefined)} />
               <InfoRow
                 icon={Store}
                 label="Punto de venta"
-                value={roleNames.some(role => getCanonicalRoleKey(role) === 'VENDOR') ? 'Por asignar' : 'No aplica'}
+                value={
+                  stores.length > 0
+                    ? stores.map(s => s.name).join(', ')
+                    : roleNames.some(role => ['VENDOR', 'ADMIN'].includes(getCanonicalRoleKey(role)))
+                      ? 'Sin tienda asignada'
+                      : 'No aplica'
+                }
               />
               <InfoRow
                 icon={Shield}
