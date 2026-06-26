@@ -66,13 +66,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const token = await user.getIdToken();
 
-      // sync-profile crea el perfil local si no existe
-      await apiFetch('/auth/sync-profile', token, {
+      // sync-profile crea el perfil local si no existe y retorna un sessionId
+      const syncResponse = await apiFetch<{ sessionId: string }>('/auth/sync-profile', token, {
         method: 'POST',
         body: JSON.stringify({
           fullName: fullName || user.displayName || user.email?.split('@')[0] || 'Usuario',
         }),
       });
+      sessionStorage.setItem('sessionId', syncResponse.sessionId);
 
       // Cargar perfil completo con roles y permisos
       const profile = await apiFetch<Record<string, unknown>>('/users/me', token);
@@ -125,6 +126,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signOut = async () => {
+    sessionStorage.removeItem('sessionId');
     await firebaseSignOut(auth);
     setUserProfile(null);
   };

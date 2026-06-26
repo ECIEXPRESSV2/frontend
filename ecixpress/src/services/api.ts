@@ -1,4 +1,4 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3001').replace(/\/$/, '');
 
 export class ApiError extends Error {
   status: number;
@@ -18,6 +18,9 @@ export async function apiFetch<T>(
     ...(options.headers as Record<string, string>),
   };
   if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const sessionId = sessionStorage.getItem('sessionId');
+  if (sessionId) headers['X-Session-Id'] = sessionId;
 
   const res = await fetch(`${API_URL}${path}`, { ...options, headers });
 
