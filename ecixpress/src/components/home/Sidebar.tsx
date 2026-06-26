@@ -7,6 +7,8 @@ import NotificationBell from '../notifications/NotificationBell';
 
 interface SidebarProps {
   activeItem?: string;
+  defaultExpanded?: boolean;
+  lockExpanded?: boolean;
   onItemClick?: (item: string) => void;
   onUserClick?: () => void;
   onOrdersClick?: () => void;
@@ -16,6 +18,8 @@ interface SidebarProps {
 
 const Sidebar: React.FC<SidebarProps> = ({
   activeItem = 'home',
+  defaultExpanded = false,
+  lockExpanded = false,
   onItemClick,
   onUserClick,
   onOrdersClick,
@@ -24,7 +28,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   const navigate = useNavigate();
   const { userProfile, signOut, isAdmin, isVendor } = useAuth();
   const { balanceLabel, loading: walletLoading } = useWallet();
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(defaultExpanded);
   // Cuando el panel de notificaciones está abierto, el sidebar se comprime y no se
   // vuelve a expandir con el hover hasta que se cierre.
   const [notifOpen, setNotifOpen] = useState(false);
@@ -72,10 +76,12 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <aside
-      className={`fixed left-0 top-0 h-screen bg-white/40 backdrop-blur-xl border-r border-white/30 flex flex-col py-6 z-50 transition-all duration-300 ease-in-out overflow-hidden
-        ${isExpanded ? 'w-64' : 'w-16'}`}
+      className={`fixed left-0 top-0 h-screen bg-[linear-gradient(180deg,rgba(255,255,255,0.84)_0%,rgba(254,249,195,0.78)_36%,rgba(253,230,138,0.70)_64%,rgba(255,255,255,0.82)_100%)] backdrop-blur-2xl border-r border-white/60 shadow-xl shadow-yellow-200/25 flex flex-col py-6 z-50 transition-all duration-300 ease-in-out overflow-hidden
+        ${isExpanded ? 'w-64 max-md:w-16' : 'w-16'}`}
       onMouseEnter={() => !notifOpen && setIsExpanded(true)}
-      onMouseLeave={() => setIsExpanded(false)}
+      onMouseLeave={() => {
+        if (!lockExpanded) setIsExpanded(defaultExpanded);
+      }}
     >
       {/* User Icon Header */}
       <button
@@ -112,7 +118,7 @@ const Sidebar: React.FC<SidebarProps> = ({
               key={item.id}
               onClick={() => handleMenuClick(item)}
               className={`relative w-full h-11 rounded-xl flex items-center transition-all duration-300 ease-in-out group overflow-hidden
-                ${isActive ? 'bg-yellow-100 text-yellow-600' : 'text-gray-500 hover:bg-yellow-50 hover:text-yellow-600'}
+                ${isActive ? 'bg-yellow-100 text-yellow-700 shadow-sm' : 'text-gray-500 hover:bg-white/70 hover:text-yellow-700'}
                 ${isExpanded ? 'px-4' : 'justify-center'}`}
               title={item.label}
             >
@@ -145,7 +151,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                   key={item.id}
                   onClick={() => navigate(item.path)}
                   className={`relative w-full h-11 rounded-xl flex items-center transition-all duration-300 ease-in-out group overflow-hidden
-                    ${isActive ? 'bg-yellow-100 text-yellow-600' : 'text-gray-500 hover:bg-yellow-50 hover:text-yellow-600'}
+                    ${isActive ? 'bg-yellow-100 text-yellow-700 shadow-sm' : 'text-gray-500 hover:bg-white/70 hover:text-yellow-700'}
                     ${isExpanded ? 'px-4' : 'justify-center'}`}
                   title={item.label}
                 >
@@ -171,7 +177,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                   key={item.id}
                   onClick={() => navigate(item.path)}
                   className={`relative w-full h-11 rounded-xl flex items-center transition-all duration-300 ease-in-out group overflow-hidden
-                    ${isActive ? 'bg-yellow-100 text-yellow-600' : 'text-gray-500 hover:bg-yellow-50 hover:text-yellow-600'}
+                    ${isActive ? 'bg-yellow-100 text-yellow-700 shadow-sm' : 'text-gray-500 hover:bg-white/70 hover:text-yellow-700'}
                     ${isExpanded ? 'px-4' : 'justify-center'}`}
                   title={item.label}
                 >
