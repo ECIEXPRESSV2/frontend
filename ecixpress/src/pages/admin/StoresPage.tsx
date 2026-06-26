@@ -136,11 +136,6 @@ const getStoreInitials = (name: string) =>
 
 const getStoreVisual = (store: Store) => getStoreImage(store.id) ?? store.imageUrl ?? '';
 
-const getTodaySchedule = (schedules?: StoreSchedule[]) => {
-  if (!schedules?.length) return undefined;
-  const day = new Date().getDay();
-  return schedules.find(schedule => schedule.isActive && schedule.dayOfWeek === day);
-};
 
 const formatDaySet = (days: number[]) => {
   const sorted = [...new Set(days)].sort((a, b) => a - b);
