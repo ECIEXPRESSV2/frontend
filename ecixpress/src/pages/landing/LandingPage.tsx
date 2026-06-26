@@ -4,6 +4,7 @@ import Navbar from '../../components/landing/Navbar';
 import HeroSection from '../../components/landing/HeroSection';
 import FeaturesSection from '../../components/landing/FeaturesSection';
 import HowItWorksSection from '../../components/landing/HowItWorksSection';
+import WalletShowcaseSection from '../../components/landing/WalletShowcaseSection';
 import UniversityContextSection from '../../components/landing/UniversityContextSection';
 import ModulesSection from '../../components/landing/ModulesSection';
 import { CTAFinal, Footer } from '../../components/landing/CTASection';
@@ -48,6 +49,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigateToLogin, onNavigate
 
         {/* How It Works */}
         <HowItWorksSection />
+
+        {/* Wallet Showcase */}
+        <WalletShowcaseSection />
 
         {/* University Context */}
         <UniversityContextSection />
