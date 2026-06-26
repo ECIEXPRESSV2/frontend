@@ -67,6 +67,10 @@ const ROLE_META: Record<string, { label: string; className: string }> = {
     label: 'Analista',
     className: 'bg-emerald-50 text-emerald-800 border-emerald-100',
   },
+  SUPERVISOR: {
+    label: 'Supervisor',
+    className: 'bg-violet-50 text-violet-800 border-violet-100',
+  },
 };
 
 const STATUS_META: Record<string, {
@@ -126,6 +130,7 @@ const getRoleDotClass = (role: string) => {
   if (key === 'VENDOR') return 'bg-yellow-400';
   if (key === 'ADMIN') return 'bg-gray-500';
   if (key === 'ANALYST') return 'bg-emerald-400';
+  if (key === 'SUPERVISOR') return 'bg-violet-400';
   return 'bg-gray-300';
 };
 
@@ -226,7 +231,9 @@ const UsersPage: React.FC = () => {
   const [sortBy, setSortBy] = useState<'createdAt' | 'lastLoginAt'>('createdAt');
   const [bulkRoleId, setBulkRoleId] = useState('');
   const [openBulkRoleMenu, setOpenBulkRoleMenu] = useState(false);
+  const [bulkRoleMenuPos, setBulkRoleMenuPos] = useState<{ top: number; left: number; width: number } | null>(null);
   const [bulkActionLoading, setBulkActionLoading] = useState(false);
+  const bulkRoleButtonRef = React.useRef<HTMLButtonElement>(null);
   const PAGE_LIMIT = 20;
 
   const toggleSelectUser = (id: string) => {
@@ -247,6 +254,28 @@ const UsersPage: React.FC = () => {
   };
 
   const clearSelection = () => setSelectedUserIds(new Set());
+
+  const closeBulkRoleMenu = () => {
+    setOpenBulkRoleMenu(false);
+    setBulkRoleMenuPos(null);
+  };
+
+  const toggleBulkRoleMenu = () => {
+    if (openBulkRoleMenu) {
+      closeBulkRoleMenu();
+      return;
+    }
+
+    if (bulkRoleButtonRef.current) {
+      const rect = bulkRoleButtonRef.current.getBoundingClientRect();
+      const width = Math.min(Math.max(rect.width, 180), window.innerWidth - 24);
+      const left = Math.max(12, Math.min(rect.left, window.innerWidth - width - 12));
+      setBulkRoleMenuPos({ top: rect.top - 6, left, width });
+    }
+
+    if (openFilterMenu) setOpenFilterMenu(null);
+    setOpenBulkRoleMenu(true);
+  };
 
   const load = async ({
     searchValue = appliedSearch,
@@ -590,7 +619,7 @@ const UsersPage: React.FC = () => {
       onClick={() => {
         if (openMenuUserId) closeMenu();
         if (openFilterMenu) setOpenFilterMenu(null);
-        if (openBulkRoleMenu) setOpenBulkRoleMenu(false);
+        if (openBulkRoleMenu) closeBulkRoleMenu();
       }}
     >
       <Sidebar activeItem="admin-users" defaultExpanded lockExpanded />
@@ -769,8 +798,9 @@ const UsersPage: React.FC = () => {
                   {/* Asignar rol en bulk — custom dropdown con puntos de color */}
                   <div className="relative flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
                     <button
+                      ref={bulkRoleButtonRef}
                       type="button"
-                      onClick={() => setOpenBulkRoleMenu(v => !v)}
+                      onClick={toggleBulkRoleMenu}
                       disabled={bulkActionLoading}
                       className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold transition focus:outline-none focus:ring-2 focus:ring-yellow-300 disabled:cursor-wait ${
                         bulkRoleId
@@ -791,23 +821,41 @@ const UsersPage: React.FC = () => {
                       })()}
                       <ChevronDown size={12} className={`transition-transform ${openBulkRoleMenu ? 'rotate-180' : ''}`} aria-hidden="true" />
                     </button>
-                    {openBulkRoleMenu && (
-                      <div className="absolute bottom-[calc(100%+6px)] left-0 z-[300] min-w-[180px] overflow-hidden rounded-2xl border border-white/80 bg-white/95 p-1.5 shadow-xl shadow-gray-200/80 backdrop-blur-xl">
-                        {roles.map(r => (
-                          <button
-                            key={r.id}
-                            type="button"
-                            onClick={() => { setBulkRoleId(r.id); setOpenBulkRoleMenu(false); }}
-                            className={`flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-xs font-semibold transition ${
-                              bulkRoleId === r.id ? 'bg-yellow-50 text-amber-800' : 'text-gray-700 hover:bg-gray-50'
-                            }`}
-                          >
-                            <span className={`inline-block h-2 w-2 flex-shrink-0 rounded-full ${getRoleDotClass(r.name)}`} />
-                            {ROLE_META[getRoleKey(r.name)]?.label ?? r.name}
-                            {bulkRoleId === r.id && <Check size={13} className="ml-auto text-amber-700" aria-hidden="true" />}
-                          </button>
-                        ))}
-                      </div>
+                    {openBulkRoleMenu && bulkRoleMenuPos && createPortal(
+                      <>
+                        <div
+                          style={{ position: 'fixed', inset: 0, zIndex: 99998 }}
+                          onClick={closeBulkRoleMenu}
+                        />
+                        <div
+                          style={{
+                            position: 'fixed',
+                            top: bulkRoleMenuPos.top,
+                            left: bulkRoleMenuPos.left,
+                            width: bulkRoleMenuPos.width,
+                            zIndex: 99999,
+                            transform: 'translateY(-100%)',
+                          }}
+                          className="overflow-hidden rounded-2xl border border-white/80 bg-white/95 p-1.5 shadow-xl shadow-gray-200/80 backdrop-blur-xl"
+                          onClick={e => e.stopPropagation()}
+                        >
+                          {roles.map(r => (
+                            <button
+                              key={r.id}
+                              type="button"
+                              onClick={() => { setBulkRoleId(r.id); closeBulkRoleMenu(); }}
+                              className={`flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-xs font-semibold transition ${
+                                bulkRoleId === r.id ? 'bg-yellow-50 text-amber-800' : 'text-gray-700 hover:bg-gray-50'
+                              }`}
+                            >
+                              <span className={`inline-block h-2 w-2 flex-shrink-0 rounded-full ${getRoleDotClass(r.name)}`} />
+                              {ROLE_META[getRoleKey(r.name)]?.label ?? r.name}
+                              {bulkRoleId === r.id && <Check size={13} className="ml-auto text-amber-700" aria-hidden="true" />}
+                            </button>
+                          ))}
+                        </div>
+                      </>,
+                      document.body,
                     )}
                     <button
                       type="button"
@@ -1211,27 +1259,81 @@ const RoleSelect: React.FC<{
   roles: Role[];
   value: string;
   disabled: boolean;
+  isOpen: boolean;
+  onOpen: () => void;
   onChange: (roleId: string) => void;
-}> = ({ id, roles, value, disabled, onChange }) => {
-  const [open, setOpen] = useState(false);
+}> = ({ id, roles, value, disabled, isOpen, onOpen, onChange }) => {
+  const [dropdownPos, setDropdownPos] = React.useState<{ top: number; left: number; width: number } | null>(null);
+  const buttonRef = React.useRef<HTMLButtonElement>(null);
   const selected = roles.find(role => role.id === value);
   const placeholder = roles.length === 0 ? 'Todos los roles están asignados' : 'Seleccionar rol';
 
+  const handleOpen = () => {
+    if (!isOpen && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      setDropdownPos({ top: rect.bottom + 8, left: rect.left, width: rect.width });
+    }
+    onOpen();
+  };
+
+  const dropdownContent = isOpen && !disabled && roles.length > 0 && dropdownPos
+    ? createPortal(
+        <>
+          {/* overlay transparente para asegurar que nada quede por encima */}
+          <div
+            style={{ position: 'fixed', inset: 0, zIndex: 99998 }}
+            onClick={onOpen}
+          />
+          <div
+            style={{ position: 'fixed', top: dropdownPos.top, left: dropdownPos.left, width: dropdownPos.width, zIndex: 99999 }}
+            className="overflow-hidden rounded-2xl border border-gray-100 bg-white p-1.5 shadow-xl shadow-gray-300/50"
+            role="listbox"
+            aria-labelledby={id}
+            onClick={e => e.stopPropagation()}
+          >
+            {roles.map(role => {
+              const isSelected = role.id === value;
+              return (
+                <button
+                  key={role.id}
+                  type="button"
+                  role="option"
+                  aria-selected={isSelected}
+                  onClick={() => {
+                    onChange(role.id);
+                    onOpen();
+                  }}
+                  className={`flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition ${
+                    isSelected
+                      ? 'bg-yellow-50 text-amber-800'
+                      : 'text-gray-700 hover:bg-gray-50 hover:text-gray-950'
+                  }`}
+                >
+                  <span className="flex min-w-0 items-center gap-2">
+                    <span className={`h-2.5 w-2.5 flex-shrink-0 rounded-full ${getRoleDotClass(role.name)}`} />
+                    <span className="truncate font-medium">{getRoleLabel(role.name)}</span>
+                  </span>
+                  {isSelected && <Check size={16} className="flex-shrink-0 text-amber-700" aria-hidden="true" />}
+                </button>
+              );
+            })}
+          </div>
+        </>,
+        document.body,
+      )
+    : null;
+
   return (
-    <div
-      className="relative"
-      onBlur={event => {
-        if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false);
-      }}
-    >
+    <div className="relative" onClick={e => e.stopPropagation()}>
       <button
+        ref={buttonRef}
         id={id}
         type="button"
         disabled={disabled}
-        onClick={() => setOpen(current => !current)}
+        onClick={handleOpen}
         className="flex min-h-11 w-full items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white/90 px-3 py-2 text-left text-sm text-gray-900 shadow-sm outline-none transition hover:border-yellow-300 hover:bg-yellow-50/50 focus:border-yellow-400 focus:ring-4 focus:ring-yellow-100 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-400"
         aria-haspopup="listbox"
-        aria-expanded={open}
+        aria-expanded={isOpen}
       >
         <span className="flex min-w-0 items-center gap-2">
           <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg border border-yellow-200 bg-yellow-50 text-amber-700">
@@ -1239,45 +1341,9 @@ const RoleSelect: React.FC<{
           </span>
           <span className="truncate">{selected ? getRoleLabel(selected.name) : placeholder}</span>
         </span>
-        <ChevronDown size={16} className={`flex-shrink-0 text-gray-400 transition ${open ? 'rotate-180' : ''}`} aria-hidden="true" />
+        <ChevronDown size={16} className={`flex-shrink-0 text-gray-400 transition ${isOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
       </button>
-
-      {open && !disabled && roles.length > 0 && (
-        <div
-          className="absolute left-0 right-0 top-[calc(100%+8px)] z-30 overflow-hidden rounded-2xl border border-white/80 bg-white/95 p-1.5 shadow-2xl shadow-gray-200/80 backdrop-blur-xl"
-          role="listbox"
-          aria-labelledby={id}
-        >
-          {roles.map(role => {
-            const isSelected = role.id === value;
-
-            return (
-              <button
-                key={role.id}
-                type="button"
-                role="option"
-                aria-selected={isSelected}
-                onMouseDown={event => event.preventDefault()}
-                onClick={() => {
-                  onChange(role.id);
-                  setOpen(false);
-                }}
-                className={`flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition ${
-                  isSelected
-                    ? 'bg-yellow-50 text-amber-800'
-                    : 'text-gray-700 hover:bg-gray-50 hover:text-gray-950'
-                }`}
-              >
-                <span className="flex min-w-0 items-center gap-2">
-                  <span className={`h-2.5 w-2.5 flex-shrink-0 rounded-full ${getRoleDotClass(role.name)}`} />
-                  <span className="truncate font-medium">{getRoleLabel(role.name)}</span>
-                </span>
-                {isSelected && <Check size={16} className="flex-shrink-0 text-amber-700" aria-hidden="true" />}
-              </button>
-            );
-          })}
-        </div>
-      )}
+      {dropdownContent}
     </div>
   );
 };
@@ -1322,6 +1388,7 @@ const UserDetailDrawer: React.FC<UserDetailDrawerProps> = ({
   const roleNames = getRoleNames(user);
   const status = String(user.status).toUpperCase();
   const isSuspended = status === 'SUSPENDED';
+  const [openRoleSelect, setOpenRoleSelect] = useState(false);
 
   return (
     <div className="fixed inset-0 z-[70]">
@@ -1335,6 +1402,7 @@ const UserDetailDrawer: React.FC<UserDetailDrawerProps> = ({
       <aside
         className="absolute right-0 top-0 flex h-full w-full max-w-md flex-col overflow-y-auto border-l border-gray-100 bg-white shadow-2xl shadow-gray-900/15"
         aria-label="Detalle del usuario"
+        onClick={() => { if (openRoleSelect) setOpenRoleSelect(false); }}
       >
         {/* Header */}
         <div className="sticky top-0 z-10 border-b border-gray-100 bg-white/95 backdrop-blur-xl">
@@ -1439,6 +1507,8 @@ const UserDetailDrawer: React.FC<UserDetailDrawerProps> = ({
                   roles={availableRoles}
                   value={assigningRole}
                   disabled={roleUpdating || availableRoles.length === 0}
+                  isOpen={openRoleSelect}
+                  onOpen={() => setOpenRoleSelect(v => !v)}
                   onChange={onAssigningRoleChange}
                 />
               </div>
@@ -1558,12 +1628,65 @@ const FilterChip: React.FC<{
 }> = ({ label, icon: Icon, value, options, isOpen, onOpen, onSelect, onClear }) => {
   const selectedOption = options.find(opt => opt.value === value);
   const isActive = !!value;
+  const buttonRef = React.useRef<HTMLButtonElement>(null);
+  const [dropdownPos, setDropdownPos] = React.useState<{ top: number; left: number } | null>(null);
+
+  const handleOpen = () => {
+    if (!isOpen && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      setDropdownPos({ top: rect.bottom + 6, left: rect.left });
+    }
+    onOpen();
+  };
+
+  const dropdownContent = isOpen && dropdownPos
+    ? createPortal(
+        <>
+          {/* overlay transparente para cerrar y asegurar que nada quede por encima */}
+          <div
+            style={{ position: 'fixed', inset: 0, zIndex: 99998 }}
+            onClick={onOpen}
+          />
+          <div
+            style={{ position: 'fixed', top: dropdownPos.top, left: dropdownPos.left, zIndex: 99999 }}
+            className="min-w-[170px] overflow-hidden rounded-2xl border border-gray-100 bg-white p-1.5 shadow-xl shadow-gray-300/50"
+            onClick={e => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => onSelect('')}
+              className={`flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-medium transition ${
+                !value ? 'bg-yellow-50 text-amber-800' : 'text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              Todos
+              {!value && <Check size={14} className="ml-auto text-amber-700" aria-hidden="true" />}
+            </button>
+            {options.map(opt => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => onSelect(opt.value)}
+                className={`flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-medium transition ${
+                  value === opt.value ? 'bg-yellow-50 text-amber-800' : 'text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                {opt.label}
+                {value === opt.value && <Check size={14} className="ml-auto text-amber-700" aria-hidden="true" />}
+              </button>
+            ))}
+          </div>
+        </>,
+        document.body,
+      )
+    : null;
 
   return (
     <div className="relative" onClick={event => event.stopPropagation()}>
       <button
+        ref={buttonRef}
         type="button"
-        onClick={onOpen}
+        onClick={handleOpen}
         className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition focus:outline-none focus:ring-2 focus:ring-yellow-300 ${
           isActive
             ? 'border-yellow-300 bg-yellow-50 text-amber-800'
@@ -1587,34 +1710,7 @@ const FilterChip: React.FC<{
           <ChevronDown size={13} className={`transition-transform duration-150 ${isOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
         )}
       </button>
-
-      {isOpen && (
-        <div className="absolute left-0 top-[calc(100%+6px)] z-20 min-w-[160px] overflow-hidden rounded-2xl border border-white/80 bg-white/95 p-1.5 shadow-xl shadow-gray-200/80 backdrop-blur-xl">
-          <button
-            type="button"
-            onClick={() => onSelect('')}
-            className={`flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-medium transition ${
-              !value ? 'bg-yellow-50 text-amber-800' : 'text-gray-700 hover:bg-gray-50'
-            }`}
-          >
-            Todos
-            {!value && <Check size={14} className="ml-auto text-amber-700" aria-hidden="true" />}
-          </button>
-          {options.map(opt => (
-            <button
-              key={opt.value}
-              type="button"
-              onClick={() => onSelect(opt.value)}
-              className={`flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-medium transition ${
-                value === opt.value ? 'bg-yellow-50 text-amber-800' : 'text-gray-700 hover:bg-gray-50'
-              }`}
-            >
-              {opt.label}
-              {value === opt.value && <Check size={14} className="ml-auto text-amber-700" aria-hidden="true" />}
-            </button>
-          ))}
-        </div>
-      )}
+      {dropdownContent}
     </div>
   );
 };
