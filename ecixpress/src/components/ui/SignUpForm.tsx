@@ -18,6 +18,7 @@ const SignUpForm: React.FC<SignUpProps> = ({ onSignInClick, onSignUpSuccess }) =
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
@@ -25,6 +26,7 @@ const SignUpForm: React.FC<SignUpProps> = ({ onSignInClick, onSignUpSuccess }) =
   const [touched, setTouched] = useState({
     name: false,
     email: false,
+    phone: false,
     password: false,
     confirmPassword: false,
   });
@@ -32,9 +34,16 @@ const SignUpForm: React.FC<SignUpProps> = ({ onSignInClick, onSignUpSuccess }) =
   const [errors, setErrors] = useState({
     name: '',
     email: '',
+    phone: '',
     password: '',
     confirmPassword: '',
   });
+
+  const validatePhone = (v: string) => {
+    if (!v.trim()) return 'El celular es obligatorio';
+    if (!/^\+?[\d\s\-()]{7,15}$/.test(v.trim())) return 'Número inválido';
+    return '';
+  };
 
   useEffect(() => {
     setErrors(prev => ({ ...prev, name: validateName(name) }));
@@ -43,6 +52,10 @@ const SignUpForm: React.FC<SignUpProps> = ({ onSignInClick, onSignUpSuccess }) =
   useEffect(() => {
     setErrors(prev => ({ ...prev, email: validateEmail(email) }));
   }, [email]);
+
+  useEffect(() => {
+    setErrors(prev => ({ ...prev, phone: validatePhone(phone) }));
+  }, [phone]);
 
   useEffect(() => {
     setErrors(prev => ({ ...prev, password: validatePassword(password) }));
@@ -61,6 +74,7 @@ const SignUpForm: React.FC<SignUpProps> = ({ onSignInClick, onSignUpSuccess }) =
     setTouched({
       name: true,
       email: true,
+      phone: true,
       password: true,
       confirmPassword: true,
     });
@@ -68,6 +82,7 @@ const SignUpForm: React.FC<SignUpProps> = ({ onSignInClick, onSignUpSuccess }) =
     const newErrors = {
       name: validateName(name),
       email: validateEmail(email),
+      phone: validatePhone(phone),
       password: validatePassword(password),
       confirmPassword: validateConfirmPassword(confirmPassword, password),
     };
@@ -77,7 +92,7 @@ const SignUpForm: React.FC<SignUpProps> = ({ onSignInClick, onSignUpSuccess }) =
 
     setIsLoading(true);
     try {
-      await signUp(email, password, name);
+      await signUp(email, password, name, phone.trim());
       onSignUpSuccess?.();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Error al crear cuenta';
@@ -129,6 +144,17 @@ const SignUpForm: React.FC<SignUpProps> = ({ onSignInClick, onSignUpSuccess }) =
           placeholder="ejemplo@empresa.com"
           error={errors.email}
           touched={touched.email}
+        />
+
+        <FormInput
+          label="Celular"
+          type="tel"
+          value={phone}
+          onChange={setPhone}
+          onBlur={() => setTouched(prev => ({ ...prev, phone: true }))}
+          placeholder="+57 300 123 4567"
+          error={errors.phone}
+          touched={touched.phone}
         />
 
         <PasswordInput

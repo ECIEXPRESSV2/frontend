@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+﻿import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { io, Socket } from 'socket.io-client';
 import { ArrowLeft, Send, Wifi } from 'lucide-react';
@@ -127,7 +127,7 @@ const MessagesPage: React.FC<MessagesPageProps> = ({ onBack }) => {
     <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-white to-yellow-100">
       <Sidebar activeItem="messages" />
 
-      <main className="ml-16 p-6 md:p-8">
+      <main className="ml-16 px-6 pb-6 pt-20 md:px-8 md:pb-8">
         <div className="max-w-6xl mx-auto space-y-6">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">

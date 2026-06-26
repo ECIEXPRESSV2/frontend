@@ -72,6 +72,9 @@ export const getAvailableStores = (token: string | null) =>
 export const getMyStores = (token: string) =>
   apiFetch<Store[]>('/stores/my', token);
 
+export const getStoresByUser = (userId: string, token: string) =>
+  apiFetch<Store[]>(`/stores/user/${userId}`, token);
+
 export const getStoreById = (id: string, token: string | null) =>
   apiFetch<Store>(`/stores/${id}`, token);
 

@@ -4,18 +4,22 @@ export interface UserItem {
   id: string;
   email: string;
   fullName: string;
-  phone?: string;
-  avatarUrl?: string;
+  phone?: string | null;
+  avatarUrl?: string | null;
   status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED';
+  lastLoginAt?: string | null;
   createdAt: string;
   roles?: string[] | Array<{ id: string; name: string }>;
 }
 
 export interface PaginatedUsers {
   data: UserItem[];
-  total: number;
-  page: number;
-  limit: number;
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
 }
 
 export interface UpdateProfileDto {
@@ -35,7 +39,7 @@ export const updateMe = (data: UpdateProfileDto, token: string) =>
 
 export const getUsers = (token: string, params?: Record<string, string>) => {
   const qs = params ? '?' + new URLSearchParams(params).toString() : '';
-  return apiFetch<PaginatedUsers | UserItem[]>(`/users${qs}`, token);
+  return apiFetch<PaginatedUsers>(`/users${qs}`, token);
 };
 
 export const getUserById = (id: string, token: string) =>
@@ -59,3 +63,19 @@ export const assignRole = (userId: string, roleId: string, token: string) =>
 
 export const revokeRole = (userId: string, roleId: string, token: string) =>
   apiFetch<void>(`/users/${userId}/roles/${roleId}`, token, { method: 'DELETE' });
+
+export const bulkUpdateStatus = (
+  userIds: string[],
+  status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED',
+  token: string,
+) =>
+  apiFetch<{ updated: number; users: UserItem[] }>('/users/bulk/status', token, {
+    method: 'PATCH',
+    body: JSON.stringify({ userIds, status }),
+  });
+
+export const bulkAssignRole = (userIds: string[], roleId: string, token: string) =>
+  apiFetch<{ updated: number; roleId: string; roleName: string }>('/users/bulk/roles', token, {
+    method: 'POST',
+    body: JSON.stringify({ userIds, roleId }),
+  });

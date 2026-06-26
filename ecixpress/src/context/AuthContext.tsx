@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import type { User as FirebaseUser } from 'firebase/auth';
 import {
   onAuthStateChanged,
@@ -35,7 +35,7 @@ interface AuthContextType {
   getToken: () => Promise<string>;
   signIn: (email: string, password: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
-  signUp: (email: string, password: string, fullName: string) => Promise<void>;
+  signUp: (email: string, password: string, fullName: string, phone?: string) => Promise<void>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
@@ -69,22 +69,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  // Tracks whether this tab is a duplicate — must show login, not inherit parent session
+  const isSecondaryTab = useRef(false);
+  // True once the 150 ms BroadcastChannel handshake has finished
+  const tabRoleResolved = useRef(false);
+  // onAuthStateChanged fires immediately; if tab role isn't resolved yet we store it here
+  // undefined = not yet received, null = signed out, FirebaseUser = signed in
+  const pendingAuthUser = useRef<FirebaseUser | null | undefined>(undefined);
 
   const getToken = async (): Promise<string> => {
     if (!auth.currentUser) throw new Error('No authenticated user');
     return auth.currentUser.getIdToken();
   };
 
-  const syncAndLoadProfile = async (user: FirebaseUser, fullName?: string) => {
+  const syncAndLoadProfile = async (user: FirebaseUser, fullName?: string, phone?: string) => {
     try {
       const token = await user.getIdToken();
+
+      const body: Record<string, string> = {
+        fullName: fullName || user.displayName || user.email?.split('@')[0] || 'Usuario',
+      };
+      if (phone) body.phone = phone;
 
       // sync-profile crea el perfil local si no existe y retorna un sessionId
       const syncResponse = await apiFetch<{ sessionId: string }>('/auth/sync-profile', token, {
         method: 'POST',
-        body: JSON.stringify({
-          fullName: fullName || user.displayName || user.email?.split('@')[0] || 'Usuario',
-        }),
+        body: JSON.stringify(body),
       });
       sessionStorage.setItem('sessionId', syncResponse.sessionId);
 
@@ -131,18 +141,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signIn = async (email: string, password: string) => {
+    // El usuario elige iniciar sesión explícitamente, incluso en tab duplicado
+    isSecondaryTab.current = false;
     await signInWithEmailAndPassword(auth, email, password);
-    // onAuthStateChanged se encarga del sync
   };
 
   const signInWithGoogle = async () => {
+    isSecondaryTab.current = false;
     const provider = new GoogleAuthProvider();
     await signInWithPopup(auth, provider);
   };
 
-  const signUp = async (email: string, password: string, fullName: string) => {
+  const signUp = async (email: string, password: string, fullName: string, phone?: string) => {
+    isSecondaryTab.current = false;
     const cred = await createUserWithEmailAndPassword(auth, email, password);
-    await syncAndLoadProfile(cred.user, fullName);
+    await syncAndLoadProfile(cred.user, fullName, phone);
   };
 
   const resetPassword = async (email: string) => {
@@ -167,7 +180,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     let isPrimary = false;
 
     channel.postMessage({ type: 'CLAIM_PRIMARY', tabId: TAB_ID });
-    const claimTimeout = setTimeout(() => { isPrimary = true; }, 150);
+
+    const claimTimeout = setTimeout(async () => {
+      // Nadie respondió en 150 ms → somos el tab primario
+      isPrimary = true;
+      tabRoleResolved.current = true;
+
+      // onAuthStateChanged ya puede haber disparado y guardado el usuario
+      if (pendingAuthUser.current !== undefined) {
+        const user = pendingAuthUser.current;
+        setFirebaseUser(user);
+        if (user) await syncAndLoadProfile(user).catch(console.error);
+        setLoading(false);
+      }
+      // Si pendingAuthUser sigue undefined, Firebase no terminó de inicializar.
+      // onAuthStateChanged disparará pronto y tabRoleResolved=true lo procesará.
+    }, 150);
 
     const handleMessage = (e: MessageEvent<{ type: string; tabId?: string; forTabId?: string }>) => {
       if (e.data.type === 'CLAIM_PRIMARY' && isPrimary) {
@@ -175,7 +203,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       if (e.data.type === 'PRIMARY_EXISTS' && e.data.forTabId === TAB_ID) {
         clearTimeout(claimTimeout);
-        void signOut();
+        isSecondaryTab.current = true;
+        tabRoleResolved.current = true;
+        sessionStorage.removeItem('sessionId');
+        setLoading(false);
       }
     };
 
@@ -190,6 +221,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (user) => {
+      if (!tabRoleResolved.current) {
+        // Tab role aún no resuelto — guardar para procesarlo cuando lo sea
+        pendingAuthUser.current = user;
+        return;
+      }
+      if (isSecondaryTab.current) { setLoading(false); return; }
       setFirebaseUser(user);
       if (user) {
         await syncAndLoadProfile(user);
