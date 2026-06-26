@@ -368,7 +368,8 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
               </button>
               <h1 className="text-2xl font-bold text-gray-900">Mis pedidos</h1>
             </div>
-            <div className="flex items-center gap-3">
+            {/* md:mr-14: corrido a la izquierda en escritorio para no quedar detrás de la campana flotante. */}
+            <div className="flex items-center gap-3 md:mr-14">
               <button onClick={load} className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white/70 border border-white/50 text-gray-700 font-semibold hover:bg-white transition-all">
                 <RefreshCw size={16} /> Refrescar
               </button>
