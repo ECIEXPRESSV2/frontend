@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   CreditCard, PlusCircle, Shield, Zap, Sparkles, ArrowRight,
@@ -63,8 +63,6 @@ const CARD_DATA = {
 /** Spring easing — matches natural physics without Framer Motion */
 const SPRING = 'cubic-bezier(0.22, 1, 0.36, 1)';
 
-/** Noise texture as inline SVG data-uri — adds micro-texture to glass surfaces */
-const NOISE_BG = `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E")`;
 
 // ─── Sub-components ─────────────────────────────────────────────────────────
 
@@ -90,7 +88,7 @@ const GlassOverlay: React.FC<{
   accentFrom: string;
   accentTo: string;
   large?: boolean;
-}> = ({ icon: Icon, title, description, accentFrom, accentTo, large }) => (
+}> = ({ icon: Icon, title, description }) => (
     <div className="relative z-10 p-6 space-y-4 text-white">
       <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-white/20 backdrop-blur-sm border border-white/30 group-hover:scale-110 transition">
         <Icon className="w-5 h-5" />
