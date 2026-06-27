@@ -49,6 +49,8 @@ const Sidebar: React.FC<SidebarProps> = ({
   // vuelve a expandir con el hover hasta que se cierre.
   const [notifOpen, setNotifOpen] = useState(false);
   const [topbarExpanded, setTopbarExpanded] = useState(false);
+  const [topbarNotifOpen, setTopbarNotifOpen] = useState(false);
+  const isTopbarOpen = topbarExpanded || topbarNotifOpen;
 
   const menuItems = [
     { id: 'home', icon: Grid, label: 'Inicio', path: '/home' },
@@ -90,7 +92,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         /* Cápsula flotante estilo liquid glass — anclada a la derecha */
         <div
           className={`fixed top-3 right-4 z-[70] flex h-14 items-center justify-end overflow-hidden border border-white/55 bg-white/65 backdrop-blur-2xl transition-all duration-300 ease-in-out [box-shadow:0_8px_32px_rgba(0,0,0,0.07),0_1px_0_rgba(255,255,255,0.85)_inset,0_-1px_0_rgba(0,0,0,0.04)_inset] md:right-5 ${
-            topbarExpanded ? 'w-[178px] gap-1 rounded-full px-2.5' : 'w-14 rounded-full px-2'
+            isTopbarOpen ? 'w-[178px] gap-1 rounded-full px-2.5' : 'w-14 rounded-full px-2'
           }`}
           role="banner"
           onMouseEnter={() => setTopbarExpanded(true)}
@@ -98,7 +100,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           aria-label="Acciones rápidas"
         >
           {/* Botón mensajes */}
-          {topbarExpanded && (
+          {isTopbarOpen && (
             <>
           <button
             type="button"
@@ -114,7 +116,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           </button>
 
           {/* Campana */}
-          <NotificationBell variant="topbar" />
+          <NotificationBell variant="topbar" onOpenChange={setTopbarNotifOpen} />
 
           {/* Divisor sutil */}
           <span className="mx-1 h-5 w-px rounded-full bg-gray-300/50" aria-hidden="true" />

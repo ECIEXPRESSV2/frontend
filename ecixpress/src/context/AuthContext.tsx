@@ -44,6 +44,18 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
+const AUTH_TAB_ID_KEY = 'eciexpress.auth.tabId';
+const AUTH_TAB_CHANNEL = 'eciexpress_auth_tabs';
+const DUPLICATE_TAB_CHECK_MS = 150;
+
+type AuthTabMessage =
+  | { type: 'CHECK_DUPLICATE_TAB'; tabId: string; instanceId: string }
+  | {
+      type: 'DUPLICATE_TAB_FOUND';
+      tabId: string;
+      instanceId: string;
+      targetInstanceId: string;
+    };
 
 function extractRoleNames(roles: unknown): string[] {
   if (!Array.isArray(roles)) return [];
@@ -69,12 +81,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  // Tracks whether this tab is a duplicate — must show login, not inherit parent session
-  const isSecondaryTab = useRef(false);
-  const respondsAsPrimaryTab = useRef(false);
-  // True once the 150 ms BroadcastChannel handshake has finished
-  const tabRoleResolved = useRef(false);
-  // onAuthStateChanged fires immediately; if tab role isn't resolved yet we store it here
+  // Browser tab duplicates copy sessionStorage. Only the copied tab is signed out.
+  const isDuplicateTab = useRef(false);
+  const duplicateCheckResolved = useRef(false);
+  // Firebase emits auth state immediately; hold it until duplicate detection finishes.
   // undefined = not yet received, null = signed out, FirebaseUser = signed in
   const pendingAuthUser = useRef<FirebaseUser | null | undefined>(undefined);
 
@@ -142,9 +152,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const activateAuthenticatedTab = async (user: FirebaseUser, fullName?: string, phone?: string) => {
-    isSecondaryTab.current = false;
-    tabRoleResolved.current = true;
-    respondsAsPrimaryTab.current = true;
+    isDuplicateTab.current = false;
+    duplicateCheckResolved.current = true;
     pendingAuthUser.current = user;
     setLoading(true);
     setFirebaseUser(user);
@@ -154,20 +163,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signIn = async (email: string, password: string) => {
     // El usuario elige iniciar sesión explícitamente, incluso en tab duplicado
-    isSecondaryTab.current = false;
+    isDuplicateTab.current = false;
     const cred = await signInWithEmailAndPassword(auth, email, password);
     await activateAuthenticatedTab(cred.user);
   };
 
   const signInWithGoogle = async () => {
-    isSecondaryTab.current = false;
+    isDuplicateTab.current = false;
     const provider = new GoogleAuthProvider();
     const cred = await signInWithPopup(auth, provider);
     await activateAuthenticatedTab(cred.user);
   };
 
   const signUp = async (email: string, password: string, fullName: string, phone?: string) => {
-    isSecondaryTab.current = false;
+    isDuplicateTab.current = false;
     const cred = await createUserWithEmailAndPassword(auth, email, password);
     await activateAuthenticatedTab(cred.user, fullName, phone);
   };
@@ -178,7 +187,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signOut = async () => {
     sessionStorage.removeItem('sessionId');
-    respondsAsPrimaryTab.current = false;
     await firebaseSignOut(auth);
     setUserProfile(null);
     setCatalogIdentity(null);
@@ -190,52 +198,84 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     (userProfile?.roles.includes('VENDOR') || userProfile?.roles.includes('ADMIN')) ?? false;
 
   useEffect(() => {
-    const TAB_ID = crypto.randomUUID();
-    const channel = new BroadcastChannel('auth_session');
-    let isPrimary = false;
+    const INSTANCE_ID = crypto.randomUUID();
+    let tabId = sessionStorage.getItem(AUTH_TAB_ID_KEY) ?? crypto.randomUUID();
+    sessionStorage.setItem(AUTH_TAB_ID_KEY, tabId);
 
-    channel.postMessage({ type: 'CLAIM_PRIMARY', tabId: TAB_ID });
+    const channel = new BroadcastChannel(AUTH_TAB_CHANNEL);
 
-    const claimTimeout = setTimeout(async () => {
-      // Nadie respondió en 150 ms → somos el tab primario
-      isPrimary = true;
-      respondsAsPrimaryTab.current = true;
-      tabRoleResolved.current = true;
-
-      // onAuthStateChanged ya puede haber disparado y guardado el usuario
+    const processPendingUser = async () => {
+      // No duplicated tab with the same tabId answered, so this tab keeps its session.
       if (pendingAuthUser.current !== undefined) {
         const user = pendingAuthUser.current;
         setFirebaseUser(user);
         if (user) await syncAndLoadProfile(user).catch(console.error);
+        else {
+          setUserProfile(null);
+          setCatalogIdentity(null);
+          setOrdersIdentity(null);
+        }
         setLoading(false);
       }
-      // Si pendingAuthUser sigue undefined, Firebase no terminó de inicializar.
-      // onAuthStateChanged disparará pronto y tabRoleResolved=true lo procesará.
-    }, 150);
+      // If Firebase has not initialized yet, onAuthStateChanged will process later.
+    };
 
-    const handleMessage = (e: MessageEvent<{ type: string; tabId?: string; forTabId?: string }>) => {
-      if (e.data.type === 'CLAIM_PRIMARY' && (isPrimary || respondsAsPrimaryTab.current)) {
-        channel.postMessage({ type: 'PRIMARY_EXISTS', forTabId: e.data.tabId });
+    const resolveAsIndependentTab = () => {
+      duplicateCheckResolved.current = true;
+      void processPendingUser();
+    };
+
+    const duplicateCheckTimeout = setTimeout(
+      resolveAsIndependentTab,
+      DUPLICATE_TAB_CHECK_MS,
+    );
+
+    const handleMessage = (e: MessageEvent<AuthTabMessage>) => {
+      const message = e.data;
+      if (!message || message.instanceId === INSTANCE_ID) return;
+
+      if (message.type === 'CHECK_DUPLICATE_TAB' && message.tabId === tabId) {
+        channel.postMessage({
+          type: 'DUPLICATE_TAB_FOUND',
+          tabId,
+          instanceId: INSTANCE_ID,
+          targetInstanceId: message.instanceId,
+        } satisfies AuthTabMessage);
+        return;
       }
-      if (e.data.type === 'PRIMARY_EXISTS' && e.data.forTabId === TAB_ID) {
-        clearTimeout(claimTimeout);
-        isSecondaryTab.current = true;
-        respondsAsPrimaryTab.current = false;
-        tabRoleResolved.current = true;
-        sessionStorage.removeItem('sessionId');
+
+      if (
+        message.type === 'DUPLICATE_TAB_FOUND' &&
+        message.targetInstanceId === INSTANCE_ID &&
+        !duplicateCheckResolved.current
+      ) {
+        clearTimeout(duplicateCheckTimeout);
+        isDuplicateTab.current = true;
+        duplicateCheckResolved.current = true;
         pendingAuthUser.current = null;
+
+        tabId = crypto.randomUUID();
+        sessionStorage.setItem(AUTH_TAB_ID_KEY, tabId);
+        sessionStorage.removeItem('sessionId');
+
         setFirebaseUser(null);
         setUserProfile(null);
         setCatalogIdentity(null);
         setOrdersIdentity(null);
         setLoading(false);
+        void firebaseSignOut(auth).catch(console.error);
       }
     };
 
     channel.addEventListener('message', handleMessage);
+    channel.postMessage({
+      type: 'CHECK_DUPLICATE_TAB',
+      tabId,
+      instanceId: INSTANCE_ID,
+    } satisfies AuthTabMessage);
 
     return () => {
-      clearTimeout(claimTimeout);
+      clearTimeout(duplicateCheckTimeout);
       channel.removeEventListener('message', handleMessage);
       channel.close();
     };
@@ -243,12 +283,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (user) => {
-      if (!tabRoleResolved.current) {
-        // Tab role aún no resuelto — guardar para procesarlo cuando lo sea
+      if (!duplicateCheckResolved.current) {
+        // Duplicate detection is still pending; process this user later.
         pendingAuthUser.current = user;
         return;
       }
-      if (isSecondaryTab.current) { setLoading(false); return; }
+      if (isDuplicateTab.current) { setLoading(false); return; }
       setFirebaseUser(user);
       if (user) {
         await syncAndLoadProfile(user);
