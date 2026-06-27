@@ -109,9 +109,13 @@ coverage/
 *.tar
 *.gz
 
-# =========================
-# Playwright MCP (Claude Code)
-# =========================
+
 .playwright-mcp/
 
 CLAUDE.md
+
+
+docs/
+
+.superpowers/
+superpowers/

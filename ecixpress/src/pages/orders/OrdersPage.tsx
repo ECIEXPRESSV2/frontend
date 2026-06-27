@@ -1,7 +1,7 @@
 ﻿import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { io, Socket } from 'socket.io-client';
-import { ArrowLeft, RefreshCw, MessageCircle, RotateCcw, XCircle, Star, CheckCircle2, Clock, Plus, QrCode, Undo2, X, Eye, EyeOff, CreditCard, Loader2 } from 'lucide-react';
+import { ArrowLeft, RefreshCw, MessageCircle, RotateCcw, XCircle, Star, CheckCircle2, Clock, Plus, QrCode, Undo2, X, Eye, EyeOff, CreditCard, Loader2, Store as StoreIcon } from 'lucide-react';
 import Sidebar from '../../components/home/Sidebar';
 import ModalShell from '../../components/wallet/ModalShell';
 import FormInput from '../../components/ui/FormInput';
@@ -355,41 +355,53 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
     <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-white to-yellow-100">
       <Sidebar activeItem="orders" />
 
-      <main className="ml-16 px-6 pb-6 pt-20 md:px-8 md:pb-8">
+      <main className="ml-16 px-4 pb-6 pt-20 md:px-8 md:pb-8 lg:px-10">
         <div className="max-w-7xl mx-auto space-y-6">
-          {/* Header */}
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => (onBack ? onBack() : navigate('/home'))}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/60 backdrop-blur-xl border border-white/40 text-gray-700 font-medium text-sm hover:bg-yellow-50 hover:text-yellow-600 transition-all"
-              >
-                <ArrowLeft size={16} /> Volver
-              </button>
-              <h1 className="text-2xl font-bold text-gray-900">Mis pedidos</h1>
+          <header className="relative overflow-hidden rounded-[28px] border border-yellow-200/70 bg-[linear-gradient(135deg,#F4B942_0%,#FBBF24_48%,#FDE68A_100%)] p-5 shadow-lg shadow-yellow-200/60 md:p-6">
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-white/60" />
+            <div className="pointer-events-none absolute -left-20 -top-24 h-64 w-64 rounded-full bg-white/22 blur-3xl" />
+            <div className="pointer-events-none absolute right-[-90px] top-[-110px] h-72 w-72 rounded-full bg-[#FB923C]/22 blur-3xl" />
+            <div className="relative flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+              <div className="max-w-3xl">
+                <nav className="mb-3 inline-flex items-center rounded-xl border border-white/70 bg-white/80 px-3 py-1.5 text-sm font-semibold text-gray-700 shadow-sm backdrop-blur" aria-label="Ruta de navegacion">
+                  ECIxpress <span className="mx-2 text-gray-400">/</span>
+                  <span className="text-gray-950">Pedidos</span>
+                </nav>
+                <h1 className="text-3xl font-bold tracking-normal text-white md:text-4xl">Mis pedidos</h1>
+                <p className="mt-2 max-w-2xl text-sm font-medium text-white/85">
+                  Haz seguimiento, revisa el detalle y contacta a la tienda cuando lo necesites.
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  onClick={() => (onBack ? onBack() : navigate('/home'))}
+                  className="inline-flex min-h-11 items-center gap-2 rounded-2xl border border-white/70 bg-white/80 px-4 py-2 text-sm font-bold text-gray-700 shadow-sm backdrop-blur transition hover:bg-white hover:text-gray-950 focus:outline-none focus:ring-2 focus:ring-white"
+                >
+                  <ArrowLeft size={16} /> Volver
+                </button>
+                <button onClick={load} className="inline-flex min-h-11 items-center gap-2 rounded-2xl border border-white/70 bg-white/80 px-4 py-2 text-sm font-bold text-gray-700 shadow-sm backdrop-blur transition hover:bg-white hover:text-gray-950 focus:outline-none focus:ring-2 focus:ring-white">
+                  <RefreshCw size={16} /> Actualizar
+                </button>
+                <button onClick={() => setCreateOpen(true)} className="inline-flex min-h-11 items-center gap-2 rounded-2xl bg-white px-4 py-2 text-sm font-bold text-amber-700 shadow-sm transition hover:bg-yellow-50 focus:outline-none focus:ring-2 focus:ring-white">
+                  <Plus size={16} /> Nuevo pedido
+                </button>
+              </div>
             </div>
-            {/* md:mr-14: corrido a la izquierda en escritorio para no quedar detrás de la campana flotante. */}
-            <div className="flex items-center gap-3 md:mr-14">
-              <button onClick={load} className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white/70 border border-white/50 text-gray-700 font-semibold hover:bg-white transition-all">
-                <RefreshCw size={16} /> Refrescar
-              </button>
-              <button onClick={() => setCreateOpen(true)} className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-yellow-400 text-white font-semibold shadow-md shadow-yellow-200/60 hover:bg-yellow-500 transition-all">
-                <Plus size={16} /> Nuevo pedido
-              </button>
-            </div>
-          </div>
+          </header>
 
           {/* Filtros */}
-          <div className="flex flex-wrap gap-2">
+          <div className="rounded-3xl border border-white/70 bg-white/82 p-4 shadow-lg shadow-gray-200/60 backdrop-blur-xl">
+            <div className="flex flex-wrap gap-2">
             {STATUS_FILTERS.map((f) => (
               <button
                 key={f.value}
                 onClick={() => setFilter(f.value)}
-                className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${filter === f.value ? 'bg-yellow-400 text-white' : 'bg-white/80 text-gray-600 hover:bg-white'}`}
+                className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-all ${filter === f.value ? 'bg-yellow-400 text-gray-950 shadow-sm' : 'border border-gray-100 bg-white text-gray-600 hover:border-yellow-200 hover:bg-yellow-50 hover:text-amber-700'}`}
               >
                 {f.label}
               </button>
             ))}
+            </div>
           </div>
 
           {/* Organizar la vista: mostrar/ocultar los pedidos cerrados que el cliente archivó */}
@@ -408,30 +420,78 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
           {actionMsg && <div className="rounded-xl bg-yellow-50 border border-yellow-200 px-4 py-3 text-sm text-gray-700">{actionMsg}</div>}
           {error && <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">{error}</div>}
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div className="space-y-5">
             {/* Lista */}
-            <section className="lg:col-span-5 space-y-3">
+            <section className="space-y-4">
               {loading && <p className="text-sm text-gray-500">Cargando pedidos…</p>}
               {!loading && visibleOrders.length === 0 && (
                 <div className="rounded-2xl bg-white/60 backdrop-blur-xl border border-white/50 p-8 text-center text-gray-500">
                   {showHidden ? 'No tienes pedidos ocultos.' : `No tienes pedidos ${filter !== 'ALL' ? 'con ese estado' : 'todavía'}.`}
                 </div>
               )}
-              {visibleOrders.map((order) => (
-                <div key={order.id} className="relative">
-                  <button
-                    onClick={() => setSelectedId(order.id)}
-                    className={`w-full text-left rounded-2xl border p-4 transition-all ${selectedId === order.id ? 'bg-yellow-50 border-yellow-300 shadow-sm' : 'bg-white/70 border-white/60 hover:border-yellow-200 hover:bg-yellow-50/60'}`}
-                  >
-                    <div className="mb-2 pr-7">
-                      <p className="font-semibold text-gray-900 truncate">{orderDisplayName(order)}</p>
-                      <p className="text-xs text-gray-500">{formatDateTime(order.createdAt)} · {order.items.length} ítem(s)</p>
+              {visibleOrders.map((order) => {
+                const firstItem = order.items[0];
+                return (
+                <article key={order.id} aria-label={`Pedido ${order.orderNumber} de ${order.storeName}`} className={`relative overflow-hidden rounded-2xl border bg-white shadow-sm transition hover:border-yellow-200 hover:shadow-md ${selectedId === order.id ? 'border-yellow-300 ring-2 ring-yellow-100' : 'border-gray-100'}`}>
+                  <div className={`absolute inset-x-0 top-0 h-1 ${selectedId === order.id ? 'bg-yellow-400' : 'bg-amber-200'}`} aria-hidden="true" />
+                  <div className="grid gap-0 md:grid-cols-[220px_1fr_auto]">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedId(order.id)}
+                      className="flex min-h-[150px] flex-col items-center justify-center border-b border-gray-100 bg-white px-4 py-4 text-center transition hover:bg-yellow-50/40 md:border-b-0 md:border-r"
+                    >
+                      {firstItem?.imageUrl ? (
+                        <img src={firstItem.imageUrl} alt={firstItem.name} className="h-24 w-32 rounded-xl object-contain" />
+                      ) : (
+                        <div className="flex h-24 w-32 items-center justify-center rounded-xl border border-amber-100 bg-amber-50 text-xl font-black text-amber-700">
+                          {firstItem?.name.trim()[0]?.toUpperCase() ?? 'P'}
+                        </div>
+                      )}
+                      <p className="mt-2 line-clamp-1 text-xs font-bold text-gray-600">{firstItem?.name ?? 'Pedido'}</p>
+                      <p className="text-xs font-semibold text-gray-950">{firstItem ? formatCOP(firstItem.totalAmount) : formatCOP(order.totalAmount)}</p>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setSelectedId(order.id)}
+                      className="flex min-h-[150px] flex-col justify-center px-5 py-4 text-left transition hover:bg-yellow-50/40"
+                    >
+                      <div className="mb-3 flex items-center gap-2">
+                        <StoreIcon size={15} className="text-amber-600" aria-hidden="true" />
+                        <h2 className="truncate text-lg font-black tracking-tight text-gray-950">{order.storeName}</h2>
+                      </div>
+                      <dl className="grid gap-x-4 gap-y-1 text-sm sm:grid-cols-[auto_1fr_auto_1fr]">
+                        <dt className="font-semibold text-gray-900">Fecha:</dt>
+                        <dd className="truncate text-gray-500">{formatDateTime(order.createdAt)}</dd>
+                        <dt className="font-semibold text-gray-900">Cantidad:</dt>
+                        <dd className="text-gray-500">{order.items.reduce((sum, item) => sum + item.quantity, 0)}</dd>
+                        <dt className="font-semibold text-gray-900">Total:</dt>
+                        <dd className="font-semibold text-gray-500">{formatCOP(order.totalAmount)}</dd>
+                        <dt className="font-semibold text-gray-900">Código:</dt>
+                        <dd className="text-gray-500">#{order.orderNumber.slice(-4)}</dd>
+                      </dl>
+                    </button>
+
+                    <div className="flex min-h-[150px] flex-col items-stretch justify-between gap-4 border-t border-gray-100 bg-white px-4 py-4 md:w-64 md:border-l md:border-t-0">
+                      <span className={`inline-flex justify-center rounded-2xl px-4 py-2 text-sm font-bold ${statusTone[order.status]}`}>{statusLabel[order.status]}</span>
+                      <div className="grid gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedId(order.id)}
+                          className="inline-flex min-h-11 items-center justify-center rounded-xl bg-yellow-400 px-4 py-2 text-sm font-bold text-gray-950 transition hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-300"
+                        >
+                          Ver resumen
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => navigate(`/messages?orderId=${order.id}`)}
+                          className="inline-flex min-h-11 items-center justify-center rounded-xl border border-amber-200 bg-white px-4 py-2 text-sm font-bold text-amber-700 transition hover:bg-yellow-50 focus:outline-none focus:ring-2 focus:ring-yellow-300"
+                        >
+                          Contactar tienda
+                        </button>
+                      </div>
                     </div>
-                    <div className="flex items-center justify-between gap-2 text-sm">
-                      <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${statusTone[order.status]}`}>{statusLabel[order.status]}</span>
-                      <span className="font-semibold text-gray-900">{formatCOP(order.totalAmount)}</span>
-                    </div>
-                  </button>
+                  </div>
 
                   {/* Ocultar (pedidos cerrados) o restaurar (vista de ocultos) */}
                   {showHidden ? (
@@ -451,14 +511,15 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
                       <X size={14} />
                     </button>
                   ) : null}
-                </div>
-              ))}
+                </article>
+              );
+              })}
             </section>
 
             {/* Detalle + seguimiento */}
-            <section className="lg:col-span-7">
+            <section>
               {selected ? (
-                <div className="rounded-2xl bg-white/60 backdrop-blur-xl border border-white/50 shadow-sm p-6 space-y-6">
+                <div className="rounded-3xl border border-white/70 bg-white/82 p-5 shadow-xl shadow-gray-200/60 backdrop-blur-xl md:p-6 space-y-6">
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <h2 className="text-xl font-bold text-gray-900">{orderDisplayName(selected)}</h2>
