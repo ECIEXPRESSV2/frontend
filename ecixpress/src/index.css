@@ -206,6 +206,52 @@
 .animate-gradient {
   animation: gradientMove 12s ease infinite;
 }
+
+.building-pin {
+  pointer-events: none;
+}
+
+.building-pin-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: buildingPinBounce 0.9s ease-in-out infinite;
+  will-change: transform;
+}
+
+.building-pin--hidden {
+  display: none;
+}
+
+.building-pin-label {
+  background: white;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.28);
+  white-space: nowrap;
+  margin-bottom: 5px;
+}
+
+.building-pin-tip {
+  width: 18px;
+  height: 18px;
+  background: #e23b3b;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  box-shadow: 0 2px 7px rgba(15, 23, 42, 0.35);
+}
+
+@keyframes buildingPinBounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-7px);
+  }
+}
 @keyframes scroll-up {
   from { transform: translateY(0); }
   to   { transform: translateY(-50%); }
