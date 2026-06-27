@@ -88,7 +88,7 @@ const RolesPage: React.FC = () => {
   const [newRoleName, setNewRoleName] = useState('');
   const [newRoleDesc, setNewRoleDesc] = useState('');
   const [creating, setCreating] = useState(false);
-  const [sidebarExpanded, setSidebarExpanded] = useState(true);
+  const [sidebarExpanded, setSidebarExpanded] = useState(false);
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
   const [selectedPerms, setSelectedPerms] = useState<Set<string>>(new Set());
   const [loadingPerms, setLoadingPerms] = useState(false);
@@ -212,15 +212,15 @@ const RolesPage: React.FC = () => {
       <>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-100 bg-gray-50/60">
-                <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Rol</th>
-                <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Descripción</th>
-                <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Tipo</th>
-                <th className="px-6 py-3.5 text-right text-xs font-semibold uppercase tracking-wide text-gray-500">Acciones</th>
+            <thead className="border-b border-white/70 bg-gradient-to-r from-gray-50/90 via-white/85 to-cyan-50/55 text-xs font-bold uppercase tracking-wide text-gray-600">
+              <tr>
+                <th scope="col" className="px-6 py-4 text-left">Rol</th>
+                <th scope="col" className="px-6 py-4 text-left">Descripción</th>
+                <th scope="col" className="px-6 py-4 text-left">Tipo</th>
+                <th scope="col" className="px-6 py-4 text-right">Acciones</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody className="divide-y divide-gray-100">
               {pageRoles.map(role => {
                 const typeLabel = role.isSystem
                   ? <><Lock size={10} aria-hidden="true" /> Sistema</>
@@ -327,9 +327,7 @@ const RolesPage: React.FC = () => {
     <div className="min-h-screen bg-gradient-to-b from-white via-gray-50 to-white text-gray-900">
       <Sidebar
         activeItem="admin-roles"
-        defaultExpanded
         expanded={sidebarExpanded}
-        lockExpanded
         onExpandedChange={setSidebarExpanded}
       />
 
@@ -355,24 +353,8 @@ const RolesPage: React.FC = () => {
                 </nav>
                 <h1 className="flex items-center gap-3 text-3xl font-bold tracking-normal text-white md:text-4xl">
                   Gestión de roles
-                  {!loading && roles.length > 0 && (
-                    <span className="inline-flex items-center rounded-xl border border-white/70 bg-white/80 px-3 py-1 text-lg font-bold text-gray-700 shadow-sm backdrop-blur">
-                      {roles.length}
-                    </span>
-                  )}
                 </h1>
               </div>
-
-              <button
-                type="button"
-                onClick={() => load({ silent: true })}
-                disabled={refreshing}
-                title="Actualizar"
-                aria-label="Actualizar lista de roles"
-                className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-white/70 bg-white/80 text-gray-700 shadow-sm backdrop-blur transition hover:bg-white focus:outline-none focus:ring-2 focus:ring-white/50 disabled:opacity-60"
-              >
-                <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} aria-hidden="true" />
-              </button>
             </div>
           </header>
 
@@ -403,6 +385,17 @@ const RolesPage: React.FC = () => {
               </div>
               <button
                 type="button"
+                onClick={() => load({ silent: true })}
+                disabled={refreshing}
+                title={refreshing ? 'Actualizando...' : 'Actualizar'}
+                aria-label="Actualizar lista de roles"
+                className="inline-flex h-11 shrink-0 items-center gap-2 rounded-2xl border border-amber-200 bg-amber-50/80 px-4 text-sm font-bold text-amber-800 shadow-sm transition hover:border-amber-300 hover:bg-amber-100 focus:outline-none focus:ring-2 focus:ring-yellow-300 disabled:cursor-wait disabled:opacity-60"
+              >
+                <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} aria-hidden="true" />
+                Actualizar
+              </button>
+              <button
+                type="button"
                 onClick={() => setShowCreate(true)}
                 className="inline-flex h-11 shrink-0 items-center gap-2 rounded-2xl bg-yellow-400 px-4 text-sm font-bold text-white shadow-sm transition hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-300"
               >
@@ -426,7 +419,8 @@ const RolesPage: React.FC = () => {
           </div>
 
           {/* ── TABLE ── */}
-          <div className="overflow-hidden rounded-[22px] border border-gray-100 bg-white shadow-sm shadow-gray-100">
+          <div className="relative overflow-hidden rounded-3xl border border-white/70 bg-white/78 shadow-xl shadow-gray-200/70 backdrop-blur-xl">
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-[#F4B942]" />
             {tableContent}
           </div>
         </div>

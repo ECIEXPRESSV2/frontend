@@ -206,7 +206,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
     </motion.div>
   );
 
-  const topbarClass = `relative inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/70 bg-white/55 text-gray-500 backdrop-blur-sm transition hover:border-yellow-200/80 hover:bg-yellow-50/70 hover:text-amber-700 focus:outline-none focus:ring-2 focus:ring-yellow-300${open ? ' border-yellow-200/80 bg-yellow-50/70 text-amber-700' : ''}`;
+  const topbarClass = `relative inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/70 bg-white/55 text-gray-500 backdrop-blur-sm transition hover:border-yellow-200/80 hover:bg-yellow-50/70 hover:text-amber-700 focus:outline-none focus:ring-2 focus:ring-yellow-300${open ? ' border-yellow-200/80 bg-yellow-50/70 text-amber-700' : ''}`;
   const sidebarClass = `relative w-full h-11 rounded-xl flex items-center transition-all duration-300 ease-in-out group overflow-hidden ${open ? 'bg-yellow-100 text-yellow-600' : 'text-gray-500 hover:bg-yellow-50 hover:text-yellow-600'} ${expanded ? 'px-4' : 'justify-center'}`;
 
   return (

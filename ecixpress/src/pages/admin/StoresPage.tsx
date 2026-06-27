@@ -262,7 +262,7 @@ const StoresPage: React.FC = () => {
   const initialStoresCache = getPageCache<Store[]>(pageCacheKeys.adminStores);
   const [stores, setStores] = useState<Store[]>(() => initialStoresCache ?? []);
   const [loading, setLoading] = useState(() => !initialStoresCache);
-  const [sidebarExpanded, setSidebarExpanded] = useState(true);
+  const [sidebarExpanded, setSidebarExpanded] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
@@ -1021,9 +1021,7 @@ const StoresPage: React.FC = () => {
     <div className="min-h-screen bg-gradient-to-b from-white via-gray-50 to-white text-gray-900">
       <Sidebar
         activeItem="admin-stores"
-        defaultExpanded
         expanded={sidebarExpanded}
-        lockExpanded
         showProfile={false}
         showNotifications={false}
         onExpandedChange={setSidebarExpanded}
@@ -1042,31 +1040,13 @@ const StoresPage: React.FC = () => {
                     </nav>
                     <h1 className="flex flex-wrap items-center gap-3 text-3xl font-bold tracking-normal text-white md:text-4xl">
                       Gestión de tiendas
-                      {!loading && stores.length > 0 && (
-                        <span className="inline-flex items-center rounded-xl border border-white/70 bg-white/80 px-3 py-1 align-middle text-lg font-bold text-gray-700 shadow-sm backdrop-blur">
-                          {stores.length}
-                        </span>
-                      )}
                     </h1>
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={handleRefresh}
-                      disabled={refreshing}
-                      title={refreshing ? 'Actualizando...' : 'Actualizar datos'}
-                      aria-label="Actualizar datos"
-                      className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-white/70 bg-white/75 text-gray-800 shadow-sm backdrop-blur transition hover:bg-white focus:outline-none focus:ring-2 focus:ring-white disabled:cursor-wait disabled:opacity-60"
-                    >
-                      <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} aria-hidden="true" />
-                    </button>
                   </div>
                 </div>
               </header>
 
               <section className="rounded-2xl border border-white/70 bg-white p-4 shadow-lg shadow-gray-200/60 md:p-5">
-                <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto_auto] lg:items-center">
+                <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto_auto_auto] lg:items-center">
                   <label className="relative block">
                     <span className="sr-only">Buscar por nombre o ubicación</span>
                     <input
@@ -1096,6 +1076,17 @@ const StoresPage: React.FC = () => {
                   >
                     <Plus size={16} aria-hidden="true" />
                     Nueva tienda
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleRefresh}
+                    disabled={refreshing}
+                    title={refreshing ? 'Actualizando...' : 'Actualizar datos'}
+                    aria-label="Actualizar datos"
+                    className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-amber-200 bg-amber-50/80 px-4 py-3 text-sm font-bold text-amber-800 shadow-sm transition hover:border-amber-300 hover:bg-amber-100 focus:outline-none focus:ring-2 focus:ring-yellow-300 disabled:cursor-wait disabled:opacity-60"
+                  >
+                    <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} aria-hidden="true" />
+                    Actualizar
                   </button>
                   {search && (
                     <span className="text-sm font-semibold text-gray-500">
@@ -1185,10 +1176,10 @@ const StoresPage: React.FC = () => {
                     </div>
 
                     <div className="px-5 pb-5 md:px-7 md:pb-7">
-                      <div className="-mt-12 flex flex-col gap-4 md:-mt-14 md:flex-row md:items-end md:justify-between">
-                        <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-end">
+                      <div className="-mt-12 flex flex-col gap-4 md:-mt-14 md:flex-row md:items-start md:justify-between">
+                        <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-start">
                           <StoreLogo store={store} size="lg" selected />
-                          <div className="min-w-0 pb-1">
+                          <div className="min-w-0 pb-1 sm:pt-14 md:pt-16">
                             <p className="text-xs font-bold uppercase tracking-wide text-amber-700">Perfil de tienda</p>
                             <h2 className="mt-1 text-3xl font-black tracking-tight text-gray-950 md:text-4xl">{store.name}</h2>
                             <p className="mt-2 flex items-start gap-1.5 text-sm leading-5 text-gray-500">
@@ -1198,14 +1189,14 @@ const StoresPage: React.FC = () => {
                           </div>
                         </div>
 
-                        <div className="grid gap-2 sm:grid-cols-2">
+                        <div className="flex flex-wrap gap-2 md:self-start md:pt-16">
                           <button
                             type="button"
                             onClick={() => setStatusAction({ store, nextStatus: action.nextStatus })}
-                            className={`inline-flex min-h-11 items-center justify-center rounded-xl px-4 py-2 text-sm font-bold transition focus:outline-none focus:ring-2 ${
+                            className={`inline-flex min-h-10 items-center justify-center whitespace-nowrap rounded-xl border px-3.5 py-2 text-sm font-bold shadow-sm transition focus:outline-none focus:ring-2 ${
                               action.tone === 'danger'
-                                ? 'border border-red-100 bg-red-50 text-red-700 hover:bg-red-100 focus:ring-red-300'
-                                : 'bg-yellow-400 text-gray-950 hover:bg-yellow-500 focus:ring-yellow-300'
+                                ? 'border-red-200 bg-red-50/90 text-red-700 hover:bg-red-100 focus:ring-red-300'
+                                : 'border-amber-200 bg-amber-50/90 text-amber-800 hover:bg-amber-100 focus:ring-yellow-300'
                             }`}
                           >
                             {action.label}
@@ -1213,7 +1204,7 @@ const StoresPage: React.FC = () => {
                           <button
                             type="button"
                             onClick={event => openEditStore(store, event)}
-                            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700 transition hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-yellow-300"
+                            className="inline-flex min-h-10 items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-gray-200 bg-gray-50/80 px-3.5 py-2 text-sm font-bold text-gray-700 shadow-sm transition hover:bg-white focus:outline-none focus:ring-2 focus:ring-yellow-300"
                           >
                             <Pencil size={15} aria-hidden="true" />
                             Editar datos
@@ -1256,7 +1247,7 @@ const StoresPage: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => setStatusAction({ store, nextStatus: 'TEMPORARILY_CLOSED' })}
-                            className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-gray-400 transition hover:bg-gray-100 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-200"
+                            className="inline-flex items-center gap-1.5 rounded-xl border border-amber-200 bg-amber-50/80 px-3 py-1.5 text-xs font-semibold text-amber-700 shadow-sm transition hover:border-amber-300 hover:bg-amber-100 hover:text-amber-800 focus:outline-none focus:ring-2 focus:ring-yellow-300"
                           >
                             <AlertTriangle size={12} aria-hidden="true" />
                             Suspender temporalmente

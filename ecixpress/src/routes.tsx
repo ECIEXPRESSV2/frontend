@@ -4,8 +4,13 @@ import SignInForm from './components/ui/SignInForm';
 import SignUpForm from './components/ui/SignUpForm';
 import Home from './pages/home/Home';
 import StoreDetail from './pages/store/StoreDetail';
-import UserProfile from './pages/user/UserProfile';
 import CartPage from './pages/cart/CartPage';
+import AccountLayout from './pages/user/account/AccountLayout';
+import ResumenSection from './pages/user/account/sections/ResumenSection';
+import InformacionSection from './pages/user/account/sections/InformacionSection';
+import BilleteraSection from './pages/user/account/sections/BilleteraSection';
+import SeguridadSection from './pages/user/account/sections/SeguridadSection';
+import PlaceholderSection from './pages/user/account/sections/PlaceholderSection';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import UsersPage from './pages/admin/UsersPage';
 import RolesPage from './pages/admin/RolesPage';
@@ -37,7 +42,17 @@ const AppRoutes: React.FC = () => {
       {/* Main App */}
       <Route path="/home" element={<ProtectedRoute><Home onUserClick={() => navigate('/profile')} onCartClick={() => navigate('/cart')} onOrdersClick={openOrdersDemo} onMessagesClick={openMessagesDemo} /></ProtectedRoute>} />
       <Route path="/store/:storeId" element={<ProtectedRoute><StoreDetail onBack={goHome} onOrdersClick={openOrdersDemo} onMessagesClick={openMessagesDemo} /></ProtectedRoute>} />
-      <Route path="/profile" element={<ProtectedRoute><UserProfile onBack={goHome} onOrdersClick={openOrdersDemo} onMessagesClick={openMessagesDemo} /></ProtectedRoute>} />
+      <Route path="/profile" element={<ProtectedRoute><AccountLayout /></ProtectedRoute>}>
+        <Route index element={<Navigate to="/profile/resumen" replace />} />
+        <Route path="resumen" element={<ResumenSection />} />
+        <Route path="informacion" element={<InformacionSection />} />
+        <Route path="billetera" element={<BilleteraSection />} />
+        <Route path="pagos" element={<Navigate to="/profile/billetera" replace />} />
+        <Route path="pedidos" element={<Navigate to="/orders" replace />} />
+        <Route path="notificaciones" element={<Navigate to="/profile/resumen" replace />} />
+        <Route path="seguridad" element={<SeguridadSection />} />
+        <Route path="ayuda" element={<PlaceholderSection titulo="Ayuda" />} />
+      </Route>
       <Route path="/cart" element={<ProtectedRoute><CartPage onBack={goHome} onOrdersClick={openOrdersDemo} onMessagesClick={openMessagesDemo} /></ProtectedRoute>} />
       <Route path="/orders" element={<ProtectedRoute><OrdersPage onBack={goHome} /></ProtectedRoute>} />
       <Route path="/messages" element={<ProtectedRoute><MessagesPage onBack={goHome} /></ProtectedRoute>} />

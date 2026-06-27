@@ -38,6 +38,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   const navigate = useNavigate();
   const { userProfile, signOut, isAdmin, isVendor } = useAuth();
   const { balanceLabel, loading: walletLoading } = useWallet();
+  const firstName = (userProfile?.fullName || userProfile?.email || 'Usuario').trim().split(/\s+/)[0] || 'Usuario';
   const [internalExpanded, setInternalExpanded] = useState(defaultExpanded);
   const isExpanded = expanded ?? internalExpanded;
   const setIsExpanded = (next: boolean) => {
@@ -47,11 +48,11 @@ const Sidebar: React.FC<SidebarProps> = ({
   // Cuando el panel de notificaciones está abierto, el sidebar se comprime y no se
   // vuelve a expandir con el hover hasta que se cierre.
   const [notifOpen, setNotifOpen] = useState(false);
+  const [topbarExpanded, setTopbarExpanded] = useState(false);
 
   const menuItems = [
     { id: 'home', icon: Grid, label: 'Inicio', path: '/home' },
     { id: 'orders', icon: Clipboard, label: 'Pedidos', path: null },
-    { id: 'messages', icon: MessageCircle, label: 'Mensajes', path: null },
   ];
 
   const adminItems = [
@@ -80,12 +81,6 @@ const Sidebar: React.FC<SidebarProps> = ({
       return;
     }
 
-    if (item.id === 'messages') {
-      onMessagesClick?.();
-      if (!onMessagesClick) navigate('/messages');
-      return;
-    }
-
     if (item.path) navigate(item.path);
   };
 
@@ -94,18 +89,24 @@ const Sidebar: React.FC<SidebarProps> = ({
       {showTopbar && (
         /* Cápsula flotante estilo liquid glass — anclada a la derecha */
         <div
-          className="fixed top-3 right-4 z-[52] flex h-14 items-center gap-1 rounded-2xl border border-white/55 bg-white/65 px-2.5 backdrop-blur-2xl [box-shadow:0_8px_32px_rgba(0,0,0,0.07),0_1px_0_rgba(255,255,255,0.85)_inset,0_-1px_0_rgba(0,0,0,0.04)_inset] md:right-5"
+          className={`fixed top-3 right-4 z-[70] flex h-14 items-center justify-end overflow-hidden border border-white/55 bg-white/65 backdrop-blur-2xl transition-all duration-300 ease-in-out [box-shadow:0_8px_32px_rgba(0,0,0,0.07),0_1px_0_rgba(255,255,255,0.85)_inset,0_-1px_0_rgba(0,0,0,0.04)_inset] md:right-5 ${
+            topbarExpanded ? 'w-[178px] gap-1 rounded-full px-2.5' : 'w-14 rounded-full px-2'
+          }`}
           role="banner"
+          onMouseEnter={() => setTopbarExpanded(true)}
+          onMouseLeave={() => setTopbarExpanded(false)}
           aria-label="Acciones rápidas"
         >
           {/* Botón mensajes */}
+          {topbarExpanded && (
+            <>
           <button
             type="button"
             onClick={() => {
               onMessagesClick?.();
               if (!onMessagesClick) navigate('/messages');
             }}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/60 bg-white/40 text-gray-500 backdrop-blur-sm transition hover:bg-white/70 hover:text-amber-700 focus:outline-none focus:ring-2 focus:ring-yellow-300"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/60 bg-white/40 text-gray-500 backdrop-blur-sm transition hover:bg-white/70 hover:text-amber-700 focus:outline-none focus:ring-2 focus:ring-yellow-300"
             title="Mensajes"
             aria-label="Abrir mensajes"
           >
@@ -117,6 +118,9 @@ const Sidebar: React.FC<SidebarProps> = ({
 
           {/* Divisor sutil */}
           <span className="mx-1 h-5 w-px rounded-full bg-gray-300/50" aria-hidden="true" />
+
+            </>
+          )}
 
           {/* Avatar de usuario */}
           <button
@@ -140,7 +144,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       )}
 
       <aside
-      className={`fixed left-0 top-0 h-screen bg-[linear-gradient(180deg,rgba(255,255,255,0.84)_0%,rgba(254,249,195,0.78)_36%,rgba(253,230,138,0.70)_64%,rgba(255,255,255,0.82)_100%)] backdrop-blur-2xl border-r border-white/60 shadow-xl shadow-yellow-200/25 flex flex-col py-6 z-50 transition-all duration-300 ease-in-out overflow-hidden
+      className={`fixed left-0 top-0 z-[60] h-screen bg-[linear-gradient(180deg,rgba(255,255,255,0.84)_0%,rgba(254,249,195,0.78)_36%,rgba(253,230,138,0.70)_64%,rgba(255,255,255,0.82)_100%)] backdrop-blur-2xl border-r border-white/60 shadow-xl shadow-yellow-200/25 flex flex-col py-6 transition-all duration-300 ease-in-out overflow-hidden
         ${isExpanded ? 'w-64 max-md:w-16' : 'w-16'}`}
       onMouseEnter={() => {
         if (!lockExpanded && !notifOpen) setIsExpanded(true);
@@ -164,6 +168,12 @@ const Sidebar: React.FC<SidebarProps> = ({
             aria-hidden="true"
           />
         </button>
+        {isExpanded && !showProfile && (
+          <div className="ml-3 min-w-0 flex-1">
+            <p className="truncate text-xs font-semibold uppercase tracking-[0.14em] text-amber-600">Hola</p>
+            <p className="truncate text-sm font-bold leading-tight text-gray-900">{firstName}</p>
+          </div>
+        )}
         {isExpanded && showProfile && (
           <button
             onClick={() => {
@@ -271,12 +281,33 @@ const Sidebar: React.FC<SidebarProps> = ({
             })}
           </>
         )}
+
+        {/* Profile section */}
+        <>
+          {isExpanded && <p className="text-xs text-gray-400 font-medium px-1 pt-3 pb-1 uppercase tracking-wider">Tu perfil</p>}
+          {!isExpanded && <div className="border-t border-gray-100 my-2" />}
+          <button
+            type="button"
+            onClick={() => {
+              onUserClick?.();
+              if (!onUserClick) navigate('/profile');
+            }}
+            className={`relative w-full h-11 rounded-xl flex items-center transition-all duration-300 ease-in-out group overflow-hidden text-gray-500 hover:bg-white/70 hover:text-yellow-700 ${
+              isExpanded ? 'px-4' : 'justify-center'
+            }`}
+            title="Gestionar cuenta"
+            aria-label="Gestionar cuenta"
+          >
+            <User size={18} className="flex-shrink-0" />
+            {isExpanded && <span className="ml-3 font-medium text-sm whitespace-nowrap">Gestionar cuenta</span>}
+          </button>
+        </>
       </nav>
 
       {/* Wallet — solo saldo; al hacer click navega al perfil donde están los controles */}
       <div className="mt-4 mb-3 px-3">
         <button
-          onClick={() => navigate('/profile')}
+          onClick={() => navigate('/profile/billetera')}
           title={`Saldo disponible: ${balanceLabel}`}
           className={`w-full rounded-xl flex items-center bg-gradient-to-r from-yellow-400 to-yellow-500 text-white shadow-sm hover:shadow-md transition-all overflow-hidden
             ${isExpanded ? 'p-3' : 'h-11 justify-center'}`}

@@ -233,7 +233,7 @@ const UsersPage: React.FC = () => {
   const [openBulkRoleMenu, setOpenBulkRoleMenu] = useState(false);
   const [bulkRoleMenuPos, setBulkRoleMenuPos] = useState<{ top: number; left: number; width: number } | null>(null);
   const [bulkActionLoading, setBulkActionLoading] = useState(false);
-  const [sidebarExpanded, setSidebarExpanded] = useState(true);
+  const [sidebarExpanded, setSidebarExpanded] = useState(false);
   const bulkRoleButtonRef = React.useRef<HTMLButtonElement>(null);
   const searchTimerRef = React.useRef<number | null>(null);
   const PAGE_LIMIT = 20;
@@ -605,7 +605,7 @@ const UsersPage: React.FC = () => {
             setMenuPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
             setOpenMenuUserId(user.id);
           }}
-          className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/70 bg-white/80 text-gray-600 shadow-sm backdrop-blur transition hover:border-yellow-300 hover:bg-yellow-50 hover:text-amber-700 focus:outline-none focus:ring-2 focus:ring-yellow-300"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-yellow-300"
           aria-label={`Abrir acciones para ${user.fullName}`}
         >
           <MoreHorizontal size={18} aria-hidden="true" />
@@ -626,9 +626,7 @@ const UsersPage: React.FC = () => {
     >
       <Sidebar
         activeItem="admin-users"
-        defaultExpanded
         expanded={sidebarExpanded}
-        lockExpanded
         onExpandedChange={setSidebarExpanded}
       />
 
@@ -653,24 +651,8 @@ const UsersPage: React.FC = () => {
                 </nav>
                 <h1 className="flex items-center gap-3 text-3xl font-bold tracking-normal text-white md:text-4xl">
                   Gestión de usuarios
-                  {!loading && users.length > 0 && (
-                    <span className="inline-flex items-center rounded-xl border border-white/70 bg-white/80 px-3 py-1 align-middle text-lg font-bold text-gray-700 shadow-sm backdrop-blur">
-                      {users.length}
-                    </span>
-                  )}
                 </h1>
               </div>
-
-              <button
-                type="button"
-                onClick={handleRefresh}
-                disabled={refreshing}
-                title={refreshing ? 'Actualizando...' : 'Actualizar datos'}
-                aria-label="Actualizar datos"
-                className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/70 bg-white/70 text-gray-700 shadow-sm backdrop-blur transition hover:bg-white hover:text-gray-950 focus:outline-none focus:ring-2 focus:ring-white disabled:cursor-wait disabled:opacity-60"
-              >
-                <RefreshCw size={15} className={refreshing ? 'animate-spin' : ''} aria-hidden="true" />
-              </button>
             </div>
           </header>
 
@@ -744,6 +726,17 @@ const UsersPage: React.FC = () => {
                   <Grid2X2 size={20} strokeWidth={2.4} aria-hidden="true" />
                 </button>
               </div>
+              <button
+                type="button"
+                onClick={handleRefresh}
+                disabled={refreshing}
+                title={refreshing ? 'Actualizando...' : 'Actualizar datos'}
+                aria-label="Actualizar datos"
+                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-amber-200 bg-amber-50/80 px-4 text-sm font-bold text-amber-800 shadow-sm backdrop-blur transition hover:border-amber-300 hover:bg-amber-100 focus:outline-none focus:ring-2 focus:ring-yellow-300 disabled:cursor-wait disabled:opacity-60"
+              >
+                <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} aria-hidden="true" />
+                Actualizar
+              </button>
             </div>
 
             <div className="relative z-[200] mt-3 flex flex-wrap items-center gap-2">
@@ -959,7 +952,7 @@ const UsersPage: React.FC = () => {
             </section>
           )}
 
-          <section className="relative rounded-3xl border border-white/70 bg-white/78 shadow-xl shadow-gray-200/70 backdrop-blur-xl">
+          <section className="relative overflow-hidden rounded-3xl border border-white/70 bg-white/78 shadow-xl shadow-gray-200/70 backdrop-blur-xl">
             <div className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-[#F4B942]" />
             {loading && users.length === 0 ? (
               <div>
@@ -1050,9 +1043,9 @@ const UsersPage: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => setSelectedUser(user)}
-                              className="inline-flex min-h-10 items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-gray-200 bg-white/85 px-3.5 py-2 text-sm font-bold text-gray-800 shadow-sm transition hover:border-yellow-300 hover:bg-yellow-50 hover:text-amber-700 focus:outline-none focus:ring-2 focus:ring-yellow-300"
+                              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-600 transition hover:border-yellow-300 hover:bg-yellow-50 hover:text-amber-700 focus:outline-none focus:ring-2 focus:ring-yellow-300"
                             >
-                              <Eye size={16} aria-hidden="true" />
+                              <Eye size={13} aria-hidden="true" />
                               Ver detalles
                             </button>
                             {renderActionsMenu(user)}
