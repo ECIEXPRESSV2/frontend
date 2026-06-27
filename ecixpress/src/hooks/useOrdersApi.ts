@@ -41,6 +41,9 @@ export function useOrdersApi() {
     getConversations: async (params?: { orderId?: string; customerId?: string }) =>
       ordersApi.getConversations(await getToken(), params),
     getConversationById: async (id: string) => ordersApi.getConversationById(id, await getToken()),
+    markConversationRead: async (id: string) => ordersApi.markConversationRead(id, await getToken()),
+    archiveConversation: async (id: string) => ordersApi.archiveConversation(id, await getToken()),
+    unarchiveConversation: async (id: string) => ordersApi.unarchiveConversation(id, await getToken()),
     getMessages: async (conversationId: string) => ordersApi.getMessages(conversationId, await getToken()),
     sendMessage: async (payload: { conversationId: string; senderRole: ParticipantRole; content: string }) =>
       ordersApi.sendMessage(payload, await getToken()),

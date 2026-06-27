@@ -310,6 +310,15 @@ export const ordersApi = {
   getConversationById: (id: string, token?: string | null) =>
     requestJson<ConversationResponse>(`/conversations/${id}`, token),
 
+  markConversationRead: (conversationId: string, token?: string | null) =>
+    requestJson<ConversationResponse>(`/conversations/${conversationId}/read`, token, { method: 'POST' }),
+
+  archiveConversation: (conversationId: string, token?: string | null) =>
+    requestJson<ConversationResponse>(`/conversations/${conversationId}/archive`, token, { method: 'PATCH' }),
+
+  unarchiveConversation: (conversationId: string, token?: string | null) =>
+    requestJson<ConversationResponse>(`/conversations/${conversationId}/unarchive`, token, { method: 'PATCH' }),
+
   getMessages: (conversationId: string, token?: string | null) =>
     requestJson<MessagesResponse>(`/messages?conversationId=${encodeURIComponent(conversationId)}`, token),
 

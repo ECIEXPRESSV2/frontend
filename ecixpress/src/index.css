@@ -46,6 +46,18 @@
   }
 }
 
+/* Entrada suave de burbujas de chat (Liquid Glass) */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 @keyframes slideUp {
   from {
     opacity: 0;
@@ -202,6 +214,72 @@
 @keyframes scroll-down {
   from { transform: translateY(-50%); }
   to   { transform: translateY(0); }
+}
+
+/* ── Mosaico horizontal del Login (derecha → izquierda) ── */
+@keyframes scroll-left {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+@keyframes scroll-right {
+  from { transform: translateX(-50%); }
+  to   { transform: translateX(0); }
+}
+
+.mosaic-row {
+  will-change: transform;
+}
+
+/* ── Liquid Glass: brillo que sigue al puntero ── */
+.glass-spotlight {
+  position: relative;
+  isolation: isolate;
+}
+.glass-spotlight::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(
+    var(--glow-size, 280px) circle at var(--mx, 50%) var(--my, 50%),
+    rgba(255, 255, 255, 0.6),
+    rgba(244, 185, 66, 0.18) 40%,
+    transparent 62%
+  );
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  pointer-events: none;
+  /* soft-light ilumina el cristal sin apagar el texto oscuro */
+  mix-blend-mode: soft-light;
+  z-index: 0;
+}
+.glass-spotlight:hover::before {
+  opacity: 1;
+}
+
+/* Variante sutil para el contenedor: un punto de luz pequeño y discreto */
+.glass-spotlight-soft::before {
+  background: radial-gradient(
+    110px circle at var(--mx, 50%) var(--my, 50%),
+    rgba(255, 255, 255, 0.5),
+    rgba(255, 255, 255, 0.12) 45%,
+    transparent 60%
+  );
+  mix-blend-mode: soft-light;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .glass-spotlight::before {
+    transition: none;
+  }
+}
+
+/* Respeta la preferencia de movimiento reducido (accesibilidad) */
+@media (prefers-reduced-motion: reduce) {
+  .mosaic-row {
+    animation: none !important;
+  }
 }
 
 /* ── Scrollbar que sólo se ve mientras se hace scroll y se desvanece al parar ── */

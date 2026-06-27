@@ -20,52 +20,66 @@ const IMAGES = [
   "/FOTOOSWALDO.JPG",
 ];
 
-const splitIntoColumns = (items: string[], cols: number): string[][] =>
+const splitIntoRows = (items: string[], rows: number): string[][] =>
     items.reduce<string[][]>(
         (acc, item, i) => {
-          acc[i % cols].push(item);
+          acc[i % rows].push(item);
           return acc;
         },
-        Array.from({ length: cols }, () => [])
+        Array.from({ length: rows }, () => [])
     );
 
-interface ScrollColumnProps {
+const FALLBACK =
+    "https://images.unsplash.com/photo-1498837167922-ddd27525d352?w=500&auto=format&fit=crop&q=80";
+
+// Ancho de difuminado en los bordes de cada foto = solape entre fotos contiguas.
+// Al ser igual al ancho del degradado, las fotos se funden una con otra sin huecos.
+const FEATHER = 26;
+
+// Máscara que desvanece los bordes izq/der de cada foto para que se mezcle con la vecina.
+const tileMask =
+    `linear-gradient(to right, transparent 0, #000 ${FEATHER}px, #000 calc(100% - ${FEATHER}px), transparent 100%)`;
+
+interface ScrollRowProps {
   images: string[];
-  duration: number;   // segundos — columnas distintas a distinta velocidad
-  reverse?: boolean;  // columna par sube, impar baja → más dinamismo
+  duration: number;
+  reverse?: boolean;
+  offset?: number;
 }
 
-const ScrollColumn: React.FC<ScrollColumnProps> = ({ images, duration, reverse = false }) => {
-
-  const looped = [...images, ...images];
+const ScrollRow: React.FC<ScrollRowProps> = ({ images, duration, reverse = false, offset = 0 }) => {
+  // Repetimos las imágenes para que un "set" sea más ancho que cualquier pantalla,
+  // y duplicamos el set para el bucle continuo (translate -50%).
+  const oneSet = [...images, ...images];
+  const looped = [...oneSet, ...oneSet];
 
   return (
-      <div className="overflow-hidden flex-1">
+      <div className="relative flex-1 overflow-hidden">
         <div
-            className="flex flex-col gap-3"
+            className="mosaic-row flex h-full w-max"
             style={{
-              animation: `scroll-${reverse ? 'down' : 'up'} ${duration}s linear infinite`,
+              animation: `scroll-${reverse ? 'right' : 'left'} ${duration}s linear infinite`,
+              animationDelay: `-${offset}s`,
             }}
         >
           {looped.map((src, i) => (
-              <div
+              <img
                   key={`${src}-${i}`}
-                  className="overflow-hidden rounded-xl shadow-md flex-shrink-0"
-              >
-                <img
-                    src={src}
-                    alt="food"
-                    loading="lazy"
-                    className="w-full h-44 object-cover transition-transform duration-500 group-hover:scale-110"
-
-                    onError={(e) => {
-                      const img = e.currentTarget;
-                      img.src =
-                          "https://images.unsplash.com/photo-1498837167922-ddd27525d352?w=500&auto=format&fit=crop&q=80";
-                    }}
-
-                />
-              </div>
+                  src={src}
+                  alt=""
+                  aria-hidden="true"
+                  loading="lazy"
+                  className="h-full w-72 flex-shrink-0 object-cover"
+                  style={{
+                    // Solape: el borde difuminado de una foto se monta sobre la siguiente.
+                    marginLeft: `-${FEATHER}px`,
+                    maskImage: tileMask,
+                    WebkitMaskImage: tileMask,
+                  }}
+                  onError={(e) => {
+                    e.currentTarget.src = FALLBACK;
+                  }}
+              />
           ))}
         </div>
       </div>
@@ -73,16 +87,15 @@ const ScrollColumn: React.FC<ScrollColumnProps> = ({ images, duration, reverse =
 };
 
 const FoodCarousel: React.FC = () => {
-  const [col1, col2] = splitIntoColumns(IMAGES, 2);
+  const [row1, row2, row3] = splitIntoRows(IMAGES, 3);
 
+  // Filas con flex-1 → llenan todo el alto sin huecos; sin gap → pegadas entre sí.
   return (
-      <>
-
-        <div className="w-full h-full overflow-hidden rounded-2xl flex gap-3 p-4 ">
-          <ScrollColumn images={col1} duration={20} />
-          <ScrollColumn images={col2} duration={25} reverse />
-        </div>
-      </>
+      <div className="flex h-full w-full flex-col">
+        <ScrollRow images={row1} duration={70} offset={0} />
+        <ScrollRow images={row2} duration={85} reverse offset={12} />
+        <ScrollRow images={row3} duration={75} offset={6} />
+      </div>
   );
 };
 
