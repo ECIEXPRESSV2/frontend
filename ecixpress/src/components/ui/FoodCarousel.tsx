@@ -20,50 +20,52 @@ const IMAGES = [
   "/FOTOOSWALDO.JPG",
 ];
 
-const splitIntoColumns = (items: string[], cols: number): string[][] =>
+const splitIntoRows = (items: string[], rows: number): string[][] =>
     items.reduce<string[][]>(
         (acc, item, i) => {
-          acc[i % cols].push(item);
+          acc[i % rows].push(item);
           return acc;
         },
-        Array.from({ length: cols }, () => [])
+        Array.from({ length: rows }, () => [])
     );
 
-interface ScrollColumnProps {
+interface ScrollRowProps {
   images: string[];
-  duration: number;   // segundos — columnas distintas a distinta velocidad
-  reverse?: boolean;  // columna par sube, impar baja → más dinamismo
+  duration: number;   // segundos — filas distintas a distinta velocidad
+  reverse?: boolean;  // alterna el sentido para dar profundidad
+  offset?: number;    // desfase inicial para que las filas no queden alineadas
 }
 
-const ScrollColumn: React.FC<ScrollColumnProps> = ({ images, duration, reverse = false }) => {
+const FALLBACK =
+    "https://images.unsplash.com/photo-1498837167922-ddd27525d352?w=500&auto=format&fit=crop&q=80";
 
+const ScrollRow: React.FC<ScrollRowProps> = ({ images, duration, reverse = false, offset = 0 }) => {
+  // Duplicamos para lograr un bucle continuo y sin saltos
   const looped = [...images, ...images];
 
   return (
-      <div className="overflow-hidden flex-1">
+      <div className="overflow-hidden">
         <div
-            className="flex flex-col gap-3"
+            className="mosaic-row flex gap-4 md:gap-5 w-max"
             style={{
-              animation: `scroll-${reverse ? 'down' : 'up'} ${duration}s linear infinite`,
+              animation: `scroll-${reverse ? 'right' : 'left'} ${duration}s linear infinite`,
+              animationDelay: `-${offset}s`,
             }}
         >
           {looped.map((src, i) => (
               <div
                   key={`${src}-${i}`}
-                  className="overflow-hidden rounded-xl shadow-md flex-shrink-0"
+                  className="overflow-hidden rounded-2xl shadow-lg flex-shrink-0"
               >
                 <img
                     src={src}
-                    alt="food"
+                    alt=""
+                    aria-hidden="true"
                     loading="lazy"
-                    className="w-full h-44 object-cover transition-transform duration-500 group-hover:scale-110"
-
+                    className="h-40 w-60 md:h-52 md:w-80 object-cover"
                     onError={(e) => {
-                      const img = e.currentTarget;
-                      img.src =
-                          "https://images.unsplash.com/photo-1498837167922-ddd27525d352?w=500&auto=format&fit=crop&q=80";
+                      e.currentTarget.src = FALLBACK;
                     }}
-
                 />
               </div>
           ))}
@@ -73,16 +75,14 @@ const ScrollColumn: React.FC<ScrollColumnProps> = ({ images, duration, reverse =
 };
 
 const FoodCarousel: React.FC = () => {
-  const [col1, col2] = splitIntoColumns(IMAGES, 2);
+  const [row1, row2, row3] = splitIntoRows(IMAGES, 3);
 
   return (
-      <>
-
-        <div className="w-full h-full overflow-hidden rounded-2xl flex gap-3 p-4 ">
-          <ScrollColumn images={col1} duration={20} />
-          <ScrollColumn images={col2} duration={25} reverse />
-        </div>
-      </>
+      <div className="w-full h-full flex flex-col justify-center gap-4 md:gap-5">
+        <ScrollRow images={row1} duration={70} offset={0} />
+        <ScrollRow images={row2} duration={85} reverse offset={12} />
+        <ScrollRow images={row3} duration={75} offset={6} />
+      </div>
   );
 };
 

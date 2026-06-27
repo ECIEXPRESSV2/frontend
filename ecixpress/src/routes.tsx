@@ -67,12 +67,25 @@ const AppRoutes: React.FC = () => {
 const SignInPage: React.FC = () => {
   const navigate = useNavigate();
   return (
-    <div className="w-full min-h-screen bg-gradient-to-br from-yellow-50 via-white to-yellow-100">
+    <div className="w-full h-screen overflow-hidden font-body bg-gradient-to-br from-yellow-50 via-white to-yellow-100">
       <button
         onClick={() => navigate('/')}
-        className="fixed top-6 left-6 z-50 px-4 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-900 font-semibold transition"
+        style={{ ['--glow-size' as string]: '180px' }}
+        className="glass-spotlight group fixed top-6 left-6 z-50
+          inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl
+          bg-white/20 backdrop-blur-2xl
+          border border-white/40 ring-1 ring-white/25
+          text-gray-800 font-semibold text-sm
+          shadow-[0_12px_40px_-12px_rgba(31,38,135,0.3)]
+          transition-all duration-300 ease-out
+          hover:-translate-y-0.5 hover:bg-white/[0.28]
+          hover:shadow-[0_16px_50px_-14px_rgba(31,38,135,0.4)]
+          active:scale-95"
       >
-        ← Volver
+        <span className="relative z-10 flex items-center gap-1.5">
+          <span className="transition-transform duration-300 group-hover:-translate-x-0.5">←</span>
+          Volver
+        </span>
       </button>
       <SignInForm
         onSignUpClick={() => navigate('/signup')}
@@ -85,12 +98,25 @@ const SignInPage: React.FC = () => {
 const SignUpPage: React.FC = () => {
   const navigate = useNavigate();
   return (
-    <div className="w-full min-h-screen bg-gradient-to-br from-yellow-50 via-white to-yellow-100">
+    <div className="w-full h-screen overflow-hidden font-body bg-gradient-to-br from-yellow-50 via-white to-yellow-100">
       <button
         onClick={() => navigate('/')}
-        className="fixed top-6 left-6 z-50 px-4 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-900 font-semibold transition"
+        style={{ ['--glow-size' as string]: '180px' }}
+        className="glass-spotlight group fixed top-6 left-6 z-50
+          inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl
+          bg-white/20 backdrop-blur-2xl
+          border border-white/40 ring-1 ring-white/25
+          text-gray-800 font-semibold text-sm
+          shadow-[0_12px_40px_-12px_rgba(31,38,135,0.3)]
+          transition-all duration-300 ease-out
+          hover:-translate-y-0.5 hover:bg-white/[0.28]
+          hover:shadow-[0_16px_50px_-14px_rgba(31,38,135,0.4)]
+          active:scale-95"
       >
-        ← Volver
+        <span className="relative z-10 flex items-center gap-1.5">
+          <span className="transition-transform duration-300 group-hover:-translate-x-0.5">←</span>
+          Volver
+        </span>
       </button>
       <SignUpForm
         onSignInClick={() => navigate('/signin')}
