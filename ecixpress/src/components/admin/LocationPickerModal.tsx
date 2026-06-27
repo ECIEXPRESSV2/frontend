@@ -3,11 +3,123 @@ import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { X, MapPin, Check, Loader2 } from 'lucide-react';
 
+type CampusGeometry = {
+  type: 'Polygon' | 'MultiPolygon';
+  coordinates: number[][][] | number[][][][];
+};
+
+type CampusFeature = {
+  geometry: CampusGeometry;
+  properties: {
+    name?: string;
+    height?: number;
+  };
+};
+
+type CampusGeoJson = {
+  features: CampusFeature[];
+};
+
 interface Props {
   open: boolean;
   initial?: string;
   onClose: () => void;
   onSelect: (location: string) => void;
+}
+
+function getCentroid(geometry: CampusGeometry): [number, number] {
+  const ring = geometry.type === 'Polygon'
+    ? geometry.coordinates[0]
+    : geometry.coordinates[0][0];
+
+  let x = 0;
+  let y = 0;
+
+  (ring as number[][]).forEach(([lng, lat]) => {
+    x += lng;
+    y += lat;
+  });
+
+  return [x / ring.length, y / ring.length];
+}
+
+function pixelsPerMeter(map: maplibregl.Map, lat: number) {
+  const zoom = map.getZoom();
+
+  const metersPerPixel =
+    (156543.03392 * Math.cos((lat * Math.PI) / 180)) /
+    Math.pow(2, zoom);
+
+  return 1 / metersPerPixel;
+}
+
+function createBuildingHoverPin(map: maplibregl.Map) {
+  const el = document.createElement('div');
+  const body = document.createElement('div');
+  const label = document.createElement('div');
+  const tip = document.createElement('div');
+  let activeBuilding: { lat: number; height: number } | null = null;
+
+  el.className = 'building-pin building-pin--hidden';
+  body.className = 'building-pin-body';
+  label.className = 'building-pin-label';
+  tip.className = 'building-pin-tip';
+  body.append(label, tip);
+  el.append(body);
+
+  const marker = new maplibregl.Marker({
+    element: el,
+    anchor: 'bottom',
+  })
+    .setLngLat(map.getCenter())
+    .addTo(map);
+
+  function updateOffsets() {
+    const extraPadding = 24;
+
+    if (!activeBuilding) return;
+
+    const ppm = pixelsPerMeter(map, activeBuilding.lat);
+
+    marker.setOffset([
+      0,
+      -(activeBuilding.height * ppm + extraPadding),
+    ]);
+  }
+
+  function show(feature: CampusFeature) {
+    const name = feature.properties.name;
+    if (!name) return;
+
+    const [lng, lat] = getCentroid(feature.geometry);
+    const height = Number(feature.properties.height ?? 0);
+
+    activeBuilding = {
+      lat,
+      height: Number.isFinite(height) ? height : 0,
+    };
+
+    label.textContent = name;
+    marker.setLngLat([lng, lat]);
+    updateOffsets();
+    el.classList.remove('building-pin--hidden');
+  }
+
+  function hide() {
+    activeBuilding = null;
+    el.classList.add('building-pin--hidden');
+  }
+
+  map.on('zoom', updateOffsets);
+
+  return {
+    show,
+    hide,
+    remove: () => {
+      map.off('zoom', updateOffsets);
+      marker.remove();
+    },
+  };
 }
 
 /**
@@ -46,20 +158,30 @@ const LocationPickerModal: React.FC<Props> = ({ open, initial, onClose, onSelect
 
     const ro = new ResizeObserver(() => map.resize());
     ro.observe(el);
+    let buildingHoverPin: ReturnType<typeof createBuildingHoverPin> | undefined;
+    let disposed = false;
 
     map.on('load', () => {
       // Calcula los bounds desde el GeoJSON público para encuadrar todos los edificios.
       fetch('/campus.geojson')
         .then((r) => r.json())
-        .then((campus: { features: { geometry: { coordinates: number[][][] } }[] }) => {
+        .then((campus: CampusGeoJson) => {
+          if (disposed) return;
+
           const b = new maplibregl.LngLatBounds();
           campus.features.forEach((f) =>
-            f.geometry.coordinates[0].forEach((c) => b.extend(c as [number, number])),
+            (f.geometry.type === 'Polygon'
+              ? f.geometry.coordinates[0]
+              : f.geometry.coordinates[0][0]
+            ).forEach((c) => b.extend(c as [number, number])),
           );
           map.fitBounds(b, { padding: 50, bearing: -18, pitch: 55, maxZoom: 18, duration: 0 });
           map.resize();
+          buildingHoverPin = createBuildingHoverPin(map);
         })
-        .finally(() => setLoading(false));
+        .finally(() => {
+          if (!disposed) setLoading(false);
+        });
 
       map.on('click', 'edificios', (e) => {
         const f = e.features?.[0];
@@ -71,12 +193,23 @@ const LocationPickerModal: React.FC<Props> = ({ open, initial, onClose, onSelect
         if (f.id !== undefined) map.setFeatureState({ source: 'campus', id: f.id }, { sel: true });
         setSelected((f.properties?.name as string) ?? null);
       });
-      map.on('mouseenter', 'edificios', () => { map.getCanvas().style.cursor = 'pointer'; });
-      map.on('mouseleave', 'edificios', () => { map.getCanvas().style.cursor = ''; });
+      map.on('mousemove', 'edificios', (e) => {
+        const f = e.features?.[0];
+        if (!f) return;
+
+        map.getCanvas().style.cursor = 'pointer';
+        buildingHoverPin?.show(f as unknown as CampusFeature);
+      });
+      map.on('mouseleave', 'edificios', () => {
+        map.getCanvas().style.cursor = '';
+        buildingHoverPin?.hide();
+      });
     });
 
     return () => {
+      disposed = true;
       ro.disconnect();
+      buildingHoverPin?.remove();
       map.remove();
     };
   }, [open, initial]);
