@@ -1,10 +1,12 @@
 ﻿import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { io, Socket } from 'socket.io-client';
-import { ArrowLeft, RefreshCw, MessageCircle, RotateCcw, XCircle, Star, CheckCircle2, Clock, Plus, QrCode, Undo2, X, Eye, EyeOff, CreditCard, Loader2, Store as StoreIcon } from 'lucide-react';
+import { ArrowLeft, RefreshCw, MessageCircle, RotateCcw, XCircle, Star, Plus, Undo2, X, Eye, EyeOff, CreditCard, Loader2, Store as StoreIcon } from 'lucide-react';
 import Sidebar from '../../components/home/Sidebar';
 import ModalShell from '../../components/wallet/ModalShell';
 import FormInput from '../../components/ui/FormInput';
+import { OrderFulfillmentPanel } from '../../components/orders/OrderFulfillmentPanel';
+import { OrderProgressTimeline, isActiveOrder } from '../../components/orders/OrderProgressTimeline';
 import { useAuth } from '../../context/AuthContext';
 import { useWallet } from '../../context/WalletContext';
 import { useOrdersApi } from '../../hooks/useOrdersApi';
@@ -12,7 +14,7 @@ import { ORDERS_API_BASE_URL, type OrderResponse, type OrderStatus } from '../..
 import { getAvailableStores, type Store } from '../../services/storeService';
 import { productsApi, priceToCents, type Product } from '../../lib/products-api';
 import { formatCOP, formatDateTime } from '../../lib/format';
-import { ORDER_FLOW, hasPickupCode, isCancellable, isHideable, isPayable, isRateable, isReorderable, isReturnable, orderDisplayName, statusLabel, statusTone } from '../../lib/orders-ui';
+import { isCancellable, isHideable, isPayable, isRateable, isReorderable, isReturnable, orderDisplayName, statusLabel, statusTone } from '../../lib/orders-ui';
 
 interface OrdersPageProps {
   onBack?: () => void;
@@ -26,6 +28,24 @@ const STATUS_FILTERS: Array<{ value: 'ALL' | OrderStatus; label: string }> = [
   { value: 'DELIVERED', label: 'Entregado' },
   { value: 'CANCELLED', label: 'Cancelado' },
 ];
+
+const PAYMENT_LABEL: Record<OrderResponse['paymentMethod'], string> = {
+  wallet: 'Billetera ECIExpress',
+  cash: 'Efectivo',
+  card: 'Tarjeta',
+  transfer: 'Transferencia',
+};
+
+const DELIVERY_LABEL: Record<OrderResponse['deliveryMethod'], string> = {
+  pickup: 'Retiro en tienda',
+  delivery: 'Entrega',
+};
+
+function statusChangedAt(order: OrderResponse, status: OrderStatus): string | undefined {
+  return [...order.statusHistory]
+    .reverse()
+    .find((entry) => entry.toStatus === status)?.occurredAt;
+}
 
 /** Clave de localStorage donde guardamos los pedidos ocultos por usuario. */
 const hiddenStorageKey = (userId?: string) => `eciexpress:orders:hidden:${userId ?? 'anon'}`;
@@ -77,6 +97,16 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
   const socketRef = useRef<Socket | null>(null);
 
   const selected = useMemo(() => orders.find((o) => o.id === selectedId) ?? null, [orders, selectedId]);
+  const selectedIsActive = selected ? isActiveOrder(selected.status) : false;
+  const selectedDeliveredAt = selected
+    ? statusChangedAt(selected, 'DELIVERED') ?? selected.cancelledAt ?? selected.updatedAt
+    : undefined;
+  const selectedItemCount = selected?.items.reduce((sum, item) => sum + item.quantity, 0) ?? 0;
+  const selectedMilestoneLabel = selectedIsActive
+    ? 'Siguiente paso'
+    : selected?.status === 'DELIVERED'
+      ? 'Entrega'
+      : 'Cierre';
   const visibleOrders = useMemo(() => {
     const byStatus = filter === 'ALL' ? orders : orders.filter((o) => o.status === filter);
     // En la vista normal escondemos los ocultos; en la vista "ocultos" solo mostramos esos.
@@ -107,11 +137,26 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
     } catch { /* localStorage no disponible */ }
   };
 
+  const openOrderSummary = (id: string) => {
+    const next = new URLSearchParams(searchParams);
+    next.set('orderId', id);
+    next.delete('new');
+    setSearchParams(next);
+    setSelectedId(id);
+  };
+
+  const closeOrderSummary = () => {
+    const next = new URLSearchParams(searchParams);
+    next.delete('orderId');
+    setSearchParams(next);
+    setSelectedId('');
+  };
+
   const hideOrder = (id: string) => {
     const next = new Set(hiddenIds);
     next.add(id);
     persistHidden(next);
-    if (selectedId === id) setSelectedId('');
+    if (selectedId === id) closeOrderSummary();
   };
 
   const unhideOrder = (id: string) => {
@@ -130,6 +175,11 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
+  useEffect(() => {
+    const orderId = searchParams.get('orderId');
+    setSelectedId(orderId ?? '');
+  }, [searchParams]);
+
   const load = async () => {
     if (!userProfile?.id) return;
     setLoading(true);
@@ -137,7 +187,6 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
     try {
       const data = await api.getOrders({ customerId: userProfile.id });
       setOrders(data);
-      if (data.length && !selectedId) setSelectedId(data[0].id);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'No se pudieron cargar los pedidos');
     } finally {
@@ -218,7 +267,7 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
       // Volver a la vista de pedidos no ocultos para ver el pedido recién recreado.
       setShowHidden(false);
       setFilter('ALL');
-      setSelectedId(created.id);
+      openOrderSummary(created.id);
       socketRef.current?.emit('order:subscribe', { orderId: created.id });
       setSuccessMsg(`Tu pedido fue recreado exitosamente con numero de orden #${created.orderNumber.slice(-4)}`);
     } catch (e) {
@@ -252,7 +301,7 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
         idempotencyKey: crypto.randomUUID(),
       });
       upsertOrder(created);
-      setSelectedId(created.id);
+      openOrderSummary(created.id);
       socketRef.current?.emit('order:subscribe', { orderId: created.id });
       setCreateOpen(false);
       setSuccessMsg(`Tu pedido fue creado exitosamente con numero de orden #${created.orderNumber.slice(-4)}`);
@@ -449,9 +498,9 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
                 <article key={order.id} aria-label={`Pedido ${order.orderNumber} de ${order.storeName}`} className={`relative overflow-hidden rounded-2xl border bg-white shadow-sm transition hover:border-yellow-200 hover:shadow-md ${selectedId === order.id ? 'border-yellow-300 ring-2 ring-yellow-100' : 'border-gray-100'}`}>
                   <div className={`absolute inset-x-0 top-0 h-1 ${selectedId === order.id ? 'bg-yellow-400' : 'bg-amber-200'}`} aria-hidden="true" />
                   <div className="grid gap-0 md:grid-cols-[220px_1fr_auto]">
-                    <button
-                      type="button"
-                      onClick={() => setSelectedId(order.id)}
+                      <button
+                        type="button"
+                      onClick={() => openOrderSummary(order.id)}
                       className="flex min-h-[150px] flex-col items-center justify-center border-b border-gray-100 bg-white px-4 py-4 text-center transition hover:bg-yellow-50/40 md:border-b-0 md:border-r"
                     >
                       {firstItem?.imageUrl ? (
@@ -465,9 +514,9 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
                       <p className="text-xs font-semibold text-gray-950">{firstItem ? formatCOP(firstItem.totalAmount) : formatCOP(order.totalAmount)}</p>
                     </button>
 
-                    <button
-                      type="button"
-                      onClick={() => setSelectedId(order.id)}
+                      <button
+                        type="button"
+                      onClick={() => openOrderSummary(order.id)}
                       className="flex min-h-[150px] flex-col justify-center px-5 py-4 text-left transition hover:bg-yellow-50/40"
                     >
                       <div className="mb-3 flex items-center gap-2">
@@ -491,7 +540,7 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
                       <div className="grid gap-2">
                         <button
                           type="button"
-                          onClick={() => setSelectedId(order.id)}
+                          onClick={() => openOrderSummary(order.id)}
                           className="inline-flex min-h-11 items-center justify-center rounded-xl bg-yellow-400 px-4 py-2 text-sm font-bold text-gray-950 transition hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-300"
                         >
                           Ver resumen
@@ -530,66 +579,142 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
               })}
             </section>
 
-            {/* Detalle + seguimiento */}
-            <section>
-              {selected ? (
-                <div className="rounded-3xl border border-white/70 bg-white/82 p-5 shadow-xl shadow-gray-200/60 backdrop-blur-xl md:p-6 space-y-6">
-                  <div className="flex items-start justify-between gap-3">
+          </div>
+        </div>
+      </main>
+
+      <ModalShell
+        open={Boolean(selected)}
+        onClose={closeOrderSummary}
+        title="Resumen del pedido"
+        subtitle={selected ? `Pedido ${selected.orderNumber}` : undefined}
+        maxWidth="max-w-6xl"
+        bodyClassName="bg-white px-4 py-5 md:px-6"
+      >
+        {selected && (
+          <div className="space-y-6">
+            <div className="flex flex-col gap-4 border-b border-gray-100 pb-5 md:flex-row md:items-start md:justify-between">
+              <div className="flex items-start gap-3">
+                <button
+                  type="button"
+                  onClick={closeOrderSummary}
+                  className="mt-1 inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-amber-100 bg-white text-amber-700 transition hover:bg-yellow-50"
+                  aria-label="Cerrar resumen"
+                >
+                  <ArrowLeft size={17} />
+                </button>
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-600">Resumen</p>
+                  <h2 className="text-2xl font-black text-gray-950">{orderDisplayName(selected)}</h2>
+                  <p className="mt-1 text-sm text-gray-500">
+                    Pedido {selected.orderNumber} · {selectedItemCount} producto{selectedItemCount === 1 ? '' : 's'}
+                  </p>
+                </div>
+              </div>
+              <span className={`inline-flex w-fit rounded-full px-4 py-2 text-sm font-black ${statusTone[selected.status]}`}>
+                {statusLabel[selected.status]}
+              </span>
+            </div>
+
+            <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
+              <div className="space-y-6">
+                <section className="rounded-3xl border border-amber-100 bg-white/80 p-5">
+                  <div className="grid gap-5 md:grid-cols-2">
                     <div>
-                      <h2 className="text-xl font-bold text-gray-900">{orderDisplayName(selected)}</h2>
-                      <p className="text-sm text-gray-500">{selected.storeName} · Código {selected.orderNumber}</p>
+                      <h3 className="text-lg font-black text-gray-950">Inicio</h3>
+                      <p className="mt-1 text-sm font-semibold text-gray-700">{formatDateTime(selected.createdAt)}</p>
+                      <p className="mt-2 text-sm text-gray-500">{selected.storeName}</p>
                     </div>
-                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${statusTone[selected.status]}`}>{statusLabel[selected.status]}</span>
+                    <div>
+                      <h3 className="text-lg font-black text-gray-950">{selectedMilestoneLabel}</h3>
+                      <p className="mt-1 text-sm font-semibold text-gray-700">
+                        {selectedIsActive ? statusLabel[selected.status] : formatDateTime(selectedDeliveredAt)}
+                      </p>
+                      <p className="mt-2 text-sm text-gray-500">{DELIVERY_LABEL[selected.deliveryMethod]}</p>
+                    </div>
                   </div>
+                </section>
 
-                  {/* Seguimiento (RF-08) */}
-                  <OrderTracker order={selected} />
+                <OrderProgressTimeline
+                  order={selected}
+                  variant={selectedIsActive ? 'vertical' : 'horizontal'}
+                  showDates={!selectedIsActive}
+                />
 
-                  {/* Items */}
-                  <div>
-                    <p className="text-sm font-semibold text-gray-700 mb-2">Productos</p>
-                    <div className="space-y-2">
-                      {selected.items.map((item) => (
-                        <div key={item.id} className="rounded-xl bg-white/70 p-3 flex items-center justify-between gap-3">
-                          <div>
-                            <p className="font-semibold text-gray-900">{item.name}</p>
-                            <p className="text-xs text-gray-500">x{item.quantity} · {formatCOP(item.unitPrice)}</p>
+                <OrderFulfillmentPanel order={selected} />
+
+                <section className="rounded-3xl border border-gray-100 bg-white/80 p-5">
+                  <h3 className="mb-4 text-lg font-black text-gray-950">Resumen del pedido</h3>
+                  <div className="space-y-3">
+                    {selected.items.map((item) => (
+                      <div key={item.id} className="grid gap-3 border-b border-gray-100 pb-3 last:border-b-0 last:pb-0 sm:grid-cols-[56px_1fr_auto] sm:items-center">
+                        {item.imageUrl ? (
+                          <img src={item.imageUrl} alt={item.name} className="h-14 w-14 rounded-2xl object-contain" />
+                        ) : (
+                          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-50 text-lg font-black text-amber-700">
+                            {item.name.trim()[0]?.toUpperCase() ?? 'P'}
                           </div>
-                          <p className="font-semibold text-gray-900">{formatCOP(item.totalAmount)}</p>
+                        )}
+                        <div className="min-w-0">
+                          <p className="font-black text-gray-950">{item.name}</p>
+                          {item.description && <p className="line-clamp-2 text-sm text-gray-500">{item.description}</p>}
+                          <p className="mt-1 text-xs font-semibold text-gray-400">x{item.quantity} · {formatCOP(item.unitPrice)}</p>
                         </div>
-                      ))}
-                    </div>
-                    <div className="flex justify-between mt-3 text-sm">
-                      <span className="text-gray-500">Total</span>
-                      <span className="font-bold text-gray-900">{formatCOP(selected.totalAmount)}</span>
-                    </div>
-                    {selected.pickupExpiresAt && (
-                      <p className="text-xs text-gray-500 mt-1">Recoger antes de: {formatDateTime(selected.pickupExpiresAt)}</p>
-                    )}
-                  </div>
-
-                  {/* Calificación existente */}
-                  {selected.rating && (
-                    <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-3 text-sm">
-                      <div className="flex items-center gap-1 text-emerald-700 font-semibold">
-                        {Array.from({ length: selected.rating.score }).map((_, i) => <Star key={i} size={14} fill="currentColor" />)}
+                        <p className="font-black text-gray-950">{formatCOP(item.totalAmount)}</p>
                       </div>
-                      {selected.rating.comment && <p className="text-gray-600 mt-1">{selected.rating.comment}</p>}
-                    </div>
-                  )}
+                    ))}
+                  </div>
+                </section>
 
-                  {/* Acciones */}
-                  <div className="flex flex-wrap gap-3">
-                    {hasPickupCode(selected.status) && (
-                      <button onClick={() => navigate(`/fulfillment/code/${selected.id}`)} className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 text-white font-semibold px-4 py-2.5 hover:bg-emerald-600 transition-all">
-                        <QrCode size={16} /> Ver código de retiro
-                      </button>
-                    )}
-                    <button onClick={() => navigate(`/messages?orderId=${selected.id}`)} className="inline-flex items-center gap-2 rounded-xl bg-yellow-400 text-white font-semibold px-4 py-2.5 hover:bg-yellow-500 transition-all">
+                {selected.rating && (
+                  <section className="rounded-3xl border border-emerald-100 bg-emerald-50 p-4 text-sm">
+                    <div className="flex items-center gap-1 text-emerald-700 font-black">
+                      {Array.from({ length: selected.rating.score }).map((_, i) => <Star key={i} size={15} fill="currentColor" />)}
+                    </div>
+                    {selected.rating.comment && <p className="mt-1 text-gray-600">{selected.rating.comment}</p>}
+                  </section>
+                )}
+              </div>
+
+              <aside className="space-y-4">
+                <section className="rounded-3xl border border-gray-100 bg-white p-5 shadow-sm">
+                  <h3 className="text-lg font-black text-gray-950">Costos</h3>
+                  <dl className="mt-4 space-y-3 text-sm">
+                    <div className="flex justify-between gap-3">
+                      <dt className="text-gray-500">Productos</dt>
+                      <dd className="font-bold text-gray-900">{formatCOP(selected.subtotalAmount)}</dd>
+                    </div>
+                    <div className="flex justify-between gap-3">
+                      <dt className="text-gray-500">Descuentos</dt>
+                      <dd className="font-bold text-emerald-600">
+                        {selected.discountAmount > 0 ? `-${formatCOP(selected.discountAmount)}` : formatCOP(0)}
+                      </dd>
+                    </div>
+                    <div className="flex justify-between gap-3 border-t border-gray-100 pt-3 text-base">
+                      <dt className="font-black text-gray-950">Total</dt>
+                      <dd className="font-black text-gray-950">{formatCOP(selected.totalAmount)}</dd>
+                    </div>
+                  </dl>
+                </section>
+
+                <section className="rounded-3xl border border-gray-100 bg-white p-5 shadow-sm">
+                  <h3 className="text-lg font-black text-gray-950">Método de pago</h3>
+                  <p className="mt-3 text-sm font-bold text-gray-700">{PAYMENT_LABEL[selected.paymentMethod]}</p>
+                  {selected.pickupExpiresAt && (
+                    <p className="mt-3 rounded-2xl bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700">
+                      Recoger antes de {formatDateTime(selected.pickupExpiresAt)}
+                    </p>
+                  )}
+                </section>
+
+                <section className="rounded-3xl border border-gray-100 bg-white p-5 shadow-sm">
+                  <h3 className="text-lg font-black text-gray-950">Acciones</h3>
+                  <div className="mt-4 grid gap-2">
+                    <button onClick={() => navigate(`/messages?orderId=${selected.id}`)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-yellow-400 px-4 py-2 text-sm font-black text-gray-950 transition hover:bg-yellow-500">
                       <MessageCircle size={16} /> Chat con la tienda
                     </button>
                     {isPayable(selected.status) && (
-                      <button onClick={openRecharge} className="inline-flex items-center gap-2 rounded-xl bg-blue-500 text-white font-semibold px-4 py-2.5 hover:bg-blue-600 transition-all">
+                      <button onClick={openRecharge} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-blue-500 px-4 py-2 text-sm font-black text-white transition hover:bg-blue-600">
                         <CreditCard size={16} /> Pagar
                       </button>
                     )}
@@ -597,37 +722,33 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
                       <button
                         onClick={() => handleReorder(selected)}
                         disabled={reorderingId === selected.id}
-                        className="inline-flex items-center gap-2 rounded-xl bg-white/80 border border-white/60 text-gray-700 font-semibold px-4 py-2.5 hover:bg-white transition-all disabled:opacity-70 disabled:cursor-wait"
+                        className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-black text-gray-700 transition hover:bg-yellow-50 disabled:cursor-wait disabled:opacity-70"
                       >
-                        {reorderingId === selected.id ? <><Loader2 size={16} className="animate-spin" /> Recreando…</> : <><RotateCcw size={16} /> Reordenar</>}
+                        {reorderingId === selected.id ? <><Loader2 size={16} className="animate-spin" /> Recreando...</> : <><RotateCcw size={16} /> Reordenar</>}
                       </button>
                     )}
                     {isRateable(selected.status) && !selected.rating && (
-                      <button onClick={() => setRating({ open: true, score: 5, comment: '' })} className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 text-white font-semibold px-4 py-2.5 hover:bg-emerald-600 transition-all">
+                      <button onClick={() => setRating({ open: true, score: 5, comment: '' })} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-2 text-sm font-black text-white transition hover:bg-emerald-600">
                         <Star size={16} /> Calificar
                       </button>
                     )}
                     {isReturnable(selected.status) && (
-                      <button onClick={openReturn} className="inline-flex items-center gap-2 rounded-xl bg-purple-500 text-white font-semibold px-4 py-2.5 hover:bg-purple-600 transition-all">
+                      <button onClick={openReturn} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-purple-500 px-4 py-2 text-sm font-black text-white transition hover:bg-purple-600">
                         <Undo2 size={16} /> Devolver
                       </button>
                     )}
                     {isCancellable(selected.status) && (
-                      <button onClick={() => handleCancel(selected)} className="inline-flex items-center gap-2 rounded-xl bg-red-500 text-white font-semibold px-4 py-2.5 hover:bg-red-600 transition-all">
+                      <button onClick={() => handleCancel(selected)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-red-500 px-4 py-2 text-sm font-black text-white transition hover:bg-red-600">
                         <XCircle size={16} /> Cancelar
                       </button>
                     )}
                   </div>
-                </div>
-              ) : (
-                <div className="rounded-2xl bg-white/60 backdrop-blur-xl border border-white/50 p-8 text-center text-gray-500">
-                  Selecciona un pedido para ver el detalle y su seguimiento.
-                </div>
-              )}
-            </section>
+                </section>
+              </aside>
+            </div>
           </div>
-        </div>
-      </main>
+        )}
+      </ModalShell>
 
       {/* Modal crear pedido (para pruebas / flujo directo) */}
       <ModalShell open={createOpen} onClose={() => setCreateOpen(false)} title="Nuevo pedido" subtitle="Crea un pedido contra el microservicio">
@@ -788,41 +909,6 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
           </button>
         </div>
       </ModalShell>
-    </div>
-  );
-};
-
-/** Línea de seguimiento del pedido (RF-08). */
-const OrderTracker: React.FC<{ order: OrderResponse }> = ({ order }) => {
-  const reached = new Set(order.statusHistory.map((h) => h.toStatus));
-  const terminalBad = order.status === 'CANCELLED' || order.status === 'FAILED';
-
-  if (terminalBad) {
-    return (
-      <div className="rounded-xl bg-red-50 border border-red-200 p-4 text-sm text-red-700">
-        Pedido {statusLabel[order.status].toLowerCase()}.
-        {order.statusHistory.at(-1)?.reason ? ` Motivo: ${order.statusHistory.at(-1)?.reason}` : ''}
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex items-center justify-between gap-1">
-      {ORDER_FLOW.map((step, idx) => {
-        const done = reached.has(step);
-        const current = order.status === step;
-        return (
-          <React.Fragment key={step}>
-            <div className="flex flex-col items-center gap-1 flex-1">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${done ? 'bg-yellow-400 text-white' : 'bg-gray-100 text-gray-400'} ${current ? 'ring-4 ring-yellow-100' : ''}`}>
-                {done ? <CheckCircle2 size={16} /> : <Clock size={14} />}
-              </div>
-              <span className={`text-[10px] text-center leading-tight ${done ? 'text-gray-700 font-medium' : 'text-gray-400'}`}>{statusLabel[step]}</span>
-            </div>
-            {idx < ORDER_FLOW.length - 1 && <div className={`h-0.5 flex-1 ${reached.has(ORDER_FLOW[idx + 1]) ? 'bg-yellow-400' : 'bg-gray-200'}`} />}
-          </React.Fragment>
-        );
-      })}
     </div>
   );
 };
