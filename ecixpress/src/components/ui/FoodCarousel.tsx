@@ -29,45 +29,57 @@ const splitIntoRows = (items: string[], rows: number): string[][] =>
         Array.from({ length: rows }, () => [])
     );
 
-interface ScrollRowProps {
-  images: string[];
-  duration: number;   // segundos — filas distintas a distinta velocidad
-  reverse?: boolean;  // alterna el sentido para dar profundidad
-  offset?: number;    // desfase inicial para que las filas no queden alineadas
-}
-
 const FALLBACK =
     "https://images.unsplash.com/photo-1498837167922-ddd27525d352?w=500&auto=format&fit=crop&q=80";
 
+// Ancho de difuminado en los bordes de cada foto = solape entre fotos contiguas.
+// Al ser igual al ancho del degradado, las fotos se funden una con otra sin huecos.
+const FEATHER = 26;
+
+// Máscara que desvanece los bordes izq/der de cada foto para que se mezcle con la vecina.
+const tileMask =
+    `linear-gradient(to right, transparent 0, #000 ${FEATHER}px, #000 calc(100% - ${FEATHER}px), transparent 100%)`;
+
+interface ScrollRowProps {
+  images: string[];
+  duration: number;
+  reverse?: boolean;
+  offset?: number;
+}
+
 const ScrollRow: React.FC<ScrollRowProps> = ({ images, duration, reverse = false, offset = 0 }) => {
-  // Duplicamos para lograr un bucle continuo y sin saltos
-  const looped = [...images, ...images];
+  // Repetimos las imágenes para que un "set" sea más ancho que cualquier pantalla,
+  // y duplicamos el set para el bucle continuo (translate -50%).
+  const oneSet = [...images, ...images];
+  const looped = [...oneSet, ...oneSet];
 
   return (
-      <div className="overflow-hidden">
+      <div className="relative flex-1 overflow-hidden">
         <div
-            className="mosaic-row flex gap-4 md:gap-5 w-max"
+            className="mosaic-row flex h-full w-max"
             style={{
               animation: `scroll-${reverse ? 'right' : 'left'} ${duration}s linear infinite`,
               animationDelay: `-${offset}s`,
             }}
         >
           {looped.map((src, i) => (
-              <div
+              <img
                   key={`${src}-${i}`}
-                  className="overflow-hidden rounded-2xl shadow-lg flex-shrink-0"
-              >
-                <img
-                    src={src}
-                    alt=""
-                    aria-hidden="true"
-                    loading="lazy"
-                    className="h-40 w-60 md:h-52 md:w-80 object-cover"
-                    onError={(e) => {
-                      e.currentTarget.src = FALLBACK;
-                    }}
-                />
-              </div>
+                  src={src}
+                  alt=""
+                  aria-hidden="true"
+                  loading="lazy"
+                  className="h-full w-72 flex-shrink-0 object-cover"
+                  style={{
+                    // Solape: el borde difuminado de una foto se monta sobre la siguiente.
+                    marginLeft: `-${FEATHER}px`,
+                    maskImage: tileMask,
+                    WebkitMaskImage: tileMask,
+                  }}
+                  onError={(e) => {
+                    e.currentTarget.src = FALLBACK;
+                  }}
+              />
           ))}
         </div>
       </div>
@@ -77,8 +89,9 @@ const ScrollRow: React.FC<ScrollRowProps> = ({ images, duration, reverse = false
 const FoodCarousel: React.FC = () => {
   const [row1, row2, row3] = splitIntoRows(IMAGES, 3);
 
+  // Filas con flex-1 → llenan todo el alto sin huecos; sin gap → pegadas entre sí.
   return (
-      <div className="w-full h-full flex flex-col justify-center gap-4 md:gap-5">
+      <div className="flex h-full w-full flex-col">
         <ScrollRow images={row1} duration={70} offset={0} />
         <ScrollRow images={row2} duration={85} reverse offset={12} />
         <ScrollRow images={row3} duration={75} offset={6} />

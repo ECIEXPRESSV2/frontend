@@ -41,20 +41,22 @@ const AuthLayout: React.FC<AuthLayoutProps> = ({ children, dense = false }) => {
   const mainPadding = dense
     ? 'px-4 sm:px-6 pt-6 pb-6'
     : 'px-4 sm:px-6 pt-3 pb-20 sm:pt-4 sm:pb-24';
-  const contentSpacing = dense ? 'space-y-3' : 'space-y-4 sm:space-y-5';
+  const contentSpacing = dense ? 'space-y-2.5' : 'space-y-4 sm:space-y-5';
   const contentMaxH = dense
     ? 'max-h-[calc(100vh-5rem)]'
     : 'max-h-[calc(100vh-11rem)]';
 
   return (
     <div className="relative h-screen w-full overflow-hidden font-body bg-gradient-to-br from-yellow-50 via-white to-yellow-100">
-      {/* ── Fondo: mosaico institucional a pantalla completa ── */}
-      <div
-        className="absolute inset-0 z-0 scale-110 opacity-[0.45] blur-[2px]
-                   motion-safe:[mask-image:radial-gradient(125%_125%_at_50%_50%,#000_60%,transparent_100%)]"
-        aria-hidden="true"
-      >
-        <FoodCarousel />
+      {/* ── Fondo: mosaico institucional a pantalla completa (cobertura total) ── */}
+      <div className="absolute inset-0 z-0 overflow-hidden" aria-hidden="true">
+        <div
+          className="absolute -inset-6 opacity-[0.45] blur-[3px]
+                     [mask-image:linear-gradient(to_bottom,transparent_0,#000_9%,#000_91%,transparent_100%)]
+                     [-webkit-mask-image:linear-gradient(to_bottom,transparent_0,#000_9%,#000_91%,transparent_100%)]"
+        >
+          <FoodCarousel />
+        </div>
       </div>
 
       {/* ── Capa de legibilidad: tinte translúcido + blur suave ── */}

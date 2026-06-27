@@ -123,7 +123,7 @@ const SignUpForm: React.FC<SignUpProps> = ({ onSignInClick, onSignUpSuccess }) =
         <p className="text-sm text-gray-500">Únete a la plataforma</p>
       </div>
 
-      <form onSubmit={handleSignUp} noValidate className="space-y-3">
+      <form onSubmit={handleSignUp} noValidate className="space-y-2.5 [&_input]:py-2.5">
         <FormInput
           label="Nombre"
           type="text"
