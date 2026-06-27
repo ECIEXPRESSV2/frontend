@@ -64,6 +64,7 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
     productName: '',
     price: '', // en pesos; se convierte a centavos al enviar
     quantity: '1',
+    availableStock: 0, // stock - reservedStock del producto elegido, para validar cantidad
     paymentMethod: 'wallet' as 'wallet' | 'cash' | 'card' | 'transfer',
   });
 
@@ -232,6 +233,7 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
     setSuccessMsg(null);
     if (!draft.storeId) { setActionMsg('Selecciona una tienda'); return; }
     if (!draft.productId) { setActionMsg('Selecciona un producto'); return; }
+    if (quantityError) { setActionMsg(quantityError); return; }
     setCreating(true);
     try {
       const created = await api.createOrder({
@@ -285,7 +287,7 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
   // Al elegir tienda: guarda id/nombre, limpia el producto y carga su catálogo.
   const handleSelectStore = async (storeId: string) => {
     const store = stores.find((s) => s.id === storeId);
-    setDraft((d) => ({ ...d, storeId, storeName: store?.name ?? '', productId: '', productName: '', price: '' }));
+    setDraft((d) => ({ ...d, storeId, storeName: store?.name ?? '', productId: '', productName: '', price: '', availableStock: 0 }));
     setProducts([]);
     if (!storeId) return;
     setCatalogLoading(true);
@@ -309,8 +311,20 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
       productId,
       productName: product?.name ?? '',
       price: product ? String(product.price) : '',
+      availableStock: product ? Math.max(0, product.stock - product.reservedStock) : 0,
+      quantity: '1',
     }));
   };
+
+  // Cantidad pedida vs. stock disponible del producto elegido (stock - reservedStock).
+  const quantityError = useMemo(() => {
+    if (!draft.productId) return undefined;
+    const quantity = Number(draft.quantity) || 0;
+    if (quantity > draft.availableStock) {
+      return `No hay suficiente stock disponible (quedan ${draft.availableStock})`;
+    }
+    return undefined;
+  }, [draft.productId, draft.quantity, draft.availableStock]);
 
   const openReturn = () => {
     if (!selected) return;
@@ -608,7 +622,14 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
                 {draft.price ? formatCOP(priceToCents(draft.price) * (Number(draft.quantity) || 1)) : '—'}
               </div>
             </div>
-            <FormInput label="Cantidad" type="number" value={draft.quantity} onChange={(v) => setDraft((d) => ({ ...d, quantity: v }))} />
+            <FormInput
+              label="Cantidad"
+              type="number"
+              value={draft.quantity}
+              onChange={(v) => setDraft((d) => ({ ...d, quantity: v }))}
+              error={quantityError}
+              touched={Boolean(draft.productId)}
+            />
           </div>
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1">Método de pago</label>
@@ -618,16 +639,13 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
               className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm bg-white/60 outline-none focus:border-yellow-400 focus:ring-2 focus:ring-yellow-100"
             >
               <option value="wallet">Billetera (pago digital)</option>
-              <option value="cash">Efectivo</option>
-              <option value="card">Tarjeta</option>
-              <option value="transfer">Transferencia</option>
             </select>
-            <p className="text-xs text-gray-400 mt-1">Con billetera/tarjeta el pedido queda "Pago pendiente" hasta que financial confirme.</p>
+            <p className="text-xs text-gray-400 mt-1">El pedido queda "Pago pendiente" hasta que financial confirme.</p>
           </div>
           <button
             onClick={handleCreate}
-            disabled={creating}
-            className="w-full py-3 rounded-xl bg-gradient-to-r from-yellow-400 to-yellow-500 text-white font-semibold hover:from-yellow-500 hover:to-yellow-600 transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-wait"
+            disabled={creating || Boolean(quantityError)}
+            className="w-full py-3 rounded-xl bg-gradient-to-r from-yellow-400 to-yellow-500 text-white font-semibold hover:from-yellow-500 hover:to-yellow-600 transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-wait disabled:cursor-not-allowed"
           >
             {creating ? <><Loader2 size={18} className="animate-spin" /> Creando pedido…</> : 'Crear pedido'}
           </button>
