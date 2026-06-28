@@ -1,7 +1,7 @@
 ﻿import React, { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { io, Socket } from 'socket.io-client';
-import { ArrowLeft, RefreshCw, MessageCircle, RotateCcw, XCircle, Star, Plus, Undo2, X, Eye, EyeOff, CreditCard, Loader2, Store as StoreIcon } from 'lucide-react';
+import { ArrowLeft, RefreshCw, MessageCircle, RotateCcw, XCircle, Star, Plus, Undo2, X, Eye, EyeOff, CreditCard, Loader2, Store as StoreIcon, ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import Sidebar from '../../components/home/Sidebar';
 import ModalShell from '../../components/wallet/ModalShell';
 import { OrderFulfillmentPanel } from '../../components/orders/OrderFulfillmentPanel';
@@ -27,6 +27,8 @@ const STATUS_FILTERS: Array<{ value: 'ALL' | OrderStatus; label: string }> = [
   { value: 'DELIVERED', label: 'Entregado' },
   { value: 'CANCELLED', label: 'Cancelado' },
 ];
+
+const PAGE_SIZE = 4;
 
 const PAYMENT_LABEL: Record<OrderResponse['paymentMethod'], string> = {
   wallet: 'Billetera ECIExpress',
@@ -61,11 +63,13 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<'ALL' | OrderStatus>('ALL');
+  const [search, setSearch] = useState('');
   const [connected, setConnected] = useState(false);
 
   // Pedidos que el cliente ocultó de su vista (persisten en localStorage por usuario).
   const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set());
   const [showHidden, setShowHidden] = useState(false);
+  const [page, setPage] = useState(1);
 
   const [rating, setRating] = useState<{ open: boolean; score: number; comment: string }>({ open: false, score: 5, comment: '' });
   const [returnModal, setReturnModal] = useState<{ open: boolean; full: boolean; qty: Record<string, number> }>({ open: false, full: true, qty: {} });
@@ -90,9 +94,24 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
       : 'Cierre';
   const visibleOrders = useMemo(() => {
     const byStatus = filter === 'ALL' ? orders : orders.filter((o) => o.status === filter);
+    const query = search.trim().toLowerCase();
+    const bySearch = query
+      ? byStatus.filter((order) =>
+          [
+            order.storeName,
+            order.orderNumber,
+            order.items.map((item) => item.name).join(' '),
+          ].some((value) => value.toLowerCase().includes(query)),
+        )
+      : byStatus;
     // En la vista normal escondemos los ocultos; en la vista "ocultos" solo mostramos esos.
-    return byStatus.filter((o) => (showHidden ? hiddenIds.has(o.id) : !hiddenIds.has(o.id)));
-  }, [orders, filter, hiddenIds, showHidden]);
+    return bySearch.filter((o) => (showHidden ? hiddenIds.has(o.id) : !hiddenIds.has(o.id)));
+  }, [orders, filter, search, hiddenIds, showHidden]);
+  const totalPages = Math.max(1, Math.ceil(visibleOrders.length / PAGE_SIZE));
+  const pagedOrders = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    return visibleOrders.slice(start, start + PAGE_SIZE);
+  }, [visibleOrders, page]);
   const hiddenCount = useMemo(() => orders.filter((o) => hiddenIds.has(o.id)).length, [orders, hiddenIds]);
 
   const upsertOrder = (order: OrderResponse) =>
@@ -119,6 +138,8 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
   };
 
   const openOrderSummary = (id: string) => {
+    const index = visibleOrders.findIndex((order) => order.id === id);
+    if (index >= 0) setPage(Math.floor(index / PAGE_SIZE) + 1);
     const next = new URLSearchParams(searchParams);
     next.set('orderId', id);
     setSearchParams(next);
@@ -149,6 +170,20 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
     const orderId = searchParams.get('orderId');
     setSelectedId(orderId ?? '');
   }, [searchParams]);
+
+  useEffect(() => {
+    setPage((current) => Math.min(current, totalPages));
+  }, [totalPages]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [filter, search, showHidden]);
+
+  useEffect(() => {
+    if (!selectedId) return;
+    const index = visibleOrders.findIndex((order) => order.id === selectedId);
+    if (index >= 0) setPage(Math.floor(index / PAGE_SIZE) + 1);
+  }, [selectedId, visibleOrders]);
 
   const load = async () => {
     if (!userProfile?.id) return;
@@ -290,8 +325,8 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
     <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-white to-yellow-100">
       <Sidebar activeItem="orders" />
 
-      <main className="ml-16 px-4 pb-6 pt-20 md:px-8 md:pb-8 lg:px-10">
-        <div className="max-w-7xl mx-auto space-y-6">
+      <main className="ml-16 px-4 pb-6 pt-20 md:ml-64 md:px-8 md:pb-8 lg:px-10">
+        <div className="max-w-6xl mx-auto space-y-6">
           <header className="relative overflow-hidden rounded-[28px] border border-yellow-200/70 bg-[linear-gradient(135deg,#F4B942_0%,#FBBF24_48%,#FDE68A_100%)] p-5 shadow-lg shadow-yellow-200/60 md:p-6">
             <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-white/60" />
             <div className="pointer-events-none absolute -left-20 -top-24 h-64 w-64 rounded-full bg-white/22 blur-3xl" />
@@ -324,18 +359,44 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
             </div>
           </header>
 
-          {/* Filtros */}
           <div className="rounded-3xl border border-white/70 bg-white/82 p-4 shadow-lg shadow-gray-200/60 backdrop-blur-xl">
-            <div className="flex flex-wrap gap-2">
-            {STATUS_FILTERS.map((f) => (
-              <button
-                key={f.value}
-                onClick={() => setFilter(f.value)}
-                className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-all ${filter === f.value ? 'bg-yellow-400 text-gray-950 shadow-sm' : 'border border-gray-100 bg-white text-gray-600 hover:border-yellow-200 hover:bg-yellow-50 hover:text-amber-700'}`}
-              >
-                {f.label}
-              </button>
-            ))}
+            <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+              <label className="relative block">
+                <span className="sr-only">Buscar pedidos</span>
+                <input
+                  className="min-h-12 w-full rounded-2xl border border-gray-100 bg-white py-3 pl-5 pr-24 text-base font-medium text-gray-900 outline-none transition placeholder:text-gray-400 hover:border-yellow-200 focus:border-yellow-400 focus:ring-4 focus:ring-yellow-100"
+                  placeholder="Buscar por tienda, código o producto"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                />
+                {search && (
+                  <button
+                    type="button"
+                    onClick={() => setSearch('')}
+                    className="absolute right-12 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 focus:outline-none"
+                    aria-label="Limpiar búsqueda"
+                  >
+                    <X size={14} aria-hidden="true" />
+                  </button>
+                )}
+                <span className="absolute right-2 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-xl bg-yellow-400 text-white" aria-hidden="true">
+                  <Search size={16} />
+                </span>
+              </label>
+              <p className="text-sm font-semibold text-gray-500">
+                {visibleOrders.length} pedido{visibleOrders.length === 1 ? '' : 's'}
+              </p>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {STATUS_FILTERS.map((f) => (
+                <button
+                  key={f.value}
+                  onClick={() => setFilter(f.value)}
+                  className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-all ${filter === f.value ? 'bg-yellow-400 text-gray-950 shadow-sm' : 'border border-gray-100 bg-white text-gray-600 hover:border-yellow-200 hover:bg-yellow-50 hover:text-amber-700'}`}
+                >
+                  {f.label}
+                </button>
+              ))}
             </div>
           </div>
 
@@ -361,10 +422,10 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
               {loading && <p className="text-sm text-gray-500">Cargando pedidos…</p>}
               {!loading && visibleOrders.length === 0 && (
                 <div className="rounded-2xl bg-white/60 backdrop-blur-xl border border-white/50 p-8 text-center text-gray-500">
-                  {showHidden ? 'No tienes pedidos ocultos.' : `No tienes pedidos ${filter !== 'ALL' ? 'con ese estado' : 'todavía'}.`}
+                  {search ? `No hay pedidos que coincidan con "${search}".` : showHidden ? 'No tienes pedidos ocultos.' : `No tienes pedidos ${filter !== 'ALL' ? 'con ese estado' : 'todavía'}.`}
                 </div>
               )}
-              {visibleOrders.map((order) => {
+              {pagedOrders.map((order) => {
                 const firstItem = order.items[0];
                 return (
                 <article key={order.id} aria-label={`Pedido ${order.orderNumber} de ${order.storeName}`} className={`relative overflow-hidden rounded-2xl border bg-white shadow-sm transition hover:border-yellow-200 hover:shadow-md ${selectedId === order.id ? 'border-yellow-300 ring-2 ring-yellow-100' : 'border-gray-100'}`}>
@@ -449,6 +510,39 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
                 </article>
               );
               })}
+
+              {!loading && visibleOrders.length > PAGE_SIZE && (
+                <div className="mt-5 flex flex-col gap-3 border-t border-gray-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-sm text-gray-500">
+                    Mostrando <span className="font-semibold text-gray-900">{(page - 1) * PAGE_SIZE + 1}</span> a{' '}
+                    <span className="font-semibold text-gray-900">{Math.min(page * PAGE_SIZE, visibleOrders.length)}</span> de{' '}
+                    <span className="font-semibold text-gray-900">{visibleOrders.length}</span> pedidos
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setPage((current) => Math.max(1, current - 1))}
+                      disabled={page === 1}
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-600 transition hover:border-yellow-300 hover:text-amber-700 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      <ChevronLeft size={14} />
+                      Anterior
+                    </button>
+                    <span className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-semibold text-gray-700">
+                      Página {page} de {totalPages}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+                      disabled={page === totalPages}
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-600 transition hover:border-yellow-300 hover:text-amber-700 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      Siguiente
+                      <ChevronRight size={14} />
+                    </button>
+                  </div>
+                </div>
+              )}
             </section>
 
           </div>

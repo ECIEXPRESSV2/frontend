@@ -630,14 +630,14 @@ const UsersPage: React.FC = () => {
         onExpandedChange={setSidebarExpanded}
       />
 
-      <main className={`relative z-[51] ml-16 min-h-screen px-4 pb-5 pt-20 transition-all duration-300 ${sidebarExpanded ? 'md:ml-64' : 'md:ml-16'} md:px-8 lg:px-10`}>
+      <main className="relative z-[51] ml-16 min-h-screen px-4 pb-5 pt-20 md:ml-64 md:px-8 lg:px-10">
         <div className="pointer-events-none fixed inset-0 overflow-hidden">
           <div className="absolute -top-52 left-1/2 h-[560px] w-[760px] -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgba(251,191,36,0.08)_0%,transparent_66%)] blur-3xl" />
           <div className="absolute right-[-220px] top-44 h-[420px] w-[420px] rounded-full bg-[radial-gradient(circle,rgba(94,192,217,0.10)_0%,transparent_68%)] blur-3xl" />
           <div className="absolute bottom-[-260px] left-20 h-[420px] w-[420px] rounded-full bg-[radial-gradient(circle,rgba(249,115,22,0.05)_0%,transparent_66%)] blur-3xl" />
         </div>
 
-        <div className="relative mx-auto max-w-7xl space-y-6">
+        <div className="relative mx-auto max-w-6xl space-y-6">
           <header className="relative overflow-hidden rounded-[28px] border border-yellow-200/70 bg-[linear-gradient(135deg,#F4B942_0%,#FBBF24_48%,#FDE68A_100%)] p-5 shadow-lg shadow-yellow-200/60 md:p-6">
             <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-white/60" />
             <div className="pointer-events-none absolute -left-20 -top-24 h-64 w-64 rounded-full bg-white/22 blur-3xl" />
@@ -656,7 +656,7 @@ const UsersPage: React.FC = () => {
             </div>
           </header>
 
-          <section className="relative rounded-3xl border border-white/70 bg-white/82 p-4 shadow-lg shadow-gray-200/60 backdrop-blur-xl md:p-5">
+          <section className="sticky top-20 z-30 relative rounded-3xl border border-white/70 bg-white/88 p-4 shadow-lg shadow-gray-200/60 backdrop-blur-xl md:p-5">
             <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white to-transparent" />
             <div className="grid gap-3 lg:grid-cols-[1fr_auto_auto] lg:items-center">
               <label className="relative block">
@@ -692,14 +692,9 @@ const UsersPage: React.FC = () => {
                     <X size={14} aria-hidden="true" />
                   </button>
                 )}
-                <button
-                  type="button"
-                  onClick={() => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current); handleSearch(); }}
-                  aria-label="Buscar"
-                  className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex h-8 w-8 items-center justify-center rounded-xl bg-yellow-400 text-white transition hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-300"
-                >
+                <span className="absolute right-2 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-xl bg-yellow-400 text-white" aria-hidden="true">
                   <Search size={16} aria-hidden="true" />
-                </button>
+                </span>
               </label>
 
               <div className="inline-flex min-h-12 rounded-2xl border border-white/60 bg-white/60 p-1 shadow-sm backdrop-blur">
@@ -954,34 +949,35 @@ const UsersPage: React.FC = () => {
 
           <section className="relative overflow-hidden rounded-3xl border border-white/70 bg-white/78 shadow-xl shadow-gray-200/70 backdrop-blur-xl">
             <div className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-[#F4B942]" />
-            {loading && users.length === 0 ? (
-              <div>
-                <div className="border-b border-white/70 px-5 py-4">
-                  <div className="h-5 w-48 animate-pulse rounded-full bg-gray-100" />
+            <div className="max-h-[calc(100vh-24rem)] overflow-auto">
+              {loading && users.length === 0 ? (
+                <div>
+                  <div className="border-b border-white/70 px-5 py-4">
+                    <div className="h-5 w-48 animate-pulse rounded-full bg-gray-100" />
+                  </div>
+                  <TableSkeleton rows={8} columns={4} />
                 </div>
-                <TableSkeleton rows={8} columns={4} />
-              </div>
-            ) : users.length === 0 ? (
-              <EmptyUsersState search={appliedSearch} onClearSearch={clearSearch} />
-            ) : filteredUsers.length === 0 ? (
-              <div className="flex min-h-[240px] flex-col items-center justify-center px-6 py-10 text-center">
-                <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border border-yellow-200 bg-gradient-to-br from-white to-yellow-50 text-amber-700 shadow-md">
-                  <Search size={22} aria-hidden="true" />
+              ) : users.length === 0 ? (
+                <EmptyUsersState search={appliedSearch} onClearSearch={clearSearch} />
+              ) : filteredUsers.length === 0 ? (
+                <div className="flex min-h-[240px] flex-col items-center justify-center px-6 py-10 text-center">
+                  <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border border-yellow-200 bg-gradient-to-br from-white to-yellow-50 text-amber-700 shadow-md">
+                    <Search size={22} aria-hidden="true" />
+                  </div>
+                  <p className="font-bold text-gray-950">Sin resultados para los filtros aplicados</p>
+                  <p className="mt-1 text-sm text-gray-500">Prueba cambiando el rol o estado seleccionado.</p>
+                  <button
+                    type="button"
+                    onClick={() => { setFilterRole(''); setFilterStatus(''); }}
+                    className="mt-4 inline-flex min-h-9 items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700 transition hover:bg-yellow-50 hover:text-amber-700 focus:outline-none focus:ring-2 focus:ring-yellow-300"
+                  >
+                    <X size={14} aria-hidden="true" />
+                    Limpiar filtros
+                  </button>
                 </div>
-                <p className="font-bold text-gray-950">Sin resultados para los filtros aplicados</p>
-                <p className="mt-1 text-sm text-gray-500">Prueba cambiando el rol o estado seleccionado.</p>
-                <button
-                  type="button"
-                  onClick={() => { setFilterRole(''); setFilterStatus(''); }}
-                  className="mt-4 inline-flex min-h-9 items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700 transition hover:bg-yellow-50 hover:text-amber-700 focus:outline-none focus:ring-2 focus:ring-yellow-300"
-                >
-                  <X size={14} aria-hidden="true" />
-                  Limpiar filtros
-                </button>
-              </div>
-            ) : viewMode === 'table' ? (
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[780px] text-left text-sm">
+              ) : viewMode === 'table' ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[780px] text-left text-sm">
                   <caption className="sr-only">Listado de usuarios de ECIxpress</caption>
                   <thead className="border-b border-white/70 bg-gradient-to-r from-gray-50/90 via-white/85 to-cyan-50/55 text-xs font-bold uppercase tracking-wide text-gray-600">
                     <tr>
@@ -1054,11 +1050,11 @@ const UsersPage: React.FC = () => {
                       </tr>
                     ))}
                   </tbody>
-                </table>
-              </div>
-            ) : (
-              <div>
-                <div className="flex items-center gap-3 border-b border-gray-100 px-5 py-3">
+                  </table>
+                </div>
+              ) : (
+                <div>
+                  <div className="flex items-center gap-3 border-b border-gray-100 px-5 py-3">
                   <label className="inline-flex cursor-pointer items-center gap-2.5 text-sm font-medium text-gray-600 hover:text-gray-900">
                     <input
                       type="checkbox"
@@ -1076,7 +1072,7 @@ const UsersPage: React.FC = () => {
                     <span className="text-xs text-gray-400">{selectedUserIds.size} de {filteredUsers.length}</span>
                   )}
                 </div>
-                <div className="grid gap-5 p-5 md:grid-cols-2 xl:grid-cols-3">
+                  <div className="grid gap-5 p-5 md:grid-cols-2 xl:grid-cols-3">
                 {filteredUsers.map(user => (
                   <article
                     key={user.id}
@@ -1132,12 +1128,12 @@ const UsersPage: React.FC = () => {
                     </div>
                   </article>
                 ))}
-              </div>
-              </div>
-            )}
+                  </div>
+                </div>
+              )}
 
-            {total > 0 && !loading && (
-              <footer className="flex flex-col gap-3 border-t border-white/70 bg-white/75 px-5 py-4 text-sm text-gray-600 md:flex-row md:items-center md:justify-between">
+              {total > 0 && !loading && (
+                <footer className="flex flex-col gap-3 border-t border-white/70 bg-white/75 px-5 py-4 text-sm text-gray-600 md:flex-row md:items-center md:justify-between">
                 <p>
                   Mostrando{' '}
                   <span className="font-bold text-gray-950">
@@ -1193,8 +1189,9 @@ const UsersPage: React.FC = () => {
                     </button>
                   </div>
                 )}
-              </footer>
-            )}
+                </footer>
+              )}
+            </div>
           </section>
         </div>
       </main>
