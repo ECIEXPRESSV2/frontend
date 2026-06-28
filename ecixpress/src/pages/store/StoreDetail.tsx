@@ -101,7 +101,7 @@ const StoreDetail: React.FC<StoreDetailProps> = ({ storeId: storeIdProp, onBack 
       />
 
       <main className="ml-16 px-4 pb-28 pt-20 md:px-8 lg:pb-8">
-        <div className="max-w-5xl mx-auto space-y-6">
+        <div className="max-w-6xl mx-auto space-y-6">
           {storeImage ? (
             /* Con foto: el banner es la imagen a todo lo ancho (como una tarjeta de
                delivery), con los controles flotando encima y el nombre/meta debajo en

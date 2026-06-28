@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User, Plus, Grid, Clipboard, MessageCircle, LogOut, Wallet, Shield, Store, PackageCheck } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
@@ -54,6 +54,17 @@ const Sidebar: React.FC<SidebarProps> = ({
   const [topbarExpanded, setTopbarExpanded] = useState(false);
   const [topbarNotifOpen, setTopbarNotifOpen] = useState(false);
   const isTopbarOpen = topbarExpanded || topbarNotifOpen;
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setTopbarExpanded(false);
+      setTopbarNotifOpen(false);
+      setNotifOpen(false);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const menuItems = [
     { id: 'home', icon: Grid, label: 'Inicio', path: '/home' },
@@ -112,7 +123,7 @@ const Sidebar: React.FC<SidebarProps> = ({
               onMessagesClick?.();
               if (!onMessagesClick) navigate('/messages');
             }}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/60 bg-white/40 text-gray-500 backdrop-blur-sm transition hover:bg-white/70 hover:text-amber-700 focus:outline-none focus:ring-2 focus:ring-yellow-300"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/60 bg-white/50 text-gray-600 backdrop-blur-sm transition hover:bg-white/80 hover:text-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-300"
             title="Mensajes"
             aria-label="Abrir mensajes"
           >
@@ -135,7 +146,7 @@ const Sidebar: React.FC<SidebarProps> = ({
               onUserClick?.();
               if (!onUserClick) navigate('/profile');
             }}
-            className="relative inline-flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-yellow-300 via-yellow-400 to-amber-500 text-sm font-bold text-gray-950 shadow-[0_2px_8px_rgba(251,191,36,0.45),inset_0_1px_1px_rgba(255,255,255,0.5)] ring-2 ring-white/70 transition hover:ring-yellow-200/80 hover:shadow-[0_4px_14px_rgba(251,191,36,0.55)] focus:outline-none focus:ring-2 focus:ring-yellow-300"
+            className="relative inline-flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-amber-200 via-amber-300 to-orange-300 text-sm font-bold text-gray-900 shadow-[0_2px_8px_rgba(251,191,36,0.35),inset_0_1px_1px_rgba(255,255,255,0.5)] ring-2 ring-white/70 transition hover:ring-amber-200/80 hover:shadow-[0_4px_14px_rgba(251,191,36,0.45)] focus:outline-none focus:ring-2 focus:ring-amber-300"
             title={userProfile?.fullName || 'Mi perfil'}
             aria-label="Abrir perfil"
           >
@@ -150,7 +161,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       )}
 
       <aside
-      className={`fixed left-0 top-0 z-[60] h-screen bg-[linear-gradient(180deg,rgba(255,255,255,0.84)_0%,rgba(254,249,195,0.78)_36%,rgba(253,230,138,0.70)_64%,rgba(255,255,255,0.82)_100%)] backdrop-blur-2xl border-r border-white/60 shadow-xl shadow-yellow-200/25 flex flex-col py-6 transition-all duration-300 ease-in-out overflow-hidden
+      className={`fixed left-0 top-0 z-[60] h-screen bg-[linear-gradient(180deg,rgba(255,255,255,0.90)_0%,rgba(255,251,235,0.86)_36%,rgba(254,243,199,0.68)_64%,rgba(255,255,255,0.90)_100%)] backdrop-blur-2xl border-r border-white/60 shadow-xl shadow-amber-200/18 flex flex-col py-6 transition-all duration-300 ease-in-out overflow-hidden
         ${isExpanded ? 'w-64 max-md:w-16' : 'w-16'}`}
       onMouseEnter={() => {
         if (!lockExpanded && !notifOpen) setIsExpanded(true);
@@ -163,7 +174,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         <button
           type="button"
           onClick={() => setIsExpanded(!isExpanded)}
-          className="inline-flex h-11 w-11 items-center justify-center overflow-hidden rounded-xl border border-yellow-200/50 bg-gradient-to-br from-yellow-300/90 via-yellow-400/85 to-amber-400/90 shadow-[0_4px_14px_rgba(251,191,36,0.4),inset_0_1px_1px_rgba(255,255,255,0.55)] backdrop-blur-sm transition hover:from-yellow-300 hover:to-amber-400 hover:shadow-[0_6px_18px_rgba(251,191,36,0.5)] focus:outline-none focus:ring-2 focus:ring-yellow-300"
+          className="inline-flex h-11 w-11 items-center justify-center overflow-hidden rounded-xl border border-amber-200/60 bg-gradient-to-br from-amber-300/90 via-amber-400/85 to-orange-300/90 shadow-[0_4px_14px_rgba(251,191,36,0.28),inset_0_1px_1px_rgba(255,255,255,0.55)] backdrop-blur-sm transition hover:from-amber-300 hover:to-orange-300 hover:shadow-[0_6px_18px_rgba(251,191,36,0.38)] focus:outline-none focus:ring-2 focus:ring-amber-300"
           title={isExpanded ? 'Contraer menú' : 'Abrir menú'}
           aria-label={isExpanded ? 'Contraer menú lateral' : 'Abrir menú lateral'}
         >
@@ -176,8 +187,8 @@ const Sidebar: React.FC<SidebarProps> = ({
         </button>
         {isExpanded && !showProfile && (
           <div className="ml-3 min-w-0 flex-1">
-            <p className="truncate text-xs font-semibold uppercase tracking-[0.14em] text-amber-600">Hola</p>
-            <p className="truncate text-sm font-bold leading-tight text-gray-900">{firstName}</p>
+            <p className="truncate text-xs font-semibold uppercase tracking-[0.14em] text-amber-700">Hola</p>
+            <p className="truncate text-sm font-bold leading-tight text-gray-800">{firstName}</p>
           </div>
         )}
         {isExpanded && showProfile && (
@@ -199,7 +210,7 @@ const Sidebar: React.FC<SidebarProps> = ({
               <p className="truncate text-sm font-semibold leading-tight text-gray-900">
                 {userProfile?.fullName || 'Mi Perfil'}
               </p>
-              <p className="truncate text-xs text-gray-400">{userProfile?.email}</p>
+              <p className="truncate text-xs text-gray-500">{userProfile?.email}</p>
             </div>
           </button>
         )}
@@ -215,13 +226,13 @@ const Sidebar: React.FC<SidebarProps> = ({
               key={item.id}
               onClick={() => handleMenuClick(item)}
               className={`relative w-full h-11 rounded-xl flex items-center transition-all duration-300 ease-in-out group overflow-hidden
-                ${isActive ? 'bg-yellow-100 text-yellow-700 shadow-sm' : 'text-gray-500 hover:bg-white/70 hover:text-yellow-700'}
+                ${isActive ? 'bg-amber-100 text-amber-800 shadow-sm' : 'text-gray-600 hover:bg-white/70 hover:text-amber-700'}
                 ${isExpanded ? 'px-4' : 'justify-center'}`}
               title={item.label}
             >
               <Icon size={18} className="transition-transform duration-300 group-hover:scale-110 flex-shrink-0" />
               {isExpanded && <span className="ml-3 font-medium text-sm whitespace-nowrap">{item.label}</span>}
-              {isActive && <div className="absolute left-0 w-1 h-6 bg-yellow-400 rounded-r-full" />}
+              {isActive && <div className="absolute left-0 w-1 h-6 bg-amber-400 rounded-r-full" />}
             </button>
           );
         })}
@@ -239,7 +250,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         {/* Vendor section */}
         {isVendor() && (
           <>
-            {isExpanded && <p className="text-xs text-gray-400 font-medium px-1 pt-3 pb-1 uppercase tracking-wider">Vendedor</p>}
+            {isExpanded && <p className="text-xs text-gray-500 font-medium px-1 pt-3 pb-1 uppercase tracking-wider">Vendedor</p>}
             {!isExpanded && <div className="border-t border-gray-100 my-2" />}
             {vendorItems.map(item => {
               const Icon = item.icon;
@@ -249,13 +260,13 @@ const Sidebar: React.FC<SidebarProps> = ({
                   key={item.id}
                   onClick={() => navigate(item.path)}
                   className={`relative w-full h-11 rounded-xl flex items-center transition-all duration-300 ease-in-out group overflow-hidden
-                    ${isActive ? 'bg-yellow-100 text-yellow-700 shadow-sm' : 'text-gray-500 hover:bg-white/70 hover:text-yellow-700'}
+                    ${isActive ? 'bg-amber-100 text-amber-800 shadow-sm' : 'text-gray-600 hover:bg-white/70 hover:text-amber-700'}
                     ${isExpanded ? 'px-4' : 'justify-center'}`}
                   title={item.label}
                 >
                   <Icon size={18} className="flex-shrink-0" />
                   {isExpanded && <span className="ml-3 font-medium text-sm whitespace-nowrap">{item.label}</span>}
-                  {isActive && <div className="absolute left-0 w-1 h-6 bg-yellow-400 rounded-r-full" />}
+                  {isActive && <div className="absolute left-0 w-1 h-6 bg-amber-400 rounded-r-full" />}
                 </button>
               );
             })}
@@ -265,7 +276,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         {/* Admin section */}
         {isAdmin() && (
           <>
-            {isExpanded && <p className="text-xs text-gray-400 font-medium px-1 pt-3 pb-1 uppercase tracking-wider">Administración</p>}
+            {isExpanded && <p className="text-xs text-gray-500 font-medium px-1 pt-3 pb-1 uppercase tracking-wider">Administración</p>}
             {!isExpanded && <div className="border-t border-gray-100 my-2" />}
             {adminItems.map(item => {
               const Icon = item.icon;
@@ -275,13 +286,13 @@ const Sidebar: React.FC<SidebarProps> = ({
                   key={item.id}
                   onClick={() => navigate(item.path)}
                   className={`relative w-full h-11 rounded-xl flex items-center transition-all duration-300 ease-in-out group overflow-hidden
-                    ${isActive ? 'bg-yellow-100 text-yellow-700 shadow-sm' : 'text-gray-500 hover:bg-white/70 hover:text-yellow-700'}
+                    ${isActive ? 'bg-amber-100 text-amber-800 shadow-sm' : 'text-gray-600 hover:bg-white/70 hover:text-amber-700'}
                     ${isExpanded ? 'px-4' : 'justify-center'}`}
                   title={item.label}
                 >
                   <Icon size={18} className="flex-shrink-0" />
                   {isExpanded && <span className="ml-3 font-medium text-sm whitespace-nowrap">{item.label}</span>}
-                  {isActive && <div className="absolute left-0 w-1 h-6 bg-yellow-400 rounded-r-full" />}
+                  {isActive && <div className="absolute left-0 w-1 h-6 bg-amber-400 rounded-r-full" />}
                 </button>
               );
             })}
@@ -290,7 +301,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
         {/* Profile section */}
         <>
-          {isExpanded && <p className="text-xs text-gray-400 font-medium px-1 pt-3 pb-1 uppercase tracking-wider">Tu perfil</p>}
+          {isExpanded && <p className="text-xs text-gray-500 font-medium px-1 pt-3 pb-1 uppercase tracking-wider">Tu perfil</p>}
           {!isExpanded && <div className="border-t border-gray-100 my-2" />}
           <button
             type="button"
@@ -298,7 +309,7 @@ const Sidebar: React.FC<SidebarProps> = ({
               onUserClick?.();
               if (!onUserClick) navigate('/profile');
             }}
-            className={`relative w-full h-11 rounded-xl flex items-center transition-all duration-300 ease-in-out group overflow-hidden text-gray-500 hover:bg-white/70 hover:text-yellow-700 ${
+            className={`relative w-full h-11 rounded-xl flex items-center transition-all duration-300 ease-in-out group overflow-hidden text-gray-600 hover:bg-white/70 hover:text-amber-700 ${
               isExpanded ? 'px-4' : 'justify-center'
             }`}
             title="Gestionar cuenta"
@@ -315,7 +326,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         <button
           onClick={() => navigate('/profile/billetera')}
           title={`Saldo disponible: ${balanceLabel}`}
-          className={`w-full rounded-xl flex items-center bg-gradient-to-r from-yellow-400 to-yellow-500 text-white shadow-sm hover:shadow-md transition-all overflow-hidden
+          className={`w-full rounded-xl flex items-center bg-gradient-to-r from-amber-400 to-amber-500 text-white shadow-sm hover:shadow-md transition-all overflow-hidden
             ${isExpanded ? 'p-3' : 'h-11 justify-center'}`}
         >
           <Wallet size={18} className="flex-shrink-0" />
@@ -332,7 +343,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       <div className="flex flex-col gap-1 w-full px-3">
         <button
           onClick={() => setMapOpen(true)}
-          className={`w-full h-11 rounded-xl flex items-center bg-gradient-to-r from-yellow-400 to-yellow-500 text-white shadow-md hover:from-yellow-500 hover:to-yellow-600 transition-all overflow-hidden
+          className={`w-full h-11 rounded-xl flex items-center bg-gradient-to-r from-amber-400 to-amber-500 text-white shadow-md hover:from-amber-500 hover:to-amber-600 transition-all overflow-hidden
             ${isExpanded ? 'px-4' : 'justify-center'}`}
           title="Nuevo pedido"
         >

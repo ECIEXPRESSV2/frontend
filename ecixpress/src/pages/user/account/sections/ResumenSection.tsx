@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, CheckCircle, Edit, Settings, User, Wallet as WalletIcon } from 'lucide-react';
+import { ArrowRight, CheckCircle, Edit, Phone, Settings, User, Wallet as WalletIcon } from 'lucide-react';
 import { useAuth } from '../../../../context/AuthContext';
 import WalletPremiumCard from '../../../../components/wallet/WalletPremiumCard';
 import OrderCard from '../../../../components/orders/OrderCard';
@@ -25,7 +25,7 @@ const ResumenSection: React.FC = () => {
       <header className="relative overflow-hidden rounded-[28px] border border-yellow-200/70 bg-[linear-gradient(135deg,#F4B942_0%,#FBBF24_48%,#FDE68A_100%)] p-5 shadow-lg shadow-yellow-200/60 md:p-6">
         <div className="pointer-events-none absolute -left-20 -top-24 h-64 w-64 rounded-full bg-white/22 blur-3xl" />
         <div className="pointer-events-none absolute right-[-90px] top-[-110px] h-72 w-72 rounded-full bg-[#FB923C]/22 blur-3xl" />
-        <div className="relative flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="relative flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
           <div className="flex items-center gap-4">
             <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center overflow-hidden rounded-full border-4 border-white/80 bg-white/30 text-white shadow-lg">
               {userProfile?.avatarUrl
@@ -36,6 +36,12 @@ const ResumenSection: React.FC = () => {
               <h1 className="text-2xl font-bold text-white md:text-3xl">{userProfile?.fullName || '-'}</h1>
               <p className="text-sm text-white/85">{userProfile?.email}</p>
               <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                {userProfile?.phone && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-white/85 px-2.5 py-0.5 text-xs font-semibold text-amber-800">
+                    <Phone size={11} aria-hidden="true" />
+                    {userProfile.phone}
+                  </span>
+                )}
                 {(userProfile?.roles ?? []).map(r => (
                   <span key={r} className="rounded-full bg-white/85 px-2.5 py-0.5 text-xs font-semibold text-amber-800">{roleLabel(r)}</span>
                 ))}
