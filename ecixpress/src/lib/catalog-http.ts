@@ -5,6 +5,8 @@
  * backend (NestJS), que puede devolver `message` como string o string[].
  */
 
+import { getFirebaseIdToken } from './auth-token';
+
 export const CATALOG_API_BASE_URL =
   (import.meta.env.VITE_PRODUCTS_SERVICE_URL ?? 'http://localhost:3000').replace(/\/$/, '');
 
@@ -49,10 +51,14 @@ export async function catalogFetch<T>(
   _auth?: string | null,
   init?: RequestInit,
 ): Promise<T> {
+  // Bearer de Firebase: requerido al pasar por el API Gateway (valida y enriquece;
+  // descarta el x-user-id del cliente). En modo directo products lo ignora.
+  const token = await getFirebaseIdToken();
   const response = await fetch(`${CATALOG_API_BASE_URL}${path}`, {
     ...init,
     headers: {
       'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(catalogUserId ? { 'x-user-id': catalogUserId } : {}),
       ...(catalogUserRole ? { 'x-user-role': catalogUserRole } : {}),
       ...(init?.headers ?? {}),
