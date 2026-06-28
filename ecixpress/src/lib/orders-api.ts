@@ -267,9 +267,10 @@ export const ordersApi = {
   requestReturn: (orderId: string, payload: RequestReturnRequest, token?: string | null) =>
     requestJson<OrderResponse>(`/orders/${orderId}/returns`, token, { method: 'POST', body: JSON.stringify(payload) }),
 
-  getOrders: (token?: string | null, params?: { customerId?: string; status?: string }) => {
+  getOrders: (token?: string | null, params?: { customerId?: string; storeId?: string; status?: string }) => {
     const q = new URLSearchParams();
     if (params?.customerId) q.set('customerId', params.customerId);
+    if (params?.storeId) q.set('storeId', params.storeId);
     if (params?.status) q.set('status', params.status);
     const qs = q.toString();
     return requestJson<OrderResponse[]>(`/orders${qs ? `?${qs}` : ''}`, token);
@@ -299,10 +300,15 @@ export const ordersApi = {
   rateOrder: (id: string, payload: { score: number; comment?: string }, token?: string | null) =>
     requestJson<OrderResponse>(`/orders/${id}/rating`, token, { method: 'POST', body: JSON.stringify(payload) }),
 
-  getConversations: (token?: string | null, params?: { orderId?: string; customerId?: string }) => {
+  getConversations: (
+    token?: string | null,
+    params?: { orderId?: string; customerId?: string; vendorId?: string; storeId?: string },
+  ) => {
     const q = new URLSearchParams();
     if (params?.orderId) q.set('orderId', params.orderId);
     if (params?.customerId) q.set('customerId', params.customerId);
+    if (params?.vendorId) q.set('vendorId', params.vendorId);
+    if (params?.storeId) q.set('storeId', params.storeId);
     const qs = q.toString();
     return requestJson<ConversationResponse[]>(`/conversations${qs ? `?${qs}` : ''}`, token);
   },
