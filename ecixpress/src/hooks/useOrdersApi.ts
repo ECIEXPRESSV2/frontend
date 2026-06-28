@@ -18,7 +18,7 @@ export function useOrdersApi() {
   const { getToken } = useAuth();
 
   return useMemo(() => ({
-    getOrders: async (params?: { customerId?: string; status?: string }) =>
+    getOrders: async (params?: { customerId?: string; storeId?: string; status?: string }) =>
       ordersApi.getOrders(await getToken(), params),
     getOrderById: async (id: string) => ordersApi.getOrderById(id, await getToken()),
     getHistory: async (customerId?: string) => ordersApi.getHistory(customerId, await getToken()),
@@ -38,7 +38,7 @@ export function useOrdersApi() {
     ) => ordersApi.updateOrderStatus(id, payload, await getToken()),
     rateOrder: async (id: string, payload: { score: number; comment?: string }) =>
       ordersApi.rateOrder(id, payload, await getToken()),
-    getConversations: async (params?: { orderId?: string; customerId?: string }) =>
+    getConversations: async (params?: { orderId?: string; customerId?: string; vendorId?: string; storeId?: string }) =>
       ordersApi.getConversations(await getToken(), params),
     getConversationById: async (id: string) => ordersApi.getConversationById(id, await getToken()),
     markConversationRead: async (id: string) => ordersApi.markConversationRead(id, await getToken()),

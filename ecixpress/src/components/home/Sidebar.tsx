@@ -69,6 +69,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   const vendorItems = [
     { id: 'vendor-stores', icon: Store, label: 'Mis Tiendas', path: '/vendor/stores' },
+    { id: 'vendor-orders', icon: Clipboard, label: 'Pedidos', path: '/vendor/orders' },
     { id: 'deliveries', icon: PackageCheck, label: 'Entregas', path: '/fulfillment/deliveries' },
   ];
 

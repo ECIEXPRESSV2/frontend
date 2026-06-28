@@ -5,6 +5,7 @@ import { Archive, ArchiveRestore, ArrowLeft, Check, CheckCheck, Inbox, MessageSq
 import Sidebar from '../../components/home/Sidebar';
 import { useAuth } from '../../context/AuthContext';
 import { useOrdersApi } from '../../hooks/useOrdersApi';
+import { getMyStores } from '../../services/storeService';
 import { ORDERS_API_BASE_URL, type ConversationResponse, type MessageResponse } from '../../lib/orders-api';
 import { formatDateTime } from '../../lib/format';
 
@@ -65,8 +66,13 @@ const MessagesPage: React.FC<MessagesPageProps> = ({ onBack }) => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const orderIdParam = searchParams.get('orderId');
-  const { userProfile, getToken } = useAuth();
+  const { userProfile, getToken, isVendor } = useAuth();
   const api = useOrdersApi();
+
+  // El vendedor ve las conversaciones de sus tiendas (filtradas por storeId) y chatea
+  // como 'vendor'; cualquier otro usuario las ve como comprador (por customerId).
+  const vendor = isVendor();
+  const chatRole = vendor ? 'vendor' : 'customer';
 
   const [conversations, setConversations] = useState<ConversationResponse[]>([]);
   const [storeNames, setStoreNames] = useState<Record<string, string>>({});
@@ -100,7 +106,9 @@ const MessagesPage: React.FC<MessagesPageProps> = ({ onBack }) => {
     if (!userProfile?.id) return;
     (async () => {
       try {
-        const list = await api.getConversations({ customerId: userProfile.id });
+        const list = vendor
+          ? (await Promise.all((await getMyStores(await getToken())).map((s) => api.getConversations({ storeId: s.id })))).flat()
+          : await api.getConversations({ customerId: userProfile.id });
         setConversations(list);
         if (orderIdParam) {
           const byOrder = await api.getConversations({ orderId: orderIdParam });
@@ -113,19 +121,21 @@ const MessagesPage: React.FC<MessagesPageProps> = ({ onBack }) => {
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userProfile?.id, orderIdParam]);
+  }, [userProfile?.id, orderIdParam, vendor]);
 
   // Enriquecer la lista con el nombre real de la tienda (best-effort).
   useEffect(() => {
     if (!userProfile?.id) return;
     (async () => {
       try {
-        const orders = await api.getOrders({ customerId: userProfile.id });
+        const orders = vendor
+          ? (await Promise.all((await getMyStores(await getToken())).map((s) => api.getOrders({ storeId: s.id })))).flat()
+          : await api.getOrders({ customerId: userProfile.id });
         setStoreNames(Object.fromEntries(orders.map((o) => [o.id, o.storeName])));
       } catch { /* la lista funciona sin nombres de tienda */ }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userProfile?.id]);
+  }, [userProfile?.id, vendor]);
 
   // Cargar mensajes al cambiar de conversación + marcar como leído
   useEffect(() => {
@@ -134,7 +144,7 @@ const MessagesPage: React.FC<MessagesPageProps> = ({ onBack }) => {
       try {
         const res = await api.getMessages(selectedId);
         setMessages(res.items);
-        socketRef.current?.emit('conversation:joined', { conversationId: selectedId, role: 'customer' });
+        socketRef.current?.emit('conversation:joined', { conversationId: selectedId, role: chatRole });
         void markRead(selectedId);
       } catch {
         setMessages([]);
@@ -169,7 +179,7 @@ const MessagesPage: React.FC<MessagesPageProps> = ({ onBack }) => {
       socketRef.current = socket;
       socket.on('connect', () => {
         setConnected(true);
-        if (selectedIdRef.current) socket?.emit('conversation:joined', { conversationId: selectedIdRef.current, role: 'customer' });
+        if (selectedIdRef.current) socket?.emit('conversation:joined', { conversationId: selectedIdRef.current, role: chatRole });
       });
       socket.on('disconnect', () => setConnected(false));
       socket.on('message:new', (msg: MessageResponse) => {
@@ -203,7 +213,7 @@ const MessagesPage: React.FC<MessagesPageProps> = ({ onBack }) => {
   const notifyTyping = (typing: boolean) => {
     if (!selectedId || typingSent.current === typing) return;
     typingSent.current = typing;
-    void api.setTyping({ conversationId: selectedId, role: 'customer', typing }).catch(() => undefined);
+    void api.setTyping({ conversationId: selectedId, role: chatRole, typing }).catch(() => undefined);
   };
 
   const handleSend = async () => {
@@ -212,7 +222,7 @@ const MessagesPage: React.FC<MessagesPageProps> = ({ onBack }) => {
     setDraft('');
     notifyTyping(false);
     try {
-      const sent = await api.sendMessage({ conversationId: selectedId, senderRole: 'customer', content });
+      const sent = await api.sendMessage({ conversationId: selectedId, senderRole: chatRole, content });
       upsertMessage(sent);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'No se pudo enviar el mensaje');

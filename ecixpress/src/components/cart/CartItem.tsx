@@ -23,9 +23,9 @@ const CartItem: React.FC<CartItemProps> = ({
 }) => {
   const { id, name, description, imageUrl, price, quantity } = product;
   return (
-    <div className="flex items-center gap-4 p-4 rounded-xl bg-white/60 backdrop-blur-xl border border-white/40 shadow-sm hover:shadow-md transition-all duration-300">
+    <div className="flex items-center gap-4 p-4 rounded-2xl bg-white border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300">
       {/* Image */}
-      <div className="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0">
+      <div className="w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 bg-yellow-50">
         <img
           src={imageUrl}
           alt={name}
@@ -43,17 +43,17 @@ const CartItem: React.FC<CartItemProps> = ({
       </div>
 
       {/* Quantity Selector */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 bg-gray-50 rounded-full p-1">
         <button
           onClick={() => onQuantityChange(id, Math.max(1, quantity - 1))}
-          className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold transition-colors"
+          className="w-7 h-7 rounded-full bg-white shadow-sm hover:bg-gray-100 text-gray-700 font-semibold transition-colors flex items-center justify-center"
         >
           -
         </button>
-        <span className="w-8 text-center font-semibold text-gray-900">{quantity}</span>
+        <span className="w-7 text-center font-semibold text-gray-900 text-sm">{quantity}</span>
         <button
           onClick={() => onQuantityChange(id, quantity + 1)}
-          className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold transition-colors"
+          className="w-7 h-7 rounded-full bg-yellow-400 hover:bg-yellow-500 text-white font-semibold transition-colors flex items-center justify-center"
         >
           +
         </button>
@@ -62,7 +62,7 @@ const CartItem: React.FC<CartItemProps> = ({
       {/* Remove Button */}
       <button
         onClick={() => onRemove(id)}
-        className="w-10 h-10 rounded-lg bg-red-50 hover:bg-red-100 text-red-500 transition-colors flex items-center justify-center"
+        className="w-10 h-10 rounded-xl bg-red-50 hover:bg-red-100 text-red-500 transition-colors flex items-center justify-center"
         title="Eliminar"
       >
         <Trash2 size={18} />
