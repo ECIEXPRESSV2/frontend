@@ -1,20 +1,19 @@
-﻿import React, { useEffect, useMemo, useRef, useState } from 'react';
+﻿import React, { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { io, Socket } from 'socket.io-client';
 import { ArrowLeft, RefreshCw, MessageCircle, RotateCcw, XCircle, Star, Plus, Undo2, X, Eye, EyeOff, CreditCard, Loader2, Store as StoreIcon } from 'lucide-react';
 import Sidebar from '../../components/home/Sidebar';
 import ModalShell from '../../components/wallet/ModalShell';
-import FormInput from '../../components/ui/FormInput';
 import { OrderFulfillmentPanel } from '../../components/orders/OrderFulfillmentPanel';
 import { OrderProgressTimeline, isActiveOrder } from '../../components/orders/OrderProgressTimeline';
 import { useAuth } from '../../context/AuthContext';
 import { useWallet } from '../../context/WalletContext';
 import { useOrdersApi } from '../../hooks/useOrdersApi';
 import { ORDERS_API_BASE_URL, type OrderResponse, type OrderStatus } from '../../lib/orders-api';
-import { getAvailableStores, type Store } from '../../services/storeService';
-import { productsApi, priceToCents, type Product } from '../../lib/products-api';
 import { formatCOP, formatDateTime } from '../../lib/format';
 import { isCancellable, isHideable, isPayable, isRateable, isReorderable, isReturnable, orderDisplayName, statusLabel, statusTone } from '../../lib/orders-ui';
+
+const StoreMapModal = lazy(() => import('../../components/store/StoreMapModal'));
 
 interface OrdersPageProps {
   onBack?: () => void;
@@ -71,28 +70,10 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
   const [rating, setRating] = useState<{ open: boolean; score: number; comment: string }>({ open: false, score: 5, comment: '' });
   const [returnModal, setReturnModal] = useState<{ open: boolean; full: boolean; qty: Record<string, number> }>({ open: false, full: true, qty: {} });
   const [actionMsg, setActionMsg] = useState<string | null>(null);
-  // Mensaje de éxito (banner verde) para creación/recreación de pedidos.
+  // Mensaje de éxito (banner verde) para recreación de pedidos.
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
-  // Indicadores de carga: creación de pedido y recreación (por id de pedido).
-  const [creating, setCreating] = useState(false);
   const [reorderingId, setReorderingId] = useState<string | null>(null);
-  const [createOpen, setCreateOpen] = useState(false);
-  const [draft, setDraft] = useState({
-    storeId: '',
-    storeName: '',
-    productId: '',
-    productName: '',
-    price: '', // en pesos; se convierte a centavos al enviar
-    quantity: '1',
-    availableStock: 0, // stock - reservedStock del producto elegido, para validar cantidad
-    paymentMethod: 'wallet' as 'wallet' | 'cash' | 'card' | 'transfer',
-  });
-
-  // Catálogo para el formulario de nuevo pedido (tiendas y sus productos).
-  const [stores, setStores] = useState<Store[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [catalogLoading, setCatalogLoading] = useState(false);
-  const [catalogError, setCatalogError] = useState<string | null>(null);
+  const [mapOpen, setMapOpen] = useState(false);
 
   const socketRef = useRef<Socket | null>(null);
 
@@ -140,7 +121,6 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
   const openOrderSummary = (id: string) => {
     const next = new URLSearchParams(searchParams);
     next.set('orderId', id);
-    next.delete('new');
     setSearchParams(next);
     setSelectedId(id);
   };
@@ -164,16 +144,6 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
     next.delete(id);
     persistHidden(next);
   };
-
-  // Atajo "Nuevo pedido" del sidebar: navega a /orders?new=1 y aquí abrimos el modal.
-  useEffect(() => {
-    if (searchParams.get('new') === '1') {
-      setCreateOpen(true);
-      searchParams.delete('new');
-      setSearchParams(searchParams, { replace: true });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]);
 
   useEffect(() => {
     const orderId = searchParams.get('orderId');
@@ -277,104 +247,6 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
     }
   };
 
-  const handleCreate = async () => {
-    setActionMsg(null);
-    setSuccessMsg(null);
-    if (!draft.storeId) { setActionMsg('Selecciona una tienda'); return; }
-    if (!draft.productId) { setActionMsg('Selecciona un producto'); return; }
-    if (quantityError) { setActionMsg(quantityError); return; }
-    setCreating(true);
-    try {
-      const created = await api.createOrder({
-        storeId: draft.storeId,
-        storeName: draft.storeName,
-        items: [{
-          productId: draft.productId,
-          name: draft.productName,
-          unitPrice: priceToCents(draft.price), // pesos (catálogo) -> centavos
-          quantity: Number(draft.quantity) || 1,
-        }],
-        paymentMethod: draft.paymentMethod,
-        deliveryMethod: 'pickup',
-        currency: 'COP',
-        // Evita pedidos duplicados ante doble clic / reintentos.
-        idempotencyKey: crypto.randomUUID(),
-      });
-      upsertOrder(created);
-      openOrderSummary(created.id);
-      socketRef.current?.emit('order:subscribe', { orderId: created.id });
-      setCreateOpen(false);
-      setSuccessMsg(`Tu pedido fue creado exitosamente con numero de orden #${created.orderNumber.slice(-4)}`);
-    } catch (e) {
-      setActionMsg(e instanceof Error ? e.message : 'No se pudo crear el pedido');
-    } finally {
-      setCreating(false);
-    }
-  };
-
-  // Carga las tiendas disponibles al abrir el modal de nuevo pedido.
-  useEffect(() => {
-    if (!createOpen || stores.length) return;
-    let active = true;
-    (async () => {
-      setCatalogLoading(true);
-      setCatalogError(null);
-      try {
-        const token = await getToken().catch(() => null);
-        const data = await getAvailableStores(token);
-        if (active) setStores(data);
-      } catch (e) {
-        if (active) setCatalogError(e instanceof Error ? e.message : 'No se pudieron cargar las tiendas');
-      } finally {
-        if (active) setCatalogLoading(false);
-      }
-    })();
-    return () => { active = false; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [createOpen]);
-
-  // Al elegir tienda: guarda id/nombre, limpia el producto y carga su catálogo.
-  const handleSelectStore = async (storeId: string) => {
-    const store = stores.find((s) => s.id === storeId);
-    setDraft((d) => ({ ...d, storeId, storeName: store?.name ?? '', productId: '', productName: '', price: '', availableStock: 0 }));
-    setProducts([]);
-    if (!storeId) return;
-    setCatalogLoading(true);
-    setCatalogError(null);
-    try {
-      const token = await getToken().catch(() => null);
-      const data = await productsApi.getAll(storeId, {}, token);
-      setProducts(data.filter((p) => p.isActive));
-    } catch (e) {
-      setCatalogError(e instanceof Error ? e.message : 'No se pudieron cargar los productos');
-    } finally {
-      setCatalogLoading(false);
-    }
-  };
-
-  // Al elegir producto: fija nombre y precio (no editable) desde el catálogo.
-  const handleSelectProduct = (productId: string) => {
-    const product = products.find((p) => p.id === productId);
-    setDraft((d) => ({
-      ...d,
-      productId,
-      productName: product?.name ?? '',
-      price: product ? String(product.price) : '',
-      availableStock: product ? Math.max(0, product.stock - product.reservedStock) : 0,
-      quantity: '1',
-    }));
-  };
-
-  // Cantidad pedida vs. stock disponible del producto elegido (stock - reservedStock).
-  const quantityError = useMemo(() => {
-    if (!draft.productId) return undefined;
-    const quantity = Number(draft.quantity) || 0;
-    if (quantity > draft.availableStock) {
-      return `No hay suficiente stock disponible (quedan ${draft.availableStock})`;
-    }
-    return undefined;
-  }, [draft.productId, draft.quantity, draft.availableStock]);
-
   const openReturn = () => {
     if (!selected) return;
     setReturnModal({ open: true, full: true, qty: Object.fromEntries(selected.items.map((i) => [i.productId, 0])) });
@@ -445,7 +317,7 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
                 <button onClick={load} className="inline-flex min-h-11 items-center gap-2 rounded-2xl border border-white/70 bg-white/80 px-4 py-2 text-sm font-bold text-gray-700 shadow-sm backdrop-blur transition hover:bg-white hover:text-gray-950 focus:outline-none focus:ring-2 focus:ring-white">
                   <RefreshCw size={16} /> Actualizar
                 </button>
-                <button onClick={() => setCreateOpen(true)} className="inline-flex min-h-11 items-center gap-2 rounded-2xl bg-white px-4 py-2 text-sm font-bold text-amber-700 shadow-sm transition hover:bg-yellow-50 focus:outline-none focus:ring-2 focus:ring-white">
+                <button onClick={() => setMapOpen(true)} className="inline-flex min-h-11 items-center gap-2 rounded-2xl bg-white px-4 py-2 text-sm font-bold text-amber-700 shadow-sm transition hover:bg-yellow-50 focus:outline-none focus:ring-2 focus:ring-white">
                   <Plus size={16} /> Nuevo pedido
                 </button>
               </div>
@@ -750,89 +622,11 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
         )}
       </ModalShell>
 
-      {/* Modal crear pedido (para pruebas / flujo directo) */}
-      <ModalShell open={createOpen} onClose={() => setCreateOpen(false)} title="Nuevo pedido" subtitle="Crea un pedido contra el microservicio">
-        <div className="space-y-3">
-          {catalogError && (
-            <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-2.5 text-sm text-red-700">{catalogError}</div>
-          )}
-
-          {/* Tienda: lista desplegable con los restaurantes disponibles */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">Tienda</label>
-            <select
-              value={draft.storeId}
-              onChange={(e) => handleSelectStore(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm bg-white/60 outline-none focus:border-yellow-400 focus:ring-2 focus:ring-yellow-100"
-            >
-              <option value="">{catalogLoading && !stores.length ? 'Cargando tiendas…' : 'Selecciona una tienda'}</option>
-              {stores.map((s) => (
-                <option key={s.id} value={s.id}>{s.name}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Producto: lista desplegable con el catálogo de la tienda elegida */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">Producto</label>
-            <select
-              value={draft.productId}
-              onChange={(e) => handleSelectProduct(e.target.value)}
-              disabled={!draft.storeId}
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm bg-white/60 outline-none focus:border-yellow-400 focus:ring-2 focus:ring-yellow-100 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <option value="">
-                {!draft.storeId
-                  ? 'Primero elige una tienda'
-                  : catalogLoading
-                    ? 'Cargando productos…'
-                    : products.length
-                      ? 'Selecciona un producto'
-                      : 'Esta tienda no tiene productos'}
-              </option>
-              {products.map((p) => (
-                <option key={p.id} value={p.id}>{p.name} · {formatCOP(priceToCents(p.price))}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            {/* Precio: se calcula solo (precio unitario × cantidad), no editable */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">Precio</label>
-              <div className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm bg-gray-50 text-gray-700">
-                {draft.price ? formatCOP(priceToCents(draft.price) * (Number(draft.quantity) || 1)) : '—'}
-              </div>
-            </div>
-            <FormInput
-              label="Cantidad"
-              type="number"
-              value={draft.quantity}
-              onChange={(v) => setDraft((d) => ({ ...d, quantity: v }))}
-              error={quantityError}
-              touched={Boolean(draft.productId)}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">Método de pago</label>
-            <select
-              value={draft.paymentMethod}
-              onChange={(e) => setDraft((d) => ({ ...d, paymentMethod: e.target.value as typeof d.paymentMethod }))}
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm bg-white/60 outline-none focus:border-yellow-400 focus:ring-2 focus:ring-yellow-100"
-            >
-              <option value="wallet">Billetera (pago digital)</option>
-            </select>
-            <p className="text-xs text-gray-400 mt-1">El pedido queda "Pago pendiente" hasta que financial confirme.</p>
-          </div>
-          <button
-            onClick={handleCreate}
-            disabled={creating || Boolean(quantityError)}
-            className="w-full py-3 rounded-xl bg-gradient-to-r from-yellow-400 to-yellow-500 text-white font-semibold hover:from-yellow-500 hover:to-yellow-600 transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-wait disabled:cursor-not-allowed"
-          >
-            {creating ? <><Loader2 size={18} className="animate-spin" /> Creando pedido…</> : 'Crear pedido'}
-          </button>
-        </div>
-      </ModalShell>
+      {mapOpen && (
+        <Suspense fallback={null}>
+          <StoreMapModal open={mapOpen} onClose={() => setMapOpen(false)} />
+        </Suspense>
+      )}
 
       {/* Modal de devolución (total o parcial) */}
       <ModalShell open={returnModal.open} onClose={() => setReturnModal((r) => ({ ...r, open: false }))} title="Solicitar devolución" subtitle="Elige qué devolver; products calcula el monto y financial lo reembolsa">

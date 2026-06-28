@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { Suspense, lazy, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User, Plus, Grid, Clipboard, MessageCircle, LogOut, Wallet, Shield, Store, PackageCheck } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useWallet } from '../../context/WalletContext';
 import NotificationBell from '../notifications/NotificationBell';
+
+const StoreMapModal = lazy(() => import('../store/StoreMapModal'));
 
 interface SidebarProps {
   activeItem?: string;
@@ -40,6 +42,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   const { balanceLabel, loading: walletLoading } = useWallet();
   const firstName = (userProfile?.fullName || userProfile?.email || 'Usuario').trim().split(/\s+/)[0] || 'Usuario';
   const [internalExpanded, setInternalExpanded] = useState(defaultExpanded);
+  const [mapOpen, setMapOpen] = useState(false);
   const isExpanded = expanded ?? internalExpanded;
   const setIsExpanded = (next: boolean) => {
     if (expanded === undefined) setInternalExpanded(next);
@@ -327,7 +330,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       {/* Bottom */}
       <div className="flex flex-col gap-1 w-full px-3">
         <button
-          onClick={() => navigate('/orders?new=1')}
+          onClick={() => setMapOpen(true)}
           className={`w-full h-11 rounded-xl flex items-center bg-gradient-to-r from-yellow-400 to-yellow-500 text-white shadow-md hover:from-yellow-500 hover:to-yellow-600 transition-all overflow-hidden
             ${isExpanded ? 'px-4' : 'justify-center'}`}
           title="Nuevo pedido"
@@ -347,6 +350,12 @@ const Sidebar: React.FC<SidebarProps> = ({
         </button>
       </div>
       </aside>
+
+      {mapOpen && (
+        <Suspense fallback={null}>
+          <StoreMapModal open={mapOpen} onClose={() => setMapOpen(false)} />
+        </Suspense>
+      )}
     </>
   );
 };
