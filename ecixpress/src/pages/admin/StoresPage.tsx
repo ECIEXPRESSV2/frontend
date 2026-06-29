@@ -101,6 +101,8 @@ const DETAIL_TABS: Array<{ id: TabType; label: string; icon: typeof StoreIcon }>
   { id: 'menu', label: 'Menú', icon: Tag },
 ];
 
+const STORES_PAGE_SIZE = 6;
+
 const DAY_SHORT_NAMES = ['D', 'L', 'M', 'Mi', 'J', 'V', 'S'];
 
 const formatTime = (value?: string) => {
@@ -266,6 +268,7 @@ const StoresPage: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
   const [selectedStore, setSelectedStore] = useState<Store | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>('schedules');
 
@@ -326,12 +329,19 @@ const StoresPage: React.FC = () => {
     );
   }, [stores, search]);
 
-  const recentStores = useMemo(
-    () => [...stores]
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-      .slice(0, 10),
-    [stores],
+  const totalPages = Math.max(1, Math.ceil(visibleStores.length / STORES_PAGE_SIZE));
+  const pagedStores = useMemo(
+    () => visibleStores.slice((page - 1) * STORES_PAGE_SIZE, page * STORES_PAGE_SIZE),
+    [visibleStores, page],
   );
+
+  useEffect(() => {
+    setPage(1);
+  }, [search]);
+
+  useEffect(() => {
+    setPage(current => Math.min(current, totalPages));
+  }, [totalPages]);
 
   const loadStores = async ({ showLoading = false } = {}) => {
     const cached = getPageCache<Store[]>(pageCacheKeys.adminStores);
@@ -1027,8 +1037,8 @@ const StoresPage: React.FC = () => {
         onExpandedChange={setSidebarExpanded}
       />
 
-      <main className={`relative z-[51] ml-16 min-h-screen px-4 pb-5 pt-20 transition-all duration-300 ${sidebarExpanded ? 'md:ml-64' : 'md:ml-16'} md:px-8 lg:px-10`}>
-        <div className="relative mx-auto max-w-7xl space-y-6">
+      <main className="relative z-[51] ml-16 min-h-screen px-4 pb-5 pt-20 md:ml-64 md:px-8 lg:px-10">
+        <div className="relative mx-auto max-w-6xl space-y-6">
           {!isStoreProfileRoute && (
             <>
               <header className="relative overflow-hidden rounded-[28px] border border-yellow-200/70 bg-[linear-gradient(135deg,#F4B942_0%,#FBBF24_48%,#FDE68A_100%)] p-5 shadow-lg shadow-yellow-200/60 md:p-6">
@@ -1045,7 +1055,7 @@ const StoresPage: React.FC = () => {
                 </div>
               </header>
 
-              <section className="rounded-2xl border border-white/70 bg-white p-4 shadow-lg shadow-gray-200/60 md:p-5">
+              <section className="sticky top-20 z-30 rounded-2xl border border-white/70 bg-white/90 p-4 shadow-lg shadow-gray-200/60 backdrop-blur-xl md:p-5">
                 <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto_auto_auto] lg:items-center">
                   <label className="relative block">
                     <span className="sr-only">Buscar por nombre o ubicación</span>
@@ -1088,35 +1098,10 @@ const StoresPage: React.FC = () => {
                     <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} aria-hidden="true" />
                     Actualizar
                   </button>
-                  {search && (
-                    <span className="text-sm font-semibold text-gray-500">
-                      {visibleStores.length} resultado{visibleStores.length === 1 ? '' : 's'}
-                    </span>
-                  )}
+                  <span className="text-sm font-semibold text-gray-500">
+                    {visibleStores.length} resultado{visibleStores.length === 1 ? '' : 's'}
+                  </span>
                 </div>
-
-                {recentStores.length > 0 && (
-                  <div className="mt-5">
-                    <div className="mb-3">
-                      <h2 className="text-sm font-bold text-gray-950">Últimas tiendas creadas</h2>
-                    </div>
-                    <div className="-mx-1 flex gap-4 overflow-x-auto px-1 pb-2">
-                      {recentStores.map(store => (
-                        <button
-                          key={store.id}
-                          type="button"
-                          onClick={() => openStoreProfile(store)}
-                          className="group flex w-24 flex-shrink-0 flex-col items-center gap-2 rounded-2xl px-2 py-2 text-center transition hover:bg-yellow-50 focus:outline-none focus:ring-2 focus:ring-yellow-300"
-                        >
-                          <StoreLogo store={store} />
-                          <span className="line-clamp-2 min-h-[34px] text-xs font-bold leading-4 text-gray-700 group-hover:text-amber-700">
-                            {store.name}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </section>
             </>
           )}
@@ -1135,6 +1120,7 @@ const StoresPage: React.FC = () => {
             </section>
           )}
 
+          <div>
           {isStoreProfileRoute ? (
             selectedStore ? (
               <section className="overflow-hidden rounded-[28px] border border-gray-100 bg-white shadow-lg shadow-gray-200/60">
@@ -1327,81 +1313,116 @@ const StoresPage: React.FC = () => {
                   </button>
                 </div>
               ) : (
-                <div className="grid gap-4 md:grid-cols-2">
-                  {visibleStores.map(store => {
-                    const image = getStoreVisual(store);
-                    const statusActionInfo = getPrimaryStatusAction(store);
-                    const typeMeta = TYPE_META[store.type];
-                    const TypeIcon = typeMeta.icon;
-                    return (
-                      <article
-                        key={store.id}
-                        className="group overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-yellow-200 hover:shadow-lg"
-                      >
-                        <button type="button" onClick={() => openStoreProfile(store)} className="block w-full text-left focus:outline-none focus:ring-4 focus:ring-yellow-100">
-                          <div className="relative h-40 overflow-hidden bg-gradient-to-br from-yellow-100 via-white to-cyan-100">
-                            {image ? (
-                              <img src={image} alt="" className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.03]" />
-                            ) : (
-                              <div className="flex h-full w-full items-center justify-center">
-                                <StoreLogo store={store} size="lg" />
+                <>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {pagedStores.map(store => {
+                      const image = getStoreVisual(store);
+                      const statusActionInfo = getPrimaryStatusAction(store);
+                      const typeMeta = TYPE_META[store.type];
+                      const TypeIcon = typeMeta.icon;
+                      return (
+                        <article
+                          key={store.id}
+                          className="group overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-yellow-200 hover:shadow-lg"
+                        >
+                          <button type="button" onClick={() => openStoreProfile(store)} className="block w-full text-left focus:outline-none focus:ring-4 focus:ring-yellow-100">
+                            <div className="relative h-40 overflow-hidden bg-gradient-to-br from-yellow-100 via-white to-cyan-100">
+                              {image ? (
+                                <img src={image} alt="" className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.03]" />
+                              ) : (
+                                <div className="flex h-full w-full items-center justify-center">
+                                  <StoreLogo store={store} size="lg" />
+                                </div>
+                              )}
+                              <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-gray-950/55 to-transparent" />
+                              <div className="absolute left-3 top-3">
+                                <StatusBadge store={store} />
                               </div>
-                            )}
-                            <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-gray-950/55 to-transparent" />
-                            <div className="absolute left-3 top-3">
-                              <StatusBadge store={store} />
+                              <span className={`absolute bottom-3 left-3 inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-bold shadow-sm ${typeMeta.className}`}>
+                                <TypeIcon size={13} aria-hidden="true" />
+                                {typeMeta.label}
+                              </span>
                             </div>
-                            <span className={`absolute bottom-3 left-3 inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-bold shadow-sm ${typeMeta.className}`}>
-                              <TypeIcon size={13} aria-hidden="true" />
-                              {typeMeta.label}
-                            </span>
-                          </div>
-                          <div className="p-4">
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="min-w-0">
-                                <h3 className="truncate text-lg font-bold text-gray-950">{store.name}</h3>
-                                <p className="mt-1 flex items-start gap-1.5 text-sm leading-5 text-gray-500">
-                                  <MapPin size={15} className="mt-0.5 flex-shrink-0 text-amber-600" aria-hidden="true" />
-                                  <span className="line-clamp-2">{store.location}</span>
-                                </p>
+                            <div className="p-4">
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0">
+                                  <h3 className="truncate text-lg font-bold text-gray-950">{store.name}</h3>
+                                  <p className="mt-1 flex items-start gap-1.5 text-sm leading-5 text-gray-500">
+                                    <MapPin size={15} className="mt-0.5 flex-shrink-0 text-amber-600" aria-hidden="true" />
+                                    <span className="line-clamp-2">{store.location}</span>
+                                  </p>
+                                </div>
+                                <ChevronRight size={18} className="mt-1 flex-shrink-0 text-gray-300 transition group-hover:text-amber-600" aria-hidden="true" />
                               </div>
-                              <ChevronRight size={18} className="mt-1 flex-shrink-0 text-gray-300 transition group-hover:text-amber-600" aria-hidden="true" />
+                              <p className="mt-1.5 flex items-center gap-1.5 text-xs text-gray-400">
+                                <Clock size={12} className="flex-shrink-0 text-amber-500" aria-hidden="true" />
+                                <span className="truncate">{getConfiguredScheduleSummary(store.schedules)}</span>
+                              </p>
                             </div>
-                            <p className="mt-1.5 flex items-center gap-1.5 text-xs text-gray-400">
-                              <Clock size={12} className="flex-shrink-0 text-amber-500" aria-hidden="true" />
-                              <span className="truncate">{getConfiguredScheduleSummary(store.schedules)}</span>
-                            </p>
+                          </button>
+                          <div className="flex items-center justify-between border-t border-gray-100 px-4 py-2">
+                            <button
+                              type="button"
+                              onClick={e => openEditStore(store, e)}
+                              className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-medium text-gray-400 transition hover:bg-gray-50 hover:text-gray-700 focus:outline-none"
+                            >
+                              <Pencil size={13} aria-hidden="true" />
+                              Editar
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setStatusAction({ store, nextStatus: statusActionInfo.nextStatus })}
+                              className={`inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-medium transition focus:outline-none ${
+                                statusActionInfo.tone === 'danger'
+                                  ? 'text-red-400 hover:bg-red-50 hover:text-red-600'
+                                  : 'text-amber-500 hover:bg-amber-50 hover:text-amber-700'
+                              }`}
+                            >
+                              {statusActionInfo.label}
+                            </button>
                           </div>
+                        </article>
+                      );
+                    })}
+                  </div>
+                  {visibleStores.length > STORES_PAGE_SIZE && (
+                    <div className="mt-5 flex flex-col gap-3 border-t border-gray-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
+                      <p className="text-sm text-gray-500">
+                        Mostrando <span className="font-semibold text-gray-900">{(page - 1) * STORES_PAGE_SIZE + 1}</span> a{' '}
+                        <span className="font-semibold text-gray-900">{Math.min(page * STORES_PAGE_SIZE, visibleStores.length)}</span> de{' '}
+                        <span className="font-semibold text-gray-900">{visibleStores.length}</span> tiendas
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setPage(current => Math.max(1, current - 1))}
+                          disabled={page === 1}
+                          className="inline-flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-600 transition hover:border-yellow-300 hover:text-amber-700 disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          <ChevronLeft size={14} />
+                          Anterior
                         </button>
-                        <div className="flex items-center justify-between border-t border-gray-100 px-4 py-2">
-                          <button
-                            type="button"
-                            onClick={e => openEditStore(store, e)}
-                            className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-medium text-gray-400 transition hover:bg-gray-50 hover:text-gray-700 focus:outline-none"
-                          >
-                            <Pencil size={13} aria-hidden="true" />
-                            Editar
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setStatusAction({ store, nextStatus: statusActionInfo.nextStatus })}
-                            className={`inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-medium transition focus:outline-none ${
-                              statusActionInfo.tone === 'danger'
-                                ? 'text-red-400 hover:bg-red-50 hover:text-red-600'
-                                : 'text-amber-500 hover:bg-amber-50 hover:text-amber-700'
-                            }`}
-                          >
-                            {statusActionInfo.label}
-                          </button>
-                        </div>
-                      </article>
-                    );
-                  })}
-                </div>
+                        <span className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-semibold text-gray-700">
+                          Página {page} de {totalPages}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setPage(current => Math.min(totalPages, current + 1))}
+                          disabled={page === totalPages}
+                          className="inline-flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-600 transition hover:border-yellow-300 hover:text-amber-700 disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          Siguiente
+                          <ChevronRight size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </section>
 
           )}
+          </div>
         </div>
       </main>
 

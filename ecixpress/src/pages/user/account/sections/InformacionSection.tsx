@@ -96,7 +96,12 @@ const InformacionSection: React.FC = () => {
         <Row icon={Phone} label="Teléfono">
           {editing
             ? <input aria-label="Teléfono" value={form.phone} placeholder="+57 300 000 0000" onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} className="w-full max-w-sm rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm focus:border-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-300" />
-            : (userProfile?.phone || '—')}
+            : (
+              <span className="inline-flex items-center gap-2 rounded-full bg-amber-50 px-3 py-1 text-sm font-semibold text-amber-800">
+                <Phone size={14} aria-hidden="true" />
+                {userProfile?.phone || '—'}
+              </span>
+            )}
         </Row>
         <Row icon={Calendar} label="Miembro desde">{memberSince}</Row>
       </div>

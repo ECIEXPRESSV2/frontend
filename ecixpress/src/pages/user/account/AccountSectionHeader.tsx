@@ -10,7 +10,7 @@ const AccountSectionHeader: React.FC<AccountSectionHeaderProps> = ({ titulo, chi
     <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-white/60" />
     <div className="pointer-events-none absolute -left-20 -top-24 h-64 w-64 rounded-full bg-white/22 blur-3xl" />
     <div className="pointer-events-none absolute right-[-90px] top-[-110px] h-72 w-72 rounded-full bg-[#FB923C]/22 blur-3xl" />
-    <div className="relative flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+    <div className="relative flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
       <div>
         <nav className="mb-3 inline-flex items-center rounded-xl border border-white/70 bg-white/80 px-3 py-1.5 text-sm font-semibold text-gray-700 shadow-sm backdrop-blur" aria-label="Ruta de navegación">
           Mi cuenta <span className="mx-2 text-gray-400">/</span>

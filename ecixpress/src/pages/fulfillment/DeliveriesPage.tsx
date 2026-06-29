@@ -195,7 +195,7 @@ const DeliveriesPage: React.FC<DeliveriesPageProps> = ({ onBack }) => {
       <Sidebar activeItem="deliveries" />
 
       <main className="ml-16 px-6 pb-6 pt-20 md:px-8 md:pb-8">
-        <div className="max-w-7xl mx-auto space-y-6">
+        <div className="max-w-6xl mx-auto space-y-6">
           {/* Header */}
           <div className="flex items-center gap-3">
             <button

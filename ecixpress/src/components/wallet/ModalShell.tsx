@@ -61,11 +61,11 @@ const ModalShell: React.FC<ModalShellProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-sm"
+      className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto p-3 bg-gray-900/40 backdrop-blur-sm sm:p-5"
       onClick={onClose}
     >
       <div
-        className={`w-full ${maxWidth} max-h-[90vh] flex flex-col overflow-hidden rounded-3xl bg-white shadow-2xl border border-white/60`}
+        className={`mx-auto w-full ${maxWidth} max-h-[min(90vh,900px)] flex flex-col overflow-hidden rounded-[32px] bg-white shadow-2xl border border-white/60`}
         onClick={(e) => e.stopPropagation()}
       >
         {header ? (
@@ -80,9 +80,9 @@ const ModalShell: React.FC<ModalShellProps> = ({
             </button>
           </div>
         ) : (
-          <div className="shrink-0 flex items-start justify-between gap-4 px-6 pt-6 pb-4 bg-white border-b border-gray-100">
+          <div className="shrink-0 flex items-start justify-between gap-4 border-b border-gray-100 bg-white px-6 pb-4 pt-6">
             <div>
-              <h2 className="text-lg font-bold text-gray-900">{title}</h2>
+              <h2 className="text-lg font-bold text-gray-800">{title}</h2>
               {subtitle && <p className="text-sm text-gray-500 mt-0.5">{subtitle}</p>}
             </div>
             <button
