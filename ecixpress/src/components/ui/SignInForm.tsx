@@ -117,14 +117,15 @@ const SignInForm: React.FC<SignInProps> = ({ onSignUpClick, onLoginSuccess }) =>
             <button
               type="submit"
               disabled={resetLoading || !resetEmail}
-              className="w-full py-3 mt-1 rounded-xl font-semibold text-sm text-black
+              style={{ ['--glow-size' as string]: '220px' }}
+              className="glass-spotlight w-full py-3 mt-1 rounded-xl font-semibold text-sm text-black
                 bg-gradient-to-r from-yellow-400 to-yellow-500
-                hover:from-yellow-500 hover:to-yellow-600
-                active:scale-[.98] transition-all duration-150
+                hover:from-yellow-500 hover:to-yellow-600 hover:-translate-y-0.5
+                active:scale-[.98] transition-all duration-200
                 disabled:opacity-60 disabled:cursor-not-allowed
-                shadow-lg shadow-yellow-200/60"
+                shadow-lg shadow-yellow-200/60 hover:shadow-xl hover:shadow-yellow-300/60"
             >
-              {resetLoading ? 'Enviando...' : 'Enviar enlace'}
+              <span className="relative z-10">{resetLoading ? 'Enviando...' : 'Enviar enlace'}</span>
             </button>
             <p className="text-center text-sm text-gray-500">
               <button
@@ -145,7 +146,7 @@ const SignInForm: React.FC<SignInProps> = ({ onSignUpClick, onLoginSuccess }) =>
     <AuthLayout carouselPosition="left">
       {/* Header */}
       <div className="text-center space-y-1">
-        <img src="/logotipoEcixpress.svg" className="h-9 mx-auto mb-2" alt="EciXpress" />
+        <img src="/logotipoEcixpress.svg" className="h-8 mx-auto mb-4" alt="EciXpress" />
         <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Bienvenido</h1>
         <p className="text-sm text-gray-500">Inicia sesión en tu cuenta</p>
       </div>
@@ -187,19 +188,21 @@ const SignInForm: React.FC<SignInProps> = ({ onSignUpClick, onLoginSuccess }) =>
         <button
           type="submit"
           disabled={isLoading}
-          className="w-full py-3 mt-1 rounded-xl font-semibold text-sm text-black
+          style={{ ['--glow-size' as string]: '220px' }}
+          className="glass-spotlight w-full py-3 mt-1 rounded-xl font-semibold text-sm text-black
             bg-gradient-to-r from-yellow-400 to-yellow-500
             hover:from-yellow-500 hover:to-yellow-600
-            active:scale-[.98] transition-all duration-150
+            hover:-translate-y-0.5
+            active:scale-[.98] transition-all duration-200
             disabled:opacity-60 disabled:cursor-not-allowed
-            shadow-lg shadow-yellow-200/60"
+            shadow-lg shadow-yellow-200/60 hover:shadow-xl hover:shadow-yellow-300/60"
         >
-          {isLoading ? 'Conectando...' : 'Iniciar Sesión'}
+          <span className="relative z-10">{isLoading ? 'Conectando...' : 'Iniciar Sesión'}</span>
         </button>
       </form>
 
       {/* Divider */}
-      <div className="flex items-center gap-4 my-4">
+      <div className="flex items-center gap-4 my-2">
         <div className="flex-1 h-px bg-gray-200"></div>
         <span className="text-sm text-gray-400">o</span>
         <div className="flex-1 h-px bg-gray-200"></div>
@@ -210,14 +213,15 @@ const SignInForm: React.FC<SignInProps> = ({ onSignUpClick, onLoginSuccess }) =>
         type="button"
         onClick={handleGoogleSignIn}
         disabled={isLoading}
-        className="w-full py-3 rounded-xl font-semibold text-sm text-gray-700
-          bg-white/80 backdrop-blur-sm border border-gray-200
-          hover:bg-white hover:border-gray-300
-          active:scale-[.98] transition-all duration-150
-          shadow-sm flex items-center justify-center gap-3
+        style={{ ['--glow-size' as string]: '220px' }}
+        className="glass-spotlight w-full py-3 rounded-xl font-semibold text-sm text-gray-700
+          bg-white/60 backdrop-blur-md border border-white/60
+          hover:bg-white/80 hover:border-white/80 hover:-translate-y-0.5
+          active:scale-[.98] transition-all duration-200
+          shadow-sm hover:shadow-md flex items-center justify-center gap-3
           disabled:opacity-60 disabled:cursor-not-allowed"
       >
-        <svg className="w-5 h-5" viewBox="0 0 24 24">
+        <svg className="relative z-10 w-5 h-5" viewBox="0 0 24 24">
           <path
             fill="#4285F4"
             d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"

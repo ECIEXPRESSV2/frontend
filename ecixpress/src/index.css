@@ -1,9 +1,9 @@
 @import "tailwindcss";
 
 @theme {
-  --color-primary: #F4B942;
-  --color-secondary: #5EC0D9;
-  --color-background: #F5F5F5;
+  --color-primary: #E7A93F;
+  --color-secondary: #57B7CF;
+  --color-background: #F7F4EE;
   --color-surface: #FFFFFF;
 
   --font-display: "Fredoka", sans-serif;
@@ -43,6 +43,18 @@
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+/* Entrada suave de burbujas de chat (Liquid Glass) */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
 }
 
@@ -194,6 +206,96 @@
 .animate-gradient {
   animation: gradientMove 12s ease infinite;
 }
+
+.building-pin {
+  pointer-events: none;
+}
+
+.building-pin-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: buildingPinBounce 0.9s ease-in-out infinite;
+  will-change: transform;
+}
+
+.building-pin--hidden {
+  display: none;
+}
+
+.building-pin-label {
+  background: white;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.28);
+  white-space: nowrap;
+  margin-bottom: 5px;
+}
+
+.building-pin-tip {
+  width: 18px;
+  height: 18px;
+  background: #e23b3b;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  box-shadow: 0 2px 7px rgba(15, 23, 42, 0.35);
+}
+
+@keyframes buildingPinBounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-7px);
+  }
+}
+
+.store-pin {
+  pointer-events: none;
+}
+
+.store-pin-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: storePinBounce 0.9s ease-in-out infinite;
+  will-change: transform;
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.store-pin-label {
+  background: white;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.28);
+  white-space: nowrap;
+  margin-bottom: 5px;
+}
+
+.store-pin-tip {
+  width: 18px;
+  height: 18px;
+  background: #16a34a;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  box-shadow: 0 2px 7px rgba(15, 23, 42, 0.35);
+}
+
+@keyframes storePinBounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-7px);
+  }
+}
 @keyframes scroll-up {
   from { transform: translateY(0); }
   to   { transform: translateY(-50%); }
@@ -202,4 +304,100 @@
 @keyframes scroll-down {
   from { transform: translateY(-50%); }
   to   { transform: translateY(0); }
+}
+
+/* ── Mosaico horizontal del Login (derecha → izquierda) ── */
+@keyframes scroll-left {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+@keyframes scroll-right {
+  from { transform: translateX(-50%); }
+  to   { transform: translateX(0); }
+}
+
+.mosaic-row {
+  will-change: transform;
+}
+
+/* ── Liquid Glass: brillo que sigue al puntero ── */
+.glass-spotlight {
+  position: relative;
+  isolation: isolate;
+}
+.glass-spotlight::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(
+    var(--glow-size, 280px) circle at var(--mx, 50%) var(--my, 50%),
+    rgba(255, 255, 255, 0.6),
+    rgba(244, 185, 66, 0.18) 40%,
+    transparent 62%
+  );
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  pointer-events: none;
+  /* soft-light ilumina el cristal sin apagar el texto oscuro */
+  mix-blend-mode: soft-light;
+  z-index: 0;
+}
+.glass-spotlight:hover::before {
+  opacity: 1;
+}
+
+/* Variante sutil para el contenedor: un punto de luz pequeño y discreto */
+.glass-spotlight-soft::before {
+  background: radial-gradient(
+    110px circle at var(--mx, 50%) var(--my, 50%),
+    rgba(255, 255, 255, 0.5),
+    rgba(255, 255, 255, 0.12) 45%,
+    transparent 60%
+  );
+  mix-blend-mode: soft-light;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .glass-spotlight::before {
+    transition: none;
+  }
+}
+
+/* Respeta la preferencia de movimiento reducido (accesibilidad) */
+@media (prefers-reduced-motion: reduce) {
+  .mosaic-row {
+    animation: none !important;
+  }
+}
+
+/* ── Scrollbar que sólo se ve mientras se hace scroll y se desvanece al parar ── */
+.scrollbar-auto-hide {
+  scrollbar-width: thin;                 /* Firefox */
+  scrollbar-color: transparent transparent;
+  transition: scrollbar-color 0.45s ease;
+}
+.scrollbar-auto-hide.is-scrolling {
+  scrollbar-color: rgba(17, 24, 39, 0.28) transparent;
+}
+.scrollbar-auto-hide::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.scrollbar-auto-hide::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-auto-hide::-webkit-scrollbar-thumb {
+  background-color: transparent;
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  transition: background-color 0.45s ease;
+}
+.scrollbar-auto-hide.is-scrolling::-webkit-scrollbar-thumb {
+  background-color: rgba(17, 24, 39, 0.28);
+}
+.scrollbar-auto-hide.is-scrolling::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(17, 24, 39, 0.45);
 }

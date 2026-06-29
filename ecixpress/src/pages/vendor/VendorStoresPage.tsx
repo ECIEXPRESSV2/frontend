@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { MapPin, Clock, RefreshCw, Tag, Package } from 'lucide-react';
@@ -48,14 +48,27 @@ const VendorStoresPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-white to-yellow-100">
       <Sidebar activeItem="vendor-stores" />
-      <main className="ml-16 p-6 md:p-8">
-        <div className="max-w-4xl mx-auto space-y-6">
-          <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold text-gray-900">Mis Puntos de Venta</h1>
-            <button onClick={load} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-yellow-400 text-white font-medium text-sm hover:bg-yellow-500">
-              <RefreshCw size={15} /> Actualizar
-            </button>
-          </div>
+      <main className="ml-16 px-4 pb-6 pt-20 md:ml-64 md:px-8 md:pb-8 lg:px-10">
+        <div className="relative mx-auto max-w-6xl space-y-6">
+          <header className="relative overflow-hidden rounded-[28px] border border-yellow-200/70 bg-[linear-gradient(135deg,#F4B942_0%,#FBBF24_48%,#FDE68A_100%)] p-5 shadow-lg shadow-yellow-200/60 md:p-6">
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-white/60" />
+            <div className="pointer-events-none absolute -left-20 -top-24 h-64 w-64 rounded-full bg-white/22 blur-3xl" />
+            <div className="pointer-events-none absolute right-[-90px] top-[-110px] h-72 w-72 rounded-full bg-[#FB923C]/22 blur-3xl" />
+            <div className="relative flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+              <div className="max-w-3xl">
+                <nav className="mb-3 inline-flex items-center rounded-xl border border-white/70 bg-white/80 px-3 py-1.5 text-sm font-semibold text-gray-700 shadow-sm backdrop-blur" aria-label="Ruta de navegacion">
+                  Vendedor <span className="mx-2 text-gray-400">/</span>
+                  <span className="text-gray-950">Mis tiendas</span>
+                </nav>
+                <h1 className="text-3xl font-bold tracking-normal text-white md:text-4xl">Mis puntos de venta</h1>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <button onClick={load} className="inline-flex min-h-11 items-center gap-2 rounded-2xl border border-white/70 bg-white/80 px-4 py-2 text-sm font-bold text-gray-700 shadow-sm backdrop-blur transition hover:bg-white hover:text-gray-950 focus:outline-none focus:ring-2 focus:ring-white">
+                  <RefreshCw size={16} /> Actualizar
+                </button>
+              </div>
+            </div>
+          </header>
 
           {loading && stores.length === 0 ? (
             <CardSkeleton rows={3} />

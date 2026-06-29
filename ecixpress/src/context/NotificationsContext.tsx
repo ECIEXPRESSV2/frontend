@@ -19,6 +19,19 @@ import {
 const NOTIFICATIONS_URL =
   import.meta.env.VITE_NOTIFICATIONS_API_URL || 'http://localhost:3006';
 
+// El namespace de Socket.IO se deriva del *pathname* de la URL de io(). El server de
+// notificaciones escucha en el namespace por defecto '/', así que NO podemos usar la base
+// REST (que por el gateway incluye el prefijo /notifications → namespace inválido → el
+// socket nunca entra a la sala user:<id>). Conectamos al ORIGIN y dejamos el routing al
+// `path: '/notifications/socket.io'`. En modo directo el origin es el del propio servicio.
+const NOTIFICATIONS_WS_ORIGIN = (() => {
+  try {
+    return new URL(NOTIFICATIONS_URL).origin;
+  } catch {
+    return NOTIFICATIONS_URL;
+  }
+})();
+
 /**
  * Estilo del toast según el `type` de la notificación (definido en el catálogo del
  * notifications-service). Lo no listado usa `info`. Agregar un caso es añadir una
@@ -91,7 +104,7 @@ const NotificationsContext = createContext<NotificationsContextValue | null>(
 export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const { userProfile } = useAuth();
+  const { userProfile, getToken } = useAuth();
   const userId = userProfile?.id ?? null;
 
   const socketRef = useRef<Socket | null>(null);
@@ -162,58 +175,73 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
 
     void refresh();
 
-    // El gateway lee el userId del handshake (query `userId` o header x-user-id).
-    const socket = io(NOTIFICATIONS_URL, {
-      query: { userId },
-      transports: ['websocket'],
-    });
-    socketRef.current = socket;
+    let active = true;
+    let socket: Socket | null = null;
 
-    // En cada (re)conexión recargamos la bandeja: si llegaron notificaciones mientras
-    // el socket estuvo caído (red, reinicio del backend, sleep de Render), aparecen sin
-    // tener que abrir la campana. Cubre tanto la conexión inicial como las reconexiones.
-    socket.on('connect', () => {
-      setConnected(true);
-      void refresh();
-    });
-    socket.on('disconnect', () => setConnected(false));
+    (async () => {
+      let token = '';
+      try { token = await getToken(); } catch { /* sin sesión activa */ }
+      if (!active) return;
 
-    // Evento emitido por RealtimeChannel.emitToUser → { type, title, body, data }.
-    socket.on(
-      'notification',
-      (payload: {
-        type?: string | null;
-        title: string;
-        body: string;
-        data?: Record<string, unknown> | null;
-      }) => {
-        const show = toastVariantFor(payload.type);
-        show(
-          <div>
-            <strong>{payload.title}</strong>
-            <div style={{ fontSize: '0.875rem' }}>{payload.body}</div>
-          </div>,
-        );
-        // Publicar el evento en vivo para que otros contextos reaccionen (la billetera
-        // refresca su saldo, el modal de recarga auto-verifica el estado, etc.).
-        seqRef.current += 1;
-        setLiveEvent({
-          type: payload.type ?? null,
-          data: payload.data ?? null,
-          seq: seqRef.current,
-        });
-        // Recargar la bandeja para traer la notificación ya persistida (con su id y
-        // estado). El evento en vivo no incluye el id, por eso se refresca.
+      // token en query: requerido por el WS proxy del API Gateway, que lee ?token= del
+      // HTTP upgrade. También en auth.token para conexión directa al servicio sin gateway.
+      // Riesgo aceptado: el token aparece en la URL del upgrade (visible en logs de red).
+      // Los tokens de Firebase expiran en ~1 h; getToken() siempre devuelve uno vigente.
+      socket = io(NOTIFICATIONS_WS_ORIGIN, {
+        path: '/notifications/socket.io',
+        query: { userId, token },
+        auth: { token },
+        transports: ['websocket'],
+      });
+      socketRef.current = socket;
+
+      // En cada (re)conexión recargamos la bandeja: si llegaron notificaciones mientras
+      // el socket estuvo caído (red, reinicio del backend, sleep de Render), aparecen sin
+      // tener que abrir la campana. Cubre tanto la conexión inicial como las reconexiones.
+      socket.on('connect', () => {
+        setConnected(true);
         void refresh();
-      },
-    );
+      });
+      socket.on('disconnect', () => setConnected(false));
+
+      // Evento emitido por RealtimeChannel.emitToUser → { type, title, body, data }.
+      socket.on(
+        'notification',
+        (payload: {
+          type?: string | null;
+          title: string;
+          body: string;
+          data?: Record<string, unknown> | null;
+        }) => {
+          const show = toastVariantFor(payload.type);
+          show(
+            <div>
+              <strong>{payload.title}</strong>
+              <div style={{ fontSize: '0.875rem' }}>{payload.body}</div>
+            </div>,
+          );
+          // Publicar el evento en vivo para que otros contextos reaccionen (la billetera
+          // refresca su saldo, el modal de recarga auto-verifica el estado, etc.).
+          seqRef.current += 1;
+          setLiveEvent({
+            type: payload.type ?? null,
+            data: payload.data ?? null,
+            seq: seqRef.current,
+          });
+          // Recargar la bandeja para traer la notificación ya persistida (con su id y
+          // estado). El evento en vivo no incluye el id, por eso se refresca.
+          void refresh();
+        },
+      );
+    })();
 
     return () => {
-      socket.disconnect();
+      active = false;
+      socket?.disconnect();
       socketRef.current = null;
       setConnected(false);
     };
-  }, [userId, refresh]);
+  }, [userId, refresh, getToken]);
 
   return (
     <NotificationsContext.Provider

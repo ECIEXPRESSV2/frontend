@@ -1,18 +1,21 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+﻿import React, { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { io, Socket } from 'socket.io-client';
-import { ArrowLeft, RefreshCw, MessageCircle, RotateCcw, XCircle, Star, CheckCircle2, Clock, Plus, QrCode, Undo2, X, Eye, EyeOff, CreditCard, Loader2 } from 'lucide-react';
+import { ArrowLeft, RefreshCw, MessageCircle, RotateCcw, XCircle, Star, Plus, Undo2, X, Eye, EyeOff, CreditCard, Loader2, Store as StoreIcon, ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import Sidebar from '../../components/home/Sidebar';
 import ModalShell from '../../components/wallet/ModalShell';
-import FormInput from '../../components/ui/FormInput';
+import { OrderFulfillmentPanel } from '../../components/orders/OrderFulfillmentPanel';
+import { OrderProgressTimeline, isActiveOrder } from '../../components/orders/OrderProgressTimeline';
 import { useAuth } from '../../context/AuthContext';
 import { useWallet } from '../../context/WalletContext';
 import { useOrdersApi } from '../../hooks/useOrdersApi';
-import { ORDERS_API_BASE_URL, type OrderResponse, type OrderStatus } from '../../lib/orders-api';
+import { ORDERS_WS_URL, type OrderResponse, type OrderStatus } from '../../lib/orders-api';
 import { getAvailableStores, type Store } from '../../services/storeService';
 import { productsApi, priceToCents, type Product } from '../../lib/products-api';
 import { formatCOP, formatDateTime } from '../../lib/format';
-import { ORDER_FLOW, hasPickupCode, isCancellable, isHideable, isPayable, isRateable, isReorderable, isReturnable, orderDisplayName, statusLabel, statusTone } from '../../lib/orders-ui';
+import { isCancellable, isHideable, isPayable, isRateable, isReorderable, isReturnable, orderDisplayName, statusLabel, statusTone } from '../../lib/orders-ui';
+
+const StoreMapModal = lazy(() => import('../../components/store/StoreMapModal'));
 
 interface OrdersPageProps {
   onBack?: () => void;
@@ -26,6 +29,26 @@ const STATUS_FILTERS: Array<{ value: 'ALL' | OrderStatus; label: string }> = [
   { value: 'DELIVERED', label: 'Entregado' },
   { value: 'CANCELLED', label: 'Cancelado' },
 ];
+
+const PAGE_SIZE = 4;
+
+const PAYMENT_LABEL: Record<OrderResponse['paymentMethod'], string> = {
+  wallet: 'Billetera ECIExpress',
+  cash: 'Efectivo',
+  card: 'Tarjeta',
+  transfer: 'Transferencia',
+};
+
+const DELIVERY_LABEL: Record<OrderResponse['deliveryMethod'], string> = {
+  pickup: 'Retiro en tienda',
+  delivery: 'Entrega',
+};
+
+function statusChangedAt(order: OrderResponse, status: OrderStatus): string | undefined {
+  return [...order.statusHistory]
+    .reverse()
+    .find((entry) => entry.toStatus === status)?.occurredAt;
+}
 
 /** Clave de localStorage donde guardamos los pedidos ocultos por usuario. */
 const hiddenStorageKey = (userId?: string) => `eciexpress:orders:hidden:${userId ?? 'anon'}`;
@@ -42,45 +65,55 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<'ALL' | OrderStatus>('ALL');
+  const [search, setSearch] = useState('');
   const [connected, setConnected] = useState(false);
 
   // Pedidos que el cliente ocultó de su vista (persisten en localStorage por usuario).
   const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set());
   const [showHidden, setShowHidden] = useState(false);
+  const [page, setPage] = useState(1);
 
   const [rating, setRating] = useState<{ open: boolean; score: number; comment: string }>({ open: false, score: 5, comment: '' });
   const [returnModal, setReturnModal] = useState<{ open: boolean; full: boolean; qty: Record<string, number> }>({ open: false, full: true, qty: {} });
   const [actionMsg, setActionMsg] = useState<string | null>(null);
-  // Mensaje de éxito (banner verde) para creación/recreación de pedidos.
+  // Mensaje de éxito (banner verde) para recreación de pedidos.
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
-  // Indicadores de carga: creación de pedido y recreación (por id de pedido).
-  const [creating, setCreating] = useState(false);
   const [reorderingId, setReorderingId] = useState<string | null>(null);
-  const [createOpen, setCreateOpen] = useState(false);
-  const [draft, setDraft] = useState({
-    storeId: '',
-    storeName: '',
-    productId: '',
-    productName: '',
-    price: '', // en pesos; se convierte a centavos al enviar
-    quantity: '1',
-    paymentMethod: 'wallet' as 'wallet' | 'cash' | 'card' | 'transfer',
-  });
-
-  // Catálogo para el formulario de nuevo pedido (tiendas y sus productos).
-  const [stores, setStores] = useState<Store[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [catalogLoading, setCatalogLoading] = useState(false);
-  const [catalogError, setCatalogError] = useState<string | null>(null);
+  const [mapOpen, setMapOpen] = useState(false);
 
   const socketRef = useRef<Socket | null>(null);
 
   const selected = useMemo(() => orders.find((o) => o.id === selectedId) ?? null, [orders, selectedId]);
+  const selectedIsActive = selected ? isActiveOrder(selected.status) : false;
+  const selectedDeliveredAt = selected
+    ? statusChangedAt(selected, 'DELIVERED') ?? selected.cancelledAt ?? selected.updatedAt
+    : undefined;
+  const selectedItemCount = selected?.items.reduce((sum, item) => sum + item.quantity, 0) ?? 0;
+  const selectedMilestoneLabel = selectedIsActive
+    ? 'Siguiente paso'
+    : selected?.status === 'DELIVERED'
+      ? 'Entrega'
+      : 'Cierre';
   const visibleOrders = useMemo(() => {
     const byStatus = filter === 'ALL' ? orders : orders.filter((o) => o.status === filter);
+    const query = search.trim().toLowerCase();
+    const bySearch = query
+      ? byStatus.filter((order) =>
+          [
+            order.storeName,
+            order.orderNumber,
+            order.items.map((item) => item.name).join(' '),
+          ].some((value) => value.toLowerCase().includes(query)),
+        )
+      : byStatus;
     // En la vista normal escondemos los ocultos; en la vista "ocultos" solo mostramos esos.
-    return byStatus.filter((o) => (showHidden ? hiddenIds.has(o.id) : !hiddenIds.has(o.id)));
-  }, [orders, filter, hiddenIds, showHidden]);
+    return bySearch.filter((o) => (showHidden ? hiddenIds.has(o.id) : !hiddenIds.has(o.id)));
+  }, [orders, filter, search, hiddenIds, showHidden]);
+  const totalPages = Math.max(1, Math.ceil(visibleOrders.length / PAGE_SIZE));
+  const pagedOrders = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    return visibleOrders.slice(start, start + PAGE_SIZE);
+  }, [visibleOrders, page]);
   const hiddenCount = useMemo(() => orders.filter((o) => hiddenIds.has(o.id)).length, [orders, hiddenIds]);
 
   const upsertOrder = (order: OrderResponse) =>
@@ -106,11 +139,27 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
     } catch { /* localStorage no disponible */ }
   };
 
+  const openOrderSummary = (id: string) => {
+    const index = visibleOrders.findIndex((order) => order.id === id);
+    if (index >= 0) setPage(Math.floor(index / PAGE_SIZE) + 1);
+    const next = new URLSearchParams(searchParams);
+    next.set('orderId', id);
+    setSearchParams(next);
+    setSelectedId(id);
+  };
+
+  const closeOrderSummary = () => {
+    const next = new URLSearchParams(searchParams);
+    next.delete('orderId');
+    setSearchParams(next);
+    setSelectedId('');
+  };
+
   const hideOrder = (id: string) => {
     const next = new Set(hiddenIds);
     next.add(id);
     persistHidden(next);
-    if (selectedId === id) setSelectedId('');
+    if (selectedId === id) closeOrderSummary();
   };
 
   const unhideOrder = (id: string) => {
@@ -119,15 +168,24 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
     persistHidden(next);
   };
 
-  // Atajo "Nuevo pedido" del sidebar: navega a /orders?new=1 y aquí abrimos el modal.
   useEffect(() => {
-    if (searchParams.get('new') === '1') {
-      setCreateOpen(true);
-      searchParams.delete('new');
-      setSearchParams(searchParams, { replace: true });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const orderId = searchParams.get('orderId');
+    setSelectedId(orderId ?? '');
   }, [searchParams]);
+
+  useEffect(() => {
+    setPage((current) => Math.min(current, totalPages));
+  }, [totalPages]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [filter, search, showHidden]);
+
+  useEffect(() => {
+    if (!selectedId) return;
+    const index = visibleOrders.findIndex((order) => order.id === selectedId);
+    if (index >= 0) setPage(Math.floor(index / PAGE_SIZE) + 1);
+  }, [selectedId, visibleOrders]);
 
   const load = async () => {
     if (!userProfile?.id) return;
@@ -136,7 +194,6 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
     try {
       const data = await api.getOrders({ customerId: userProfile.id });
       setOrders(data);
-      if (data.length && !selectedId) setSelectedId(data[0].id);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'No se pudieron cargar los pedidos');
     } finally {
@@ -158,7 +215,11 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
       let token = '';
       try { token = await getToken(); } catch { /* sin sesión */ }
       if (!active) return;
-      socket = io(`${ORDERS_API_BASE_URL}/communication`, { transports: ['websocket'], auth: { token } });
+      // token en query: requerido por el WS proxy del API Gateway, que lee ?token= del
+      // HTTP upgrade. También en auth.token para conexión directa al servicio sin gateway.
+      // Riesgo aceptado: el token aparece en la URL del upgrade (visible en logs de red).
+      // Los tokens de Firebase expiran en ~1 h; getToken() siempre devuelve uno vigente.
+      socket = io(ORDERS_WS_URL, { path: '/orders/socket.io', transports: ['websocket'], auth: { token }, query: { token } });
       socketRef.current = socket;
       socket.on('connect', () => {
         setConnected(true);
@@ -217,7 +278,7 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
       // Volver a la vista de pedidos no ocultos para ver el pedido recién recreado.
       setShowHidden(false);
       setFilter('ALL');
-      setSelectedId(created.id);
+      openOrderSummary(created.id);
       socketRef.current?.emit('order:subscribe', { orderId: created.id });
       setSuccessMsg(`Tu pedido fue recreado exitosamente con numero de orden #${created.orderNumber.slice(-4)}`);
     } catch (e) {
@@ -225,91 +286,6 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
     } finally {
       setReorderingId(null);
     }
-  };
-
-  const handleCreate = async () => {
-    setActionMsg(null);
-    setSuccessMsg(null);
-    if (!draft.storeId) { setActionMsg('Selecciona una tienda'); return; }
-    if (!draft.productId) { setActionMsg('Selecciona un producto'); return; }
-    setCreating(true);
-    try {
-      const created = await api.createOrder({
-        storeId: draft.storeId,
-        storeName: draft.storeName,
-        items: [{
-          productId: draft.productId,
-          name: draft.productName,
-          unitPrice: priceToCents(draft.price), // pesos (catálogo) -> centavos
-          quantity: Number(draft.quantity) || 1,
-        }],
-        paymentMethod: draft.paymentMethod,
-        deliveryMethod: 'pickup',
-        currency: 'COP',
-        // Evita pedidos duplicados ante doble clic / reintentos.
-        idempotencyKey: crypto.randomUUID(),
-      });
-      upsertOrder(created);
-      setSelectedId(created.id);
-      socketRef.current?.emit('order:subscribe', { orderId: created.id });
-      setCreateOpen(false);
-      setSuccessMsg(`Tu pedido fue creado exitosamente con numero de orden #${created.orderNumber.slice(-4)}`);
-    } catch (e) {
-      setActionMsg(e instanceof Error ? e.message : 'No se pudo crear el pedido');
-    } finally {
-      setCreating(false);
-    }
-  };
-
-  // Carga las tiendas disponibles al abrir el modal de nuevo pedido.
-  useEffect(() => {
-    if (!createOpen || stores.length) return;
-    let active = true;
-    (async () => {
-      setCatalogLoading(true);
-      setCatalogError(null);
-      try {
-        const token = await getToken().catch(() => null);
-        const data = await getAvailableStores(token);
-        if (active) setStores(data);
-      } catch (e) {
-        if (active) setCatalogError(e instanceof Error ? e.message : 'No se pudieron cargar las tiendas');
-      } finally {
-        if (active) setCatalogLoading(false);
-      }
-    })();
-    return () => { active = false; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [createOpen]);
-
-  // Al elegir tienda: guarda id/nombre, limpia el producto y carga su catálogo.
-  const handleSelectStore = async (storeId: string) => {
-    const store = stores.find((s) => s.id === storeId);
-    setDraft((d) => ({ ...d, storeId, storeName: store?.name ?? '', productId: '', productName: '', price: '' }));
-    setProducts([]);
-    if (!storeId) return;
-    setCatalogLoading(true);
-    setCatalogError(null);
-    try {
-      const token = await getToken().catch(() => null);
-      const data = await productsApi.getAll(storeId, {}, token);
-      setProducts(data.filter((p) => p.isActive));
-    } catch (e) {
-      setCatalogError(e instanceof Error ? e.message : 'No se pudieron cargar los productos');
-    } finally {
-      setCatalogLoading(false);
-    }
-  };
-
-  // Al elegir producto: fija nombre y precio (no editable) desde el catálogo.
-  const handleSelectProduct = (productId: string) => {
-    const product = products.find((p) => p.id === productId);
-    setDraft((d) => ({
-      ...d,
-      productId,
-      productName: product?.name ?? '',
-      price: product ? String(product.price) : '',
-    }));
   };
 
   const openReturn = () => {
@@ -355,40 +331,79 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
     <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-white to-yellow-100">
       <Sidebar activeItem="orders" />
 
-      <main className="ml-16 p-6 md:p-8">
-        <div className="max-w-7xl mx-auto space-y-6">
-          {/* Header */}
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => (onBack ? onBack() : navigate('/home'))}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/60 backdrop-blur-xl border border-white/40 text-gray-700 font-medium text-sm hover:bg-yellow-50 hover:text-yellow-600 transition-all"
-              >
-                <ArrowLeft size={16} /> Volver
-              </button>
-              <h1 className="text-2xl font-bold text-gray-900">Mis pedidos</h1>
+      <main className="ml-16 px-4 pb-6 pt-20 md:ml-64 md:px-8 md:pb-8 lg:px-10">
+        <div className="max-w-6xl mx-auto space-y-6">
+          <header className="relative overflow-hidden rounded-[28px] border border-yellow-200/70 bg-[linear-gradient(135deg,#F4B942_0%,#FBBF24_48%,#FDE68A_100%)] p-5 shadow-lg shadow-yellow-200/60 md:p-6">
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-white/60" />
+            <div className="pointer-events-none absolute -left-20 -top-24 h-64 w-64 rounded-full bg-white/22 blur-3xl" />
+            <div className="pointer-events-none absolute right-[-90px] top-[-110px] h-72 w-72 rounded-full bg-[#FB923C]/22 blur-3xl" />
+            <div className="relative flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+              <div className="max-w-3xl">
+                <nav className="mb-3 inline-flex items-center rounded-xl border border-white/70 bg-white/80 px-3 py-1.5 text-sm font-semibold text-gray-700 shadow-sm backdrop-blur" aria-label="Ruta de navegacion">
+                  ECIxpress <span className="mx-2 text-gray-400">/</span>
+                  <span className="text-gray-950">Pedidos</span>
+                </nav>
+                <h1 className="text-3xl font-bold tracking-normal text-white md:text-4xl">Mis pedidos</h1>
+                <p className="mt-2 max-w-2xl text-sm font-medium text-white/85">
+                  Haz seguimiento, revisa el detalle y contacta a la tienda cuando lo necesites.
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  onClick={() => (onBack ? onBack() : navigate('/home'))}
+                  className="inline-flex min-h-11 items-center gap-2 rounded-2xl border border-white/70 bg-white/80 px-4 py-2 text-sm font-bold text-gray-700 shadow-sm backdrop-blur transition hover:bg-white hover:text-gray-950 focus:outline-none focus:ring-2 focus:ring-white"
+                >
+                  <ArrowLeft size={16} /> Volver
+                </button>
+                <button onClick={load} className="inline-flex min-h-11 items-center gap-2 rounded-2xl border border-white/70 bg-white/80 px-4 py-2 text-sm font-bold text-gray-700 shadow-sm backdrop-blur transition hover:bg-white hover:text-gray-950 focus:outline-none focus:ring-2 focus:ring-white">
+                  <RefreshCw size={16} /> Actualizar
+                </button>
+                <button onClick={() => setMapOpen(true)} className="inline-flex min-h-11 items-center gap-2 rounded-2xl bg-white px-4 py-2 text-sm font-bold text-amber-700 shadow-sm transition hover:bg-yellow-50 focus:outline-none focus:ring-2 focus:ring-white">
+                  <Plus size={16} /> Nuevo pedido
+                </button>
+              </div>
             </div>
-            <div className="flex items-center gap-3">
-              <button onClick={load} className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white/70 border border-white/50 text-gray-700 font-semibold hover:bg-white transition-all">
-                <RefreshCw size={16} /> Refrescar
-              </button>
-              <button onClick={() => setCreateOpen(true)} className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-yellow-400 text-white font-semibold shadow-md shadow-yellow-200/60 hover:bg-yellow-500 transition-all">
-                <Plus size={16} /> Nuevo pedido
-              </button>
-            </div>
-          </div>
+          </header>
 
-          {/* Filtros */}
-          <div className="flex flex-wrap gap-2">
-            {STATUS_FILTERS.map((f) => (
-              <button
-                key={f.value}
-                onClick={() => setFilter(f.value)}
-                className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${filter === f.value ? 'bg-yellow-400 text-white' : 'bg-white/80 text-gray-600 hover:bg-white'}`}
-              >
-                {f.label}
-              </button>
-            ))}
+          <div className="rounded-3xl border border-white/70 bg-white/82 p-4 shadow-lg shadow-gray-200/60 backdrop-blur-xl">
+            <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+              <label className="relative block">
+                <span className="sr-only">Buscar pedidos</span>
+                <input
+                  className="min-h-12 w-full rounded-2xl border border-gray-100 bg-white py-3 pl-5 pr-24 text-base font-medium text-gray-900 outline-none transition placeholder:text-gray-400 hover:border-yellow-200 focus:border-yellow-400 focus:ring-4 focus:ring-yellow-100"
+                  placeholder="Buscar por tienda, código o producto"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                />
+                {search && (
+                  <button
+                    type="button"
+                    onClick={() => setSearch('')}
+                    className="absolute right-12 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 focus:outline-none"
+                    aria-label="Limpiar búsqueda"
+                  >
+                    <X size={14} aria-hidden="true" />
+                  </button>
+                )}
+                <span className="absolute right-2 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-xl bg-yellow-400 text-white" aria-hidden="true">
+                  <Search size={16} />
+                </span>
+              </label>
+              <p className="text-sm font-semibold text-gray-500">
+                {visibleOrders.length} pedido{visibleOrders.length === 1 ? '' : 's'}
+              </p>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {STATUS_FILTERS.map((f) => (
+                <button
+                  key={f.value}
+                  onClick={() => setFilter(f.value)}
+                  className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-all ${filter === f.value ? 'bg-yellow-400 text-gray-950 shadow-sm' : 'border border-gray-100 bg-white text-gray-600 hover:border-yellow-200 hover:bg-yellow-50 hover:text-amber-700'}`}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Organizar la vista: mostrar/ocultar los pedidos cerrados que el cliente archivó */}
@@ -407,30 +422,78 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
           {actionMsg && <div className="rounded-xl bg-yellow-50 border border-yellow-200 px-4 py-3 text-sm text-gray-700">{actionMsg}</div>}
           {error && <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">{error}</div>}
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div className="space-y-5">
             {/* Lista */}
-            <section className="lg:col-span-5 space-y-3">
+            <section className="space-y-4">
               {loading && <p className="text-sm text-gray-500">Cargando pedidos…</p>}
               {!loading && visibleOrders.length === 0 && (
                 <div className="rounded-2xl bg-white/60 backdrop-blur-xl border border-white/50 p-8 text-center text-gray-500">
-                  {showHidden ? 'No tienes pedidos ocultos.' : `No tienes pedidos ${filter !== 'ALL' ? 'con ese estado' : 'todavía'}.`}
+                  {search ? `No hay pedidos que coincidan con "${search}".` : showHidden ? 'No tienes pedidos ocultos.' : `No tienes pedidos ${filter !== 'ALL' ? 'con ese estado' : 'todavía'}.`}
                 </div>
               )}
-              {visibleOrders.map((order) => (
-                <div key={order.id} className="relative">
-                  <button
-                    onClick={() => setSelectedId(order.id)}
-                    className={`w-full text-left rounded-2xl border p-4 transition-all ${selectedId === order.id ? 'bg-yellow-50 border-yellow-300 shadow-sm' : 'bg-white/70 border-white/60 hover:border-yellow-200 hover:bg-yellow-50/60'}`}
-                  >
-                    <div className="mb-2 pr-7">
-                      <p className="font-semibold text-gray-900 truncate">{orderDisplayName(order)}</p>
-                      <p className="text-xs text-gray-500">{formatDateTime(order.createdAt)} · {order.items.length} ítem(s)</p>
+              {pagedOrders.map((order) => {
+                const firstItem = order.items[0];
+                return (
+                <article key={order.id} aria-label={`Pedido ${order.orderNumber} de ${order.storeName}`} className={`relative overflow-hidden rounded-2xl border bg-white shadow-sm transition hover:border-yellow-200 hover:shadow-md ${selectedId === order.id ? 'border-yellow-300 ring-2 ring-yellow-100' : 'border-gray-100'}`}>
+                  <div className={`absolute inset-x-0 top-0 h-1 ${selectedId === order.id ? 'bg-yellow-400' : 'bg-amber-200'}`} aria-hidden="true" />
+                  <div className="grid gap-0 md:grid-cols-[220px_1fr_auto]">
+                      <button
+                        type="button"
+                      onClick={() => openOrderSummary(order.id)}
+                      className="flex min-h-[150px] flex-col items-center justify-center border-b border-gray-100 bg-white px-4 py-4 text-center transition hover:bg-yellow-50/40 md:border-b-0 md:border-r"
+                    >
+                      {firstItem?.imageUrl ? (
+                        <img src={firstItem.imageUrl} alt={firstItem.name} className="h-24 w-32 rounded-xl object-contain" />
+                      ) : (
+                        <div className="flex h-24 w-32 items-center justify-center rounded-xl border border-amber-100 bg-amber-50 text-xl font-black text-amber-700">
+                          {firstItem?.name.trim()[0]?.toUpperCase() ?? 'P'}
+                        </div>
+                      )}
+                      <p className="mt-2 line-clamp-1 text-xs font-bold text-gray-600">{firstItem?.name ?? 'Pedido'}</p>
+                      <p className="text-xs font-semibold text-gray-950">{firstItem ? formatCOP(firstItem.totalAmount) : formatCOP(order.totalAmount)}</p>
+                    </button>
+
+                      <button
+                        type="button"
+                      onClick={() => openOrderSummary(order.id)}
+                      className="flex min-h-[150px] flex-col justify-center px-5 py-4 text-left transition hover:bg-yellow-50/40"
+                    >
+                      <div className="mb-3 flex items-center gap-2">
+                        <StoreIcon size={15} className="text-amber-600" aria-hidden="true" />
+                        <h2 className="truncate text-lg font-black tracking-tight text-gray-950">{order.storeName}</h2>
+                      </div>
+                      <dl className="grid gap-x-4 gap-y-1 text-sm sm:grid-cols-[auto_1fr_auto_1fr]">
+                        <dt className="font-semibold text-gray-900">Fecha:</dt>
+                        <dd className="truncate text-gray-500">{formatDateTime(order.createdAt)}</dd>
+                        <dt className="font-semibold text-gray-900">Cantidad:</dt>
+                        <dd className="text-gray-500">{order.items.reduce((sum, item) => sum + item.quantity, 0)}</dd>
+                        <dt className="font-semibold text-gray-900">Total:</dt>
+                        <dd className="font-semibold text-gray-500">{formatCOP(order.totalAmount)}</dd>
+                        <dt className="font-semibold text-gray-900">Código:</dt>
+                        <dd className="text-gray-500">#{order.orderNumber.slice(-4)}</dd>
+                      </dl>
+                    </button>
+
+                    <div className="flex min-h-[150px] flex-col items-stretch justify-between gap-4 border-t border-gray-100 bg-white px-4 py-4 md:w-64 md:border-l md:border-t-0">
+                      <span className={`inline-flex justify-center rounded-2xl px-4 py-2 text-sm font-bold ${statusTone[order.status]}`}>{statusLabel[order.status]}</span>
+                      <div className="grid gap-2">
+                        <button
+                          type="button"
+                          onClick={() => openOrderSummary(order.id)}
+                          className="inline-flex min-h-11 items-center justify-center rounded-xl bg-yellow-400 px-4 py-2 text-sm font-bold text-gray-950 transition hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-300"
+                        >
+                          Ver resumen
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => navigate(`/messages?orderId=${order.id}`)}
+                          className="inline-flex min-h-11 items-center justify-center rounded-xl border border-amber-200 bg-white px-4 py-2 text-sm font-bold text-amber-700 transition hover:bg-yellow-50 focus:outline-none focus:ring-2 focus:ring-yellow-300"
+                        >
+                          Contactar tienda
+                        </button>
+                      </div>
                     </div>
-                    <div className="flex items-center justify-between gap-2 text-sm">
-                      <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${statusTone[order.status]}`}>{statusLabel[order.status]}</span>
-                      <span className="font-semibold text-gray-900">{formatCOP(order.totalAmount)}</span>
-                    </div>
-                  </button>
+                  </div>
 
                   {/* Ocultar (pedidos cerrados) o restaurar (vista de ocultos) */}
                   {showHidden ? (
@@ -450,70 +513,180 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
                       <X size={14} />
                     </button>
                   ) : null}
+                </article>
+              );
+              })}
+
+              {!loading && visibleOrders.length > PAGE_SIZE && (
+                <div className="mt-5 flex flex-col gap-3 border-t border-gray-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-sm text-gray-500">
+                    Mostrando <span className="font-semibold text-gray-900">{(page - 1) * PAGE_SIZE + 1}</span> a{' '}
+                    <span className="font-semibold text-gray-900">{Math.min(page * PAGE_SIZE, visibleOrders.length)}</span> de{' '}
+                    <span className="font-semibold text-gray-900">{visibleOrders.length}</span> pedidos
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setPage((current) => Math.max(1, current - 1))}
+                      disabled={page === 1}
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-600 transition hover:border-yellow-300 hover:text-amber-700 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      <ChevronLeft size={14} />
+                      Anterior
+                    </button>
+                    <span className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-semibold text-gray-700">
+                      Página {page} de {totalPages}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+                      disabled={page === totalPages}
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-600 transition hover:border-yellow-300 hover:text-amber-700 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      Siguiente
+                      <ChevronRight size={14} />
+                    </button>
+                  </div>
                 </div>
-              ))}
+              )}
             </section>
 
-            {/* Detalle + seguimiento */}
-            <section className="lg:col-span-7">
-              {selected ? (
-                <div className="rounded-2xl bg-white/60 backdrop-blur-xl border border-white/50 shadow-sm p-6 space-y-6">
-                  <div className="flex items-start justify-between gap-3">
+          </div>
+        </div>
+      </main>
+
+      <ModalShell
+        open={Boolean(selected)}
+        onClose={closeOrderSummary}
+        title="Resumen del pedido"
+        subtitle={selected ? `Pedido ${selected.orderNumber}` : undefined}
+        maxWidth="max-w-6xl"
+        bodyClassName="bg-white px-4 py-5 md:px-6"
+      >
+        {selected && (
+          <div className="space-y-6">
+            <div className="flex flex-col gap-4 border-b border-gray-100 pb-5 md:flex-row md:items-start md:justify-between">
+              <div className="flex items-start gap-3">
+                <button
+                  type="button"
+                  onClick={closeOrderSummary}
+                  className="mt-1 inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-amber-100 bg-white text-amber-700 transition hover:bg-yellow-50"
+                  aria-label="Cerrar resumen"
+                >
+                  <ArrowLeft size={17} />
+                </button>
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-600">Resumen</p>
+                  <h2 className="text-2xl font-black text-gray-950">{orderDisplayName(selected)}</h2>
+                  <p className="mt-1 text-sm text-gray-500">
+                    Pedido {selected.orderNumber} · {selectedItemCount} producto{selectedItemCount === 1 ? '' : 's'}
+                  </p>
+                </div>
+              </div>
+              <span className={`inline-flex w-fit rounded-full px-4 py-2 text-sm font-black ${statusTone[selected.status]}`}>
+                {statusLabel[selected.status]}
+              </span>
+            </div>
+
+            <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
+              <div className="space-y-6">
+                <section className="rounded-3xl border border-amber-100 bg-white/80 p-5">
+                  <div className="grid gap-5 md:grid-cols-2">
                     <div>
-                      <h2 className="text-xl font-bold text-gray-900">{orderDisplayName(selected)}</h2>
-                      <p className="text-sm text-gray-500">{selected.storeName} · Código {selected.orderNumber}</p>
+                      <h3 className="text-lg font-black text-gray-950">Inicio</h3>
+                      <p className="mt-1 text-sm font-semibold text-gray-700">{formatDateTime(selected.createdAt)}</p>
+                      <p className="mt-2 text-sm text-gray-500">{selected.storeName}</p>
                     </div>
-                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${statusTone[selected.status]}`}>{statusLabel[selected.status]}</span>
+                    <div>
+                      <h3 className="text-lg font-black text-gray-950">{selectedMilestoneLabel}</h3>
+                      <p className="mt-1 text-sm font-semibold text-gray-700">
+                        {selectedIsActive ? statusLabel[selected.status] : formatDateTime(selectedDeliveredAt)}
+                      </p>
+                      <p className="mt-2 text-sm text-gray-500">{DELIVERY_LABEL[selected.deliveryMethod]}</p>
+                    </div>
                   </div>
+                </section>
 
-                  {/* Seguimiento (RF-08) */}
-                  <OrderTracker order={selected} />
+                <OrderProgressTimeline
+                  order={selected}
+                  variant={selectedIsActive ? 'vertical' : 'horizontal'}
+                  showDates={!selectedIsActive}
+                />
 
-                  {/* Items */}
-                  <div>
-                    <p className="text-sm font-semibold text-gray-700 mb-2">Productos</p>
-                    <div className="space-y-2">
-                      {selected.items.map((item) => (
-                        <div key={item.id} className="rounded-xl bg-white/70 p-3 flex items-center justify-between gap-3">
-                          <div>
-                            <p className="font-semibold text-gray-900">{item.name}</p>
-                            <p className="text-xs text-gray-500">x{item.quantity} · {formatCOP(item.unitPrice)}</p>
+                <OrderFulfillmentPanel order={selected} />
+
+                <section className="rounded-3xl border border-gray-100 bg-white/80 p-5">
+                  <h3 className="mb-4 text-lg font-black text-gray-950">Resumen del pedido</h3>
+                  <div className="space-y-3">
+                    {selected.items.map((item) => (
+                      <div key={item.id} className="grid gap-3 border-b border-gray-100 pb-3 last:border-b-0 last:pb-0 sm:grid-cols-[56px_1fr_auto] sm:items-center">
+                        {item.imageUrl ? (
+                          <img src={item.imageUrl} alt={item.name} className="h-14 w-14 rounded-2xl object-contain" />
+                        ) : (
+                          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-50 text-lg font-black text-amber-700">
+                            {item.name.trim()[0]?.toUpperCase() ?? 'P'}
                           </div>
-                          <p className="font-semibold text-gray-900">{formatCOP(item.totalAmount)}</p>
+                        )}
+                        <div className="min-w-0">
+                          <p className="font-black text-gray-950">{item.name}</p>
+                          {item.description && <p className="line-clamp-2 text-sm text-gray-500">{item.description}</p>}
+                          <p className="mt-1 text-xs font-semibold text-gray-400">x{item.quantity} · {formatCOP(item.unitPrice)}</p>
                         </div>
-                      ))}
-                    </div>
-                    <div className="flex justify-between mt-3 text-sm">
-                      <span className="text-gray-500">Total</span>
-                      <span className="font-bold text-gray-900">{formatCOP(selected.totalAmount)}</span>
-                    </div>
-                    {selected.pickupExpiresAt && (
-                      <p className="text-xs text-gray-500 mt-1">Recoger antes de: {formatDateTime(selected.pickupExpiresAt)}</p>
-                    )}
-                  </div>
-
-                  {/* Calificación existente */}
-                  {selected.rating && (
-                    <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-3 text-sm">
-                      <div className="flex items-center gap-1 text-emerald-700 font-semibold">
-                        {Array.from({ length: selected.rating.score }).map((_, i) => <Star key={i} size={14} fill="currentColor" />)}
+                        <p className="font-black text-gray-950">{formatCOP(item.totalAmount)}</p>
                       </div>
-                      {selected.rating.comment && <p className="text-gray-600 mt-1">{selected.rating.comment}</p>}
-                    </div>
-                  )}
+                    ))}
+                  </div>
+                </section>
 
-                  {/* Acciones */}
-                  <div className="flex flex-wrap gap-3">
-                    {hasPickupCode(selected.status) && (
-                      <button onClick={() => navigate(`/fulfillment/code/${selected.id}`)} className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 text-white font-semibold px-4 py-2.5 hover:bg-emerald-600 transition-all">
-                        <QrCode size={16} /> Ver código de retiro
-                      </button>
-                    )}
-                    <button onClick={() => navigate(`/messages?orderId=${selected.id}`)} className="inline-flex items-center gap-2 rounded-xl bg-yellow-400 text-white font-semibold px-4 py-2.5 hover:bg-yellow-500 transition-all">
+                {selected.rating && (
+                  <section className="rounded-3xl border border-emerald-100 bg-emerald-50 p-4 text-sm">
+                    <div className="flex items-center gap-1 text-emerald-700 font-black">
+                      {Array.from({ length: selected.rating.score }).map((_, i) => <Star key={i} size={15} fill="currentColor" />)}
+                    </div>
+                    {selected.rating.comment && <p className="mt-1 text-gray-600">{selected.rating.comment}</p>}
+                  </section>
+                )}
+              </div>
+
+              <aside className="space-y-4">
+                <section className="rounded-3xl border border-gray-100 bg-white p-5 shadow-sm">
+                  <h3 className="text-lg font-black text-gray-950">Costos</h3>
+                  <dl className="mt-4 space-y-3 text-sm">
+                    <div className="flex justify-between gap-3">
+                      <dt className="text-gray-500">Productos</dt>
+                      <dd className="font-bold text-gray-900">{formatCOP(selected.subtotalAmount)}</dd>
+                    </div>
+                    <div className="flex justify-between gap-3">
+                      <dt className="text-gray-500">Descuentos</dt>
+                      <dd className="font-bold text-emerald-600">
+                        {selected.discountAmount > 0 ? `-${formatCOP(selected.discountAmount)}` : formatCOP(0)}
+                      </dd>
+                    </div>
+                    <div className="flex justify-between gap-3 border-t border-gray-100 pt-3 text-base">
+                      <dt className="font-black text-gray-950">Total</dt>
+                      <dd className="font-black text-gray-950">{formatCOP(selected.totalAmount)}</dd>
+                    </div>
+                  </dl>
+                </section>
+
+                <section className="rounded-3xl border border-gray-100 bg-white p-5 shadow-sm">
+                  <h3 className="text-lg font-black text-gray-950">Método de pago</h3>
+                  <p className="mt-3 text-sm font-bold text-gray-700">{PAYMENT_LABEL[selected.paymentMethod]}</p>
+                  {selected.pickupExpiresAt && (
+                    <p className="mt-3 rounded-2xl bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700">
+                      Recoger antes de {formatDateTime(selected.pickupExpiresAt)}
+                    </p>
+                  )}
+                </section>
+
+                <section className="rounded-3xl border border-gray-100 bg-white p-5 shadow-sm">
+                  <h3 className="text-lg font-black text-gray-950">Acciones</h3>
+                  <div className="mt-4 grid gap-2">
+                    <button onClick={() => navigate(`/messages?orderId=${selected.id}`)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-yellow-400 px-4 py-2 text-sm font-black text-gray-950 transition hover:bg-yellow-500">
                       <MessageCircle size={16} /> Chat con la tienda
                     </button>
                     {isPayable(selected.status) && (
-                      <button onClick={openRecharge} className="inline-flex items-center gap-2 rounded-xl bg-blue-500 text-white font-semibold px-4 py-2.5 hover:bg-blue-600 transition-all">
+                      <button onClick={openRecharge} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-blue-500 px-4 py-2 text-sm font-black text-white transition hover:bg-blue-600">
                         <CreditCard size={16} /> Pagar
                       </button>
                     )}
@@ -521,117 +694,39 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
                       <button
                         onClick={() => handleReorder(selected)}
                         disabled={reorderingId === selected.id}
-                        className="inline-flex items-center gap-2 rounded-xl bg-white/80 border border-white/60 text-gray-700 font-semibold px-4 py-2.5 hover:bg-white transition-all disabled:opacity-70 disabled:cursor-wait"
+                        className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-black text-gray-700 transition hover:bg-yellow-50 disabled:cursor-wait disabled:opacity-70"
                       >
-                        {reorderingId === selected.id ? <><Loader2 size={16} className="animate-spin" /> Recreando…</> : <><RotateCcw size={16} /> Reordenar</>}
+                        {reorderingId === selected.id ? <><Loader2 size={16} className="animate-spin" /> Recreando...</> : <><RotateCcw size={16} /> Reordenar</>}
                       </button>
                     )}
                     {isRateable(selected.status) && !selected.rating && (
-                      <button onClick={() => setRating({ open: true, score: 5, comment: '' })} className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 text-white font-semibold px-4 py-2.5 hover:bg-emerald-600 transition-all">
+                      <button onClick={() => setRating({ open: true, score: 5, comment: '' })} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-2 text-sm font-black text-white transition hover:bg-emerald-600">
                         <Star size={16} /> Calificar
                       </button>
                     )}
                     {isReturnable(selected.status) && (
-                      <button onClick={openReturn} className="inline-flex items-center gap-2 rounded-xl bg-purple-500 text-white font-semibold px-4 py-2.5 hover:bg-purple-600 transition-all">
+                      <button onClick={openReturn} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-purple-500 px-4 py-2 text-sm font-black text-white transition hover:bg-purple-600">
                         <Undo2 size={16} /> Devolver
                       </button>
                     )}
                     {isCancellable(selected.status) && (
-                      <button onClick={() => handleCancel(selected)} className="inline-flex items-center gap-2 rounded-xl bg-red-500 text-white font-semibold px-4 py-2.5 hover:bg-red-600 transition-all">
+                      <button onClick={() => handleCancel(selected)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-red-500 px-4 py-2 text-sm font-black text-white transition hover:bg-red-600">
                         <XCircle size={16} /> Cancelar
                       </button>
                     )}
                   </div>
-                </div>
-              ) : (
-                <div className="rounded-2xl bg-white/60 backdrop-blur-xl border border-white/50 p-8 text-center text-gray-500">
-                  Selecciona un pedido para ver el detalle y su seguimiento.
-                </div>
-              )}
-            </section>
-          </div>
-        </div>
-      </main>
-
-      {/* Modal crear pedido (para pruebas / flujo directo) */}
-      <ModalShell open={createOpen} onClose={() => setCreateOpen(false)} title="Nuevo pedido" subtitle="Crea un pedido contra el microservicio">
-        <div className="space-y-3">
-          {catalogError && (
-            <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-2.5 text-sm text-red-700">{catalogError}</div>
-          )}
-
-          {/* Tienda: lista desplegable con los restaurantes disponibles */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">Tienda</label>
-            <select
-              value={draft.storeId}
-              onChange={(e) => handleSelectStore(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm bg-white/60 outline-none focus:border-yellow-400 focus:ring-2 focus:ring-yellow-100"
-            >
-              <option value="">{catalogLoading && !stores.length ? 'Cargando tiendas…' : 'Selecciona una tienda'}</option>
-              {stores.map((s) => (
-                <option key={s.id} value={s.id}>{s.name}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Producto: lista desplegable con el catálogo de la tienda elegida */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">Producto</label>
-            <select
-              value={draft.productId}
-              onChange={(e) => handleSelectProduct(e.target.value)}
-              disabled={!draft.storeId}
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm bg-white/60 outline-none focus:border-yellow-400 focus:ring-2 focus:ring-yellow-100 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <option value="">
-                {!draft.storeId
-                  ? 'Primero elige una tienda'
-                  : catalogLoading
-                    ? 'Cargando productos…'
-                    : products.length
-                      ? 'Selecciona un producto'
-                      : 'Esta tienda no tiene productos'}
-              </option>
-              {products.map((p) => (
-                <option key={p.id} value={p.id}>{p.name} · {formatCOP(priceToCents(p.price))}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            {/* Precio: se calcula solo (precio unitario × cantidad), no editable */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">Precio</label>
-              <div className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm bg-gray-50 text-gray-700">
-                {draft.price ? formatCOP(priceToCents(draft.price) * (Number(draft.quantity) || 1)) : '—'}
-              </div>
+                </section>
+              </aside>
             </div>
-            <FormInput label="Cantidad" type="number" value={draft.quantity} onChange={(v) => setDraft((d) => ({ ...d, quantity: v }))} />
           </div>
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">Método de pago</label>
-            <select
-              value={draft.paymentMethod}
-              onChange={(e) => setDraft((d) => ({ ...d, paymentMethod: e.target.value as typeof d.paymentMethod }))}
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm bg-white/60 outline-none focus:border-yellow-400 focus:ring-2 focus:ring-yellow-100"
-            >
-              <option value="wallet">Billetera (pago digital)</option>
-              <option value="cash">Efectivo</option>
-              <option value="card">Tarjeta</option>
-              <option value="transfer">Transferencia</option>
-            </select>
-            <p className="text-xs text-gray-400 mt-1">Con billetera/tarjeta el pedido queda "Pago pendiente" hasta que financial confirme.</p>
-          </div>
-          <button
-            onClick={handleCreate}
-            disabled={creating}
-            className="w-full py-3 rounded-xl bg-gradient-to-r from-yellow-400 to-yellow-500 text-white font-semibold hover:from-yellow-500 hover:to-yellow-600 transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-wait"
-          >
-            {creating ? <><Loader2 size={18} className="animate-spin" /> Creando pedido…</> : 'Crear pedido'}
-          </button>
-        </div>
+        )}
       </ModalShell>
+
+      {mapOpen && (
+        <Suspense fallback={null}>
+          <StoreMapModal open={mapOpen} onClose={() => setMapOpen(false)} />
+        </Suspense>
+      )}
 
       {/* Modal de devolución (total o parcial) */}
       <ModalShell open={returnModal.open} onClose={() => setReturnModal((r) => ({ ...r, open: false }))} title="Solicitar devolución" subtitle="Elige qué devolver; products calcula el monto y financial lo reembolsa">
@@ -708,41 +803,6 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
           </button>
         </div>
       </ModalShell>
-    </div>
-  );
-};
-
-/** Línea de seguimiento del pedido (RF-08). */
-const OrderTracker: React.FC<{ order: OrderResponse }> = ({ order }) => {
-  const reached = new Set(order.statusHistory.map((h) => h.toStatus));
-  const terminalBad = order.status === 'CANCELLED' || order.status === 'FAILED';
-
-  if (terminalBad) {
-    return (
-      <div className="rounded-xl bg-red-50 border border-red-200 p-4 text-sm text-red-700">
-        Pedido {statusLabel[order.status].toLowerCase()}.
-        {order.statusHistory.at(-1)?.reason ? ` Motivo: ${order.statusHistory.at(-1)?.reason}` : ''}
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex items-center justify-between gap-1">
-      {ORDER_FLOW.map((step, idx) => {
-        const done = reached.has(step);
-        const current = order.status === step;
-        return (
-          <React.Fragment key={step}>
-            <div className="flex flex-col items-center gap-1 flex-1">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${done ? 'bg-yellow-400 text-white' : 'bg-gray-100 text-gray-400'} ${current ? 'ring-4 ring-yellow-100' : ''}`}>
-                {done ? <CheckCircle2 size={16} /> : <Clock size={14} />}
-              </div>
-              <span className={`text-[10px] text-center leading-tight ${done ? 'text-gray-700 font-medium' : 'text-gray-400'}`}>{statusLabel[step]}</span>
-            </div>
-            {idx < ORDER_FLOW.length - 1 && <div className={`h-0.5 flex-1 ${reached.has(ORDER_FLOW[idx + 1]) ? 'bg-yellow-400' : 'bg-gray-200'}`} />}
-          </React.Fragment>
-        );
-      })}
     </div>
   );
 };

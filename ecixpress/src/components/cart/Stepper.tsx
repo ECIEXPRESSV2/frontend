@@ -13,7 +13,7 @@ interface StepperProps {
 
 const Stepper: React.FC<StepperProps> = ({ steps, currentStep }) => {
   return (
-    <div className="flex items-center justify-center gap-4 mb-8">
+    <div className="flex items-center justify-center gap-3 sm:gap-4 mb-2 bg-white/70 backdrop-blur-xl rounded-2xl shadow-sm px-6 py-4">
       {steps.map((step, index) => {
         const isCompleted = index < currentStep;
         const isCurrent = index === currentStep;
@@ -24,18 +24,18 @@ const Stepper: React.FC<StepperProps> = ({ steps, currentStep }) => {
             {/* Step */}
             <div className="flex items-center gap-2">
               <div
-                className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-all duration-300 ${
+                className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-semibold text-sm transition-all duration-300 ${
                   isCompleted
                     ? 'bg-yellow-400 text-white'
                     : isCurrent
-                    ? 'bg-yellow-400 text-white shadow-lg shadow-yellow-200/60'
-                    : 'bg-gray-200 text-gray-500'
+                    ? 'bg-gradient-to-r from-yellow-400 to-yellow-500 text-white shadow-md shadow-yellow-300/60'
+                    : 'bg-gray-100 text-gray-400'
                 }`}
               >
-                {isCompleted ? <Check size={20} /> : index + 1}
+                {isCompleted ? <Check size={18} /> : index + 1}
               </div>
               <span
-                className={`font-medium transition-all duration-300 ${
+                className={`font-medium text-sm transition-all duration-300 hidden sm:inline ${
                   isCurrent ? 'text-gray-900' : isCompleted ? 'text-gray-600' : 'text-gray-400'
                 }`}
               >
@@ -46,7 +46,7 @@ const Stepper: React.FC<StepperProps> = ({ steps, currentStep }) => {
             {/* Connector Line */}
             {!isLast && (
               <div
-                className={`w-16 h-1 rounded-full transition-all duration-300 ${
+                className={`w-10 sm:w-16 h-1 rounded-full transition-all duration-300 ${
                   isCompleted ? 'bg-yellow-400' : 'bg-gray-200'
                 }`}
               />

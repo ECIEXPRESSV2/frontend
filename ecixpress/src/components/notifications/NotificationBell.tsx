@@ -8,6 +8,7 @@ import type { InboxNotification } from '../../services/notificationsService';
 interface NotificationBellProps {
   /** True cuando el sidebar está expandido (muestra la etiqueta junto al icono). */
   expanded?: boolean;
+  variant?: 'sidebar' | 'topbar';
   /** Avisa al contenedor (sidebar) cuando el panel se abre/cierra. */
   onOpenChange?: (open: boolean) => void;
 }
@@ -84,6 +85,7 @@ const NotificationItem: React.FC<{
 
 const NotificationBell: React.FC<NotificationBellProps> = ({
   expanded = false,
+  variant = 'sidebar',
   onOpenChange,
 }) => {
   const { notifications, unreadCount, loading, markRead, markAllRead, refresh } =
@@ -134,7 +136,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
         boxShadow: '0 28px 55px -12px rgba(0,0,0,0.38)',
       }}
       transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-      className="fixed left-20 top-4 w-[360px] max-h-[70vh] bg-white rounded-2xl border border-gray-100 z-[100] flex flex-col overflow-hidden"
+      className={`fixed ${variant === 'topbar' ? 'right-5 top-16' : 'left-20 top-4'} w-[360px] max-w-[calc(100vw-2rem)] max-h-[70vh] bg-white rounded-2xl border border-gray-100 z-[100] flex flex-col overflow-hidden`}
       style={{
         animation: 'fadeIn .12s ease-out',
         boxShadow: '0 12px 32px -10px rgba(0,0,0,0.22)',
@@ -204,15 +206,16 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
     </motion.div>
   );
 
+  const topbarClass = `relative inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/70 bg-white/55 text-gray-500 backdrop-blur-sm transition hover:border-yellow-200/80 hover:bg-yellow-50/70 hover:text-amber-700 focus:outline-none focus:ring-2 focus:ring-yellow-300${open ? ' border-yellow-200/80 bg-yellow-50/70 text-amber-700' : ''}`;
+  const sidebarClass = `relative w-full h-11 rounded-xl flex items-center transition-all duration-300 ease-in-out group overflow-hidden ${open ? 'bg-yellow-100 text-yellow-600' : 'text-gray-500 hover:bg-yellow-50 hover:text-yellow-600'} ${expanded ? 'px-4' : 'justify-center'}`;
+
   return (
-    <div className="relative w-full">
+    <div className={variant === 'topbar' ? 'relative' : 'relative w-full'}>
       <button
         ref={buttonRef}
         onClick={() => setPanelOpen(!open)}
         title="Notificaciones"
-        className={`relative w-full h-11 rounded-xl flex items-center transition-all duration-300 ease-in-out group overflow-hidden
-          ${open ? 'bg-yellow-100 text-yellow-600' : 'text-gray-500 hover:bg-yellow-50 hover:text-yellow-600'}
-          ${expanded ? 'px-4' : 'justify-center'}`}
+        className={variant === 'topbar' ? topbarClass : sidebarClass}
       >
         <span className="relative flex-shrink-0">
           <Bell

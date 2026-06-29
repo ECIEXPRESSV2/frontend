@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+﻿import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { ArrowLeft, Plus, Trash2, Pencil, Eye, EyeOff, RefreshCw, BadgePercent, Filter } from 'lucide-react';
@@ -189,8 +189,8 @@ const PromotionsPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-background">
       <Sidebar activeItem="vendor-stores" />
-      <main className="ml-16 p-6 md:p-8">
-        <div className="max-w-5xl mx-auto space-y-6">
+      <main className="ml-16 px-4 pb-6 pt-20 md:px-8 md:pb-8 lg:px-10">
+        <div className="relative mx-auto max-w-6xl space-y-6">
           {/* Header */}
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div className="flex items-center gap-3">

@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
-import { RefreshCw, Search } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 import Sidebar from '../../components/home/Sidebar';
 import { TableSkeleton } from '../../components/common/LoadingSkeleton';
 import { useAuth } from '../../context/AuthContext';
@@ -57,26 +57,45 @@ const AuditPage: React.FC = () => {
 
   useEffect(() => { load(1, { showLoading: !initialCache }); }, []);
 
-  const handleSearch = () => { setPage(1); load(1, { actionValue: action }); };
+  const totalPages = Math.max(1, Math.ceil(total / limit));
+
+  const handleActionChange = (value: string) => {
+    setAction(value);
+    setPage(1);
+    load(1, { actionValue: value, showLoading: true });
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-white to-yellow-100">
       <Sidebar activeItem="admin-audit" />
-      <main className="ml-16 p-6 md:p-8">
-        <div className="max-w-6xl mx-auto space-y-6">
-          <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold text-gray-900">Log de Auditoría</h1>
-            <button onClick={() => load(page, { actionValue: action })} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-yellow-400 text-white font-medium text-sm hover:bg-yellow-500">
-              <RefreshCw size={15} /> Actualizar
-            </button>
-          </div>
+      <main className="ml-16 px-4 pb-5 pt-20 md:ml-64 md:px-8 lg:px-10">
+        <div className="relative mx-auto max-w-6xl space-y-6">
+          <header className="relative overflow-hidden rounded-[28px] border border-yellow-200/70 bg-[linear-gradient(135deg,#F4B942_0%,#FBBF24_48%,#FDE68A_100%)] p-5 shadow-lg shadow-yellow-200/60 md:p-6">
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-white/60" />
+            <div className="pointer-events-none absolute -left-20 -top-24 h-64 w-64 rounded-full bg-white/22 blur-3xl" />
+            <div className="pointer-events-none absolute right-[-90px] top-[-110px] h-72 w-72 rounded-full bg-[#FB923C]/22 blur-3xl" />
+            <div className="relative flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+              <div className="max-w-3xl">
+                <nav className="mb-3 inline-flex items-center rounded-xl border border-white/70 bg-white/80 px-3 py-1.5 text-sm font-semibold text-gray-700 shadow-sm backdrop-blur" aria-label="Ruta de navegacion">
+                  Administración <span className="mx-2 text-gray-400">/</span>
+                  <span className="text-gray-950">Auditoría</span>
+                </nav>
+                <h1 className="text-3xl font-bold tracking-normal text-white md:text-4xl">Log de auditoría</h1>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <button onClick={() => load(page, { actionValue: action })} className="inline-flex min-h-11 items-center gap-2 rounded-2xl border border-white/70 bg-white/80 px-4 py-2 text-sm font-bold text-gray-700 shadow-sm backdrop-blur transition hover:bg-white hover:text-gray-950 focus:outline-none focus:ring-2 focus:ring-white">
+                  <RefreshCw size={16} /> Actualizar
+                </button>
+              </div>
+            </div>
+          </header>
 
-          {/* Filters */}
-          <div className="flex gap-3">
+          <section className="rounded-3xl border border-white/70 bg-white/82 p-4 shadow-lg shadow-gray-200/60 backdrop-blur-xl md:p-5">
+            <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
             <select
-              className="border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-yellow-400 bg-white"
+              className="min-h-12 rounded-2xl border border-gray-100 bg-white px-4 py-3 text-sm font-semibold text-gray-700 outline-none transition hover:border-yellow-200 focus:border-yellow-400 focus:ring-4 focus:ring-yellow-100"
               value={action}
-              onChange={e => { setAction(e.target.value); }}
+              onChange={e => handleActionChange(e.target.value)}
             >
               <option value="">Todas las acciones</option>
               <option value="USER_CREATED">USER_CREATED</option>
@@ -93,10 +112,11 @@ const AuditPage: React.FC = () => {
               <option value="PERMISSION_GRANTED">PERMISSION_GRANTED</option>
               <option value="PERMISSION_REVOKED">PERMISSION_REVOKED</option>
             </select>
-            <button onClick={handleSearch} className="px-5 py-2.5 rounded-xl bg-gray-100 text-gray-700 font-medium text-sm hover:bg-gray-200">
-              <Search size={15} />
-            </button>
-          </div>
+            <p className="text-sm font-semibold text-gray-500">
+              {loading ? 'Cargando registros...' : `${total} registro${total === 1 ? '' : 's'}`}
+            </p>
+            </div>
+          </section>
 
           {/* Table */}
           <div className="rounded-2xl bg-white/70 backdrop-blur-xl shadow-sm overflow-hidden">
@@ -142,22 +162,29 @@ const AuditPage: React.FC = () => {
 
           {/* Pagination */}
           {total > limit && (
-            <div className="flex justify-center gap-3">
+            <div className="flex flex-col gap-3 border-t border-gray-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm text-gray-500">
+                Mostrando <span className="font-semibold text-gray-900">{(page - 1) * limit + 1}</span> a{' '}
+                <span className="font-semibold text-gray-900">{Math.min(page * limit, total)}</span> de{' '}
+                <span className="font-semibold text-gray-900">{total}</span> registros
+              </p>
+              <div className="flex items-center gap-2">
               <button
                 onClick={() => { const p = page - 1; setPage(p); load(p, { actionValue: action }); }}
                 disabled={page === 1}
-                className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 text-sm disabled:opacity-40"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-600 transition hover:border-yellow-300 hover:text-amber-700 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 Anterior
               </button>
-              <span className="px-4 py-2 text-sm text-gray-500">Página {page} de {Math.ceil(total / limit)}</span>
+              <span className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-semibold text-gray-700">Página {page} de {totalPages}</span>
               <button
                 onClick={() => { const p = page + 1; setPage(p); load(p, { actionValue: action }); }}
-                disabled={page >= Math.ceil(total / limit)}
-                className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 text-sm disabled:opacity-40"
+                disabled={page >= totalPages}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-600 transition hover:border-yellow-300 hover:text-amber-700 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 Siguiente
               </button>
+              </div>
             </div>
           )}
         </div>

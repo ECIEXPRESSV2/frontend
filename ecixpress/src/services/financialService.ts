@@ -4,6 +4,8 @@
 // (en producción lo inyecta el API Gateway; en desarrollo lo enviamos directo
 // con el id del perfil de Identity).
 
+import { getFirebaseIdToken } from '../lib/auth-token';
+
 const FINANCIAL_URL = (
   import.meta.env.VITE_FINANCIAL_API_URL || 'http://localhost:3004'
 ).replace(/\/$/, '');
@@ -150,8 +152,12 @@ async function financialFetch<T>(
   userId: string,
   options: RequestInit = {},
 ): Promise<T> {
+  // Bearer de Firebase: requerido al pasar por el API Gateway (valida y enriquece;
+  // descarta el x-user-id del cliente). En modo directo financial lo ignora.
+  const token = await getFirebaseIdToken();
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
     'x-user-id': userId,
     ...(options.headers as Record<string, string>),
   };

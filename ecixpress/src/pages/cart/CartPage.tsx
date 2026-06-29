@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import Sidebar from '../../components/home/Sidebar';
@@ -55,8 +55,8 @@ const CartPage: React.FC<CartPageProps> = ({ onBack, onContinue }) => {
       />
 
       {/* Main Content */}
-      <main className="ml-16 p-6 md:p-8">
-        <div className="max-w-7xl mx-auto space-y-8">
+      <main className="ml-16 px-6 pb-6 pt-20 md:px-8 md:pb-8">
+        <div className="max-w-6xl mx-auto space-y-8">
           {/* Back Button */}
           <button
             onClick={() => onBack?.() ?? navigate('/home')}
