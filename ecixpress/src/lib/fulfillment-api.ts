@@ -9,6 +9,8 @@
  * El prefijo de la API es `/api/v1` (salvo la imagen pública del QR, que vive fuera).
  */
 
+import { getFirebaseIdToken } from './auth-token';
+
 // ─── Enums de negocio (contrato con el backend) ─────────────────
 export type PickupCodeStatus = 'ACTIVE' | 'USED' | 'EXPIRED' | 'INVALIDATED';
 export type DeliveryMethod = 'QR' | 'MANUAL';
@@ -102,7 +104,13 @@ export interface FulfillmentIdentity {
 export const FULFILLMENT_API_BASE_URL =
   (import.meta.env.VITE_FULFILLMENT_API_URL ?? 'http://localhost:3005').replace(/\/$/, '');
 
-const API_PREFIX = '/api/v1';
+// Prefijo de la API de Fulfillment.
+//  - Modo DIRECTO (default): el servicio sirve en `/api/v1/fulfillment/...`, así que
+//    el cliente antepone `/api/v1` (los paths ya incluyen `/fulfillment`).
+//  - Modo GATEWAY: el gateway recibe `/fulfillment/...` y él mismo lo reescribe a
+//    `/api/v1/fulfillment/...`. Para no duplicarlo, se pone VITE_FULFILLMENT_API_PREFIX=
+//    (vacío) y VITE_FULFILLMENT_API_URL=http://localhost:3000 (raíz del gateway).
+const API_PREFIX = import.meta.env.VITE_FULFILLMENT_API_PREFIX ?? '/api/v1';
 
 /** Error con el `code` técnico del backend (ej. WRONG_STORE) además del status HTTP. */
 export class FulfillmentApiError extends Error {
@@ -128,9 +136,13 @@ async function requestJson<T>(
   identity?: FulfillmentIdentity,
   init?: RequestInit,
 ): Promise<T> {
+  // Bearer de Firebase: requerido al pasar por el API Gateway (valida y enriquece;
+  // descarta el x-user-id del cliente). En modo directo fulfillment lo ignora.
+  const token = await getFirebaseIdToken();
   const response = await fetch(`${FULFILLMENT_API_BASE_URL}${API_PREFIX}${path}`, {
     headers: {
       'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...gatewayHeaders(identity),
       ...(init?.headers ?? {}),
     },

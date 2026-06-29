@@ -9,7 +9,9 @@ import { OrderProgressTimeline, isActiveOrder } from '../../components/orders/Or
 import { useAuth } from '../../context/AuthContext';
 import { useWallet } from '../../context/WalletContext';
 import { useOrdersApi } from '../../hooks/useOrdersApi';
-import { ORDERS_API_BASE_URL, type OrderResponse, type OrderStatus } from '../../lib/orders-api';
+import { ORDERS_WS_URL, type OrderResponse, type OrderStatus } from '../../lib/orders-api';
+import { getAvailableStores, type Store } from '../../services/storeService';
+import { productsApi, priceToCents, type Product } from '../../lib/products-api';
 import { formatCOP, formatDateTime } from '../../lib/format';
 import { isCancellable, isHideable, isPayable, isRateable, isReorderable, isReturnable, orderDisplayName, statusLabel, statusTone } from '../../lib/orders-ui';
 
@@ -213,7 +215,11 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
       let token = '';
       try { token = await getToken(); } catch { /* sin sesión */ }
       if (!active) return;
-      socket = io(`${ORDERS_API_BASE_URL}/communication`, { transports: ['websocket'], auth: { token } });
+      // token en query: requerido por el WS proxy del API Gateway, que lee ?token= del
+      // HTTP upgrade. También en auth.token para conexión directa al servicio sin gateway.
+      // Riesgo aceptado: el token aparece en la URL del upgrade (visible en logs de red).
+      // Los tokens de Firebase expiran en ~1 h; getToken() siempre devuelve uno vigente.
+      socket = io(ORDERS_WS_URL, { path: '/orders/socket.io', transports: ['websocket'], auth: { token }, query: { token } });
       socketRef.current = socket;
       socket.on('connect', () => {
         setConnected(true);

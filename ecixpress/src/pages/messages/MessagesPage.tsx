@@ -5,8 +5,7 @@ import { Archive, ArchiveRestore, ArrowLeft, Check, CheckCheck, Inbox, MessageSq
 import Sidebar from '../../components/home/Sidebar';
 import { useAuth } from '../../context/AuthContext';
 import { useOrdersApi } from '../../hooks/useOrdersApi';
-import { getMyStores } from '../../services/storeService';
-import { ORDERS_API_BASE_URL, type ConversationResponse, type MessageResponse } from '../../lib/orders-api';
+import { ORDERS_WS_URL, type ConversationResponse, type MessageResponse } from '../../lib/orders-api';
 import { formatDateTime } from '../../lib/format';
 
 interface MessagesPageProps {
@@ -175,7 +174,11 @@ const MessagesPage: React.FC<MessagesPageProps> = ({ onBack }) => {
       let token = '';
       try { token = await getToken(); } catch { /* sin sesión */ }
       if (!active) return;
-      socket = io(`${ORDERS_API_BASE_URL}/communication`, { transports: ['websocket'], auth: { token } });
+      // token en query: requerido por el WS proxy del API Gateway, que lee ?token= del
+      // HTTP upgrade. También en auth.token para conexión directa al servicio sin gateway.
+      // Riesgo aceptado: el token aparece en la URL del upgrade (visible en logs de red).
+      // Los tokens de Firebase expiran en ~1 h; getToken() siempre devuelve uno vigente.
+      socket = io(ORDERS_WS_URL, { path: '/orders/socket.io', transports: ['websocket'], auth: { token }, query: { token } });
       socketRef.current = socket;
       socket.on('connect', () => {
         setConnected(true);

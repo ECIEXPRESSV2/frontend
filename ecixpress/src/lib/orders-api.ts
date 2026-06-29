@@ -193,6 +193,20 @@ export interface MessagesResponse {
 
 export const ORDERS_API_BASE_URL = (import.meta.env.VITE_ORDERS_SERVICE_URL ?? 'http://localhost:3000').replace(/\/$/, '');
 
+// URL del WebSocket de chat. El namespace ('/communication') se deriva del *pathname* de
+// la URL de io(); por el gateway la base REST incluye el prefijo /orders, que daría el
+// namespace inválido '/orders/communication'. Por eso usamos el ORIGIN + el namespace real
+// y dejamos el routing al `path: '/orders/socket.io'`. En directo el origin es el del servicio.
+export const ORDERS_WS_URL = (() => {
+  let origin = ORDERS_API_BASE_URL;
+  try {
+    origin = new URL(ORDERS_API_BASE_URL).origin;
+  } catch {
+    /* mantener base si no es URL absoluta */
+  }
+  return `${origin}/communication`;
+})();
+
 /**
  * Identidad del usuario para orders-service, que confía en los headers `x-user-id` /
  * `x-user-role` (patrón gateway; en dev orders corre con AUTH_DISABLED=true y no valida

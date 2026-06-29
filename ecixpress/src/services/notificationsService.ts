@@ -7,6 +7,8 @@
  * estos endpoints exponen el histórico persistido y el estado leído/no leído.
  */
 
+import { getFirebaseIdToken } from '../lib/auth-token';
+
 const NOTIFICATIONS_URL =
   (import.meta.env.VITE_NOTIFICATIONS_API_URL || 'http://localhost:3006').replace(/\/$/, '');
 
@@ -27,10 +29,14 @@ async function request<T>(
   userId: string,
   options: RequestInit = {},
 ): Promise<T> {
+  // Bearer de Firebase: requerido al pasar por el API Gateway (valida y enriquece;
+  // descarta el x-user-id del cliente). En modo directo notifications lo ignora.
+  const token = await getFirebaseIdToken();
   const res = await fetch(`${NOTIFICATIONS_URL}${path}`, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       'x-user-id': userId,
       ...(options.headers as Record<string, string>),
     },

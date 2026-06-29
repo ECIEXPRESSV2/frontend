@@ -1,0 +1,61 @@
+# ═════════════════════════════════════════════════════════════════════════════
+# Despliegue del frontend a Azure Static Web Apps — eciexpress-prod-frontend
+#
+# Build de Vite (app en ecixpress/) + deploy al SWA. Las VITE_* se inyectan en build:
+# apuntan al API Gateway por su FQDN público (con el prefijo de cada servicio).
+#
+# Requisitos (GitHub → Settings):
+#   - Secret  AZURE_STATIC_WEB_APPS_API_TOKEN  → output `static_web_app_api_key` de Terraform.
+#   - Variables (Settings → Variables → Actions) con la URL pública del gateway y Firebase:
+#       VITE_GATEWAY_URL          = https://<gateway-fqdn>           (sin barra final)
+#       VITE_WOMPI_PUBLIC_KEY     = pub_test_...
+#       VITE_FIREBASE_API_KEY / _AUTH_DOMAIN / _PROJECT_ID / _STORAGE_BUCKET /
+#       _MESSAGING_SENDER_ID / _APP_ID
+#   (Firebase web config y la llave pública de Wompi son públicas: van en el bundle.)
+# ═════════════════════════════════════════════════════════════════════════════
+name: azure-swa-deploy
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build_and_deploy:
+    name: build (Vite) -> deploy (Static Web Apps)
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build & deploy to Azure Static Web Apps
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          action: upload
+          app_location: "ecixpress" # subcarpeta de la app dentro del repo
+          output_location: "dist" # salida de `vite build`, relativa a app_location
+        env:
+          # Todas las rutas REST pasan por el gateway con su prefijo de servicio.
+          VITE_API_URL: ${{ vars.VITE_GATEWAY_URL }}/identity
+          VITE_PRODUCTS_SERVICE_URL: ${{ vars.VITE_GATEWAY_URL }}/products
+          VITE_ORDERS_SERVICE_URL: ${{ vars.VITE_GATEWAY_URL }}/orders
+          VITE_FINANCIAL_API_URL: ${{ vars.VITE_GATEWAY_URL }}/financial
+          VITE_NOTIFICATIONS_API_URL: ${{ vars.VITE_GATEWAY_URL }}/notifications
+          # Fulfillment: sus paths ya incluyen /fulfillment y el gateway añade /api/v1;
+          # por eso la base es la RAÍZ del gateway y el prefijo /api/v1 se vacía.
+          VITE_FULFILLMENT_API_URL: ${{ vars.VITE_GATEWAY_URL }}
+          VITE_FULFILLMENT_API_PREFIX: ""
+          # Wompi (llave pública) + Firebase (config web pública).
+          VITE_WOMPI_PUBLIC_KEY: ${{ vars.VITE_WOMPI_PUBLIC_KEY }}
+          VITE_WOMPI_BASE_URL: https://sandbox.wompi.co/v1
+          VITE_FIREBASE_API_KEY: ${{ vars.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ vars.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ vars.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_STORAGE_BUCKET: ${{ vars.VITE_FIREBASE_STORAGE_BUCKET }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ vars.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+          VITE_FIREBASE_APP_ID: ${{ vars.VITE_FIREBASE_APP_ID }}
