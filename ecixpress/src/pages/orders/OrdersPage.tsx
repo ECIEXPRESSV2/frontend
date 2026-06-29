@@ -10,8 +10,6 @@ import { useAuth } from '../../context/AuthContext';
 import { useWallet } from '../../context/WalletContext';
 import { useOrdersApi } from '../../hooks/useOrdersApi';
 import { ORDERS_WS_URL, type OrderResponse, type OrderStatus } from '../../lib/orders-api';
-import { getAvailableStores, type Store } from '../../services/storeService';
-import { productsApi, priceToCents, type Product } from '../../lib/products-api';
 import { formatCOP, formatDateTime } from '../../lib/format';
 import { isCancellable, isHideable, isPayable, isRateable, isReorderable, isReturnable, orderDisplayName, statusLabel, statusTone } from '../../lib/orders-ui';
 

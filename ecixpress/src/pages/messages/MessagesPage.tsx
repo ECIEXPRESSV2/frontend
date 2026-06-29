@@ -5,6 +5,7 @@ import { Archive, ArchiveRestore, ArrowLeft, Check, CheckCheck, Inbox, MessageSq
 import Sidebar from '../../components/home/Sidebar';
 import { useAuth } from '../../context/AuthContext';
 import { useOrdersApi } from '../../hooks/useOrdersApi';
+import { getMyStores } from '../../services/storeService';
 import { ORDERS_WS_URL, type ConversationResponse, type MessageResponse } from '../../lib/orders-api';
 import { formatDateTime } from '../../lib/format';
 
