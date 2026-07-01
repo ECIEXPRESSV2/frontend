@@ -365,10 +365,19 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName 
   // Carrito ilustrado que se llena con la imagen de cada producto añadido. Se dibuja por capas:
   // los productos van AL FONDO y el carrito ENCIMA (más cerca de la pantalla), de modo que la
   // rejilla "enjaula" a los productos y se perciben dentro de la canasta.
+  //
+  // TODO (pendiente): en vez de la imagen del producto, mostrar aquí una previsualización del
+  // modelo 3D del producto dentro de la canasta (p. ej. un <canvas>/three.js o <model-viewer>
+  // por cada ficha). Las "fichas" seguirían apilándose al azar, pero cada una renderizaría el
+  // modelo 3D en miniatura en lugar de <img>. Requiere que products-service exponga la URL del
+  // modelo (glTF/GLB) por producto y una estrategia de rendimiento (instanciar pocos, o un
+  // sprite/thumbnail 3D pre-renderizado) para no montar muchos canvas a la vez.
   const cartVisual = (
     <div className="relative w-full max-w-[15rem] mx-auto aspect-[6/5] select-none">
       {/* Capa trasera: fichas de producto tiradas al azar dentro del trapecio de la canasta,
-          recortadas a su forma exacta como red de seguridad para que nunca sobresalgan. */}
+          recortadas a su forma exacta como red de seguridad para que nunca sobresalgan.
+          TODO (pendiente): reemplazar el <img> de cada ficha por la previsualización del modelo
+          3D del producto (ver nota de arriba). */}
       <div
         className="absolute inset-0"
         style={{ clipPath: 'polygon(16.67% 38%, 86.67% 26%, 75.83% 66%, 25% 66%)' }}
@@ -609,6 +618,18 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName 
         ) : displayProducts.length === 0 ? (
           <p className="text-gray-500 text-sm py-8 text-center">No hay productos para mostrar.</p>
         ) : (
+          // TODO (pendiente): permitir agregar productos al carrito por drag & drop, además del
+          // botón "+". Mientras se arrastra un producto:
+          //   - atenuar/difuminar toda la pantalla (overlay gris o backdrop-blur sobre el resto
+          //     de la UI) EXCEPTO el carrito ilustrado, para enfocar la atención;
+          //   - resaltar el carrito (cartVisual) en amarillo y con un realce (borde/glow) para
+          //     dejar claro que ESE es el destino válido del drop, haciéndolo intuitivo;
+          //   - al soltar sobre el carrito, llamar a changeQuantity(product, qty + 1) (misma
+          //     lógica que el botón "+", respetando availableStock/atStockLimit).
+          // Implementación sugerida: draggable en cada tarjeta (onDragStart guarda el productId),
+          // un estado `draggingProductId` que active el overlay/atenuado global, y onDragOver/
+          // onDrop en el contenedor del cartVisual como zona de drop. Cuidar accesibilidad
+          // (teclado) y touch (los eventos HTML5 drag no funcionan en móvil → usar pointer events).
           <div className="grid grid-cols-1 gap-4">
             {displayProducts.map((product) => {
               const qty = quantities[product.id] ?? 0;
