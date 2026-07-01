@@ -105,8 +105,8 @@ const Home: React.FC<HomeProps> = ({ onUserClick, onCartClick, onOrdersClick, on
         onMessagesClick={onMessagesClick}
       />
 
-      <main className="ml-16 px-4 pb-6 pt-20 md:px-8 md:pb-8 lg:px-10">
-        <div className="max-w-6xl mx-auto space-y-8">
+      <main className="app-shift px-3 pb-6 pt-20 md:px-6 md:pb-8 lg:px-8">
+        <div className="w-full space-y-8">
           <CategoryTabs
             categories={categories}
             activeCategory={activeCategory}

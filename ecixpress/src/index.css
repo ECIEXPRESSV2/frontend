@@ -207,6 +207,61 @@
   animation: gradientMove 12s ease infinite;
 }
 
+/* ── Rechazo de stock: el recuadro del producto vibra y su borde titila en rojo ── */
+@keyframes stockShake {
+  0%, 100% { transform: translateX(0); }
+  15% { transform: translateX(-6px); }
+  30% { transform: translateX(6px); }
+  45% { transform: translateX(-5px); }
+  60% { transform: translateX(5px); }
+  75% { transform: translateX(-3px); }
+  90% { transform: translateX(3px); }
+}
+
+.animate-stock-reject {
+  animation: stockShake 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+  /* Titileo rojo del borde durante la sacudida */
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.9), 0 8px 20px rgba(239, 68, 68, 0.25);
+  border-color: rgb(239, 68, 68) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-stock-reject {
+    animation: none;
+  }
+}
+
+/* ── Menú del usuario (al hacer clic en la bolita del avatar) ── */
+@keyframes menuPop {
+  from { opacity: 0; transform: translateY(-6px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.animate-menu-pop {
+  animation: menuPop 0.18s cubic-bezier(0.22, 1, 0.36, 1) both;
+  transform-origin: top right;
+}
+
+/* ── Layout responsivo al sidebar ─────────────────────────────────────────────
+   El sidebar es `position: fixed`; para que la página NO quede tapada al expandirse,
+   el contenido principal se desplaza a la derecha siguiendo su ancho. El ancho lo publica
+   el propio Sidebar en la variable --sidebar-w (4rem contraído / 16rem expandido). En
+   móviles el sidebar siempre mide 4rem, así que ahí el desplazamiento se fija a 4rem. */
+:root {
+  --sidebar-w: 4rem;
+}
+
+.app-shift {
+  margin-left: var(--sidebar-w);
+  transition: margin-left 300ms ease-in-out;
+}
+
+@media (max-width: 767px) {
+  .app-shift {
+    margin-left: 4rem;
+  }
+}
+
 .building-pin {
   pointer-events: none;
 }

@@ -68,7 +68,7 @@ const AuditPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-white to-yellow-100">
       <Sidebar activeItem="admin-audit" />
-      <main className="ml-16 px-4 pb-5 pt-20 md:px-8 lg:px-10">
+      <main className="app-shift px-4 pb-5 pt-20 md:px-8 lg:px-10">
         <div className="relative mx-auto max-w-6xl space-y-6">
           <header className="relative overflow-hidden rounded-[28px] border border-yellow-200/70 bg-[linear-gradient(135deg,#F4B942_0%,#FBBF24_48%,#FDE68A_100%)] p-5 shadow-lg shadow-yellow-200/60 md:p-6">
             <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-white/60" />
