@@ -5,6 +5,21 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import { X, MapPin, Loader2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getAvailableStores, type Store } from '../../services/storeService';
+import { isFavorite } from '../../services/favoritesStore';
+
+/** Escapa texto para insertarlo con innerHTML sin riesgo de inyección. */
+const escapeHtml = (s: string): string =>
+  s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string));
+
+/** Corazón minimalista (mismo ícono de Lucide que en el home), en rojo relleno, como SVG inline. */
+const HEART_SVG =
+  '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="#ef4444" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-2px;margin-right:5px;flex-shrink:0">' +
+  '<path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>';
+
+/** Escribe en `el` el nombre de la tienda, con un corazón rojo minimalista delante si es favorita. */
+const setStoreLabel = (el: HTMLElement, store: Store): void => {
+  el.innerHTML = (isFavorite(store.id) ? HEART_SVG : '') + escapeHtml(store.name);
+};
 
 type CampusGeometry = {
   type: 'Polygon' | 'MultiPolygon';
@@ -70,7 +85,8 @@ function createStorePin(
   body.className = 'store-pin-body';
   label.className = 'store-pin-label';
   tip.className = 'store-pin-tip';
-  label.textContent = stores.length === 1 ? stores[0].name : `${stores.length} tiendas`;
+  if (stores.length === 1) setStoreLabel(label, stores[0]);
+  else label.textContent = `${stores.length} tiendas`;
   body.append(label, tip);
   el.append(body);
 
@@ -134,7 +150,7 @@ const StoreMapModal: React.FC<Props> = ({ open, onClose }) => {
     wrapper.className = 'flex flex-col gap-1.5 min-w-[160px]';
     here.forEach((store) => {
       const btn = document.createElement('button');
-      btn.textContent = store.name;
+      setStoreLabel(btn, store);
       btn.className = 'w-full text-left px-3 py-2 rounded-lg text-sm font-medium bg-yellow-50 text-amber-800 hover:bg-yellow-100 transition';
       btn.onclick = () => goToStore(store.id);
       wrapper.append(btn);

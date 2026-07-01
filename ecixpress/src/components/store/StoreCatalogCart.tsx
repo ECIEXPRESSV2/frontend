@@ -869,7 +869,9 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName,
               return (
                 <div
                   key={product.id}
-                  className={`group relative rounded-2xl bg-white border border-gray-100 shadow-sm transition-shadow overflow-hidden flex flex-col ${
+                  /* `isolate` acota los z-index internos (badge "Agotado"/"Quedan N") a la propia
+                     tarjeta, para que NO pasen por encima del banner/búsqueda fijos al hacer scroll. */
+                  className={`group relative isolate rounded-2xl bg-white border border-gray-100 shadow-sm transition-shadow overflow-hidden flex flex-col ${
                     outOfStock
                       ? 'pointer-events-none select-none' // agotado: no seleccionable
                       : 'hover:shadow-md'
