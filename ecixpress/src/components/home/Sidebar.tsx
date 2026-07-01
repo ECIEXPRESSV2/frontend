@@ -3,7 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { User, Plus, Grid, Clipboard, MessageCircle, LogOut, Wallet, Shield, Store, PackageCheck } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useWallet } from '../../context/WalletContext';
+import { useNotifications } from '../../context/NotificationsContext';
+import { ordersApi } from '../../lib/orders-api';
 import NotificationBell from '../notifications/NotificationBell';
+import CartDraftsBell from '../orders/CartDraftsBell';
 
 const StoreMapModal = lazy(() => import('../store/StoreMapModal'));
 
@@ -38,8 +41,9 @@ const Sidebar: React.FC<SidebarProps> = ({
   onMessagesClick,
 }) => {
   const navigate = useNavigate();
-  const { userProfile, signOut, isAdmin, isVendor } = useAuth();
+  const { userProfile, getToken, signOut, isAdmin, isVendor } = useAuth();
   const { balanceLabel, loading: walletLoading } = useWallet();
+  const { unreadCount: notifUnread } = useNotifications();
   const firstName = (userProfile?.fullName || userProfile?.email || 'Usuario').trim().split(/\s+/)[0] || 'Usuario';
   const [internalExpanded, setInternalExpanded] = useState(defaultExpanded);
   const [mapOpen, setMapOpen] = useState(false);
@@ -53,18 +57,67 @@ const Sidebar: React.FC<SidebarProps> = ({
   const [notifOpen, setNotifOpen] = useState(false);
   const [topbarExpanded, setTopbarExpanded] = useState(false);
   const [topbarNotifOpen, setTopbarNotifOpen] = useState(false);
-  const isTopbarOpen = topbarExpanded || topbarNotifOpen;
+  // Con el scroll arriba del todo la cápsula aparece desplegada (como si el mouse estuviera
+  // encima); al bajar se retrae y solo se abre con hover.
+  const [topbarAtTop, setTopbarAtTop] = useState(true);
+  // Hay carritos pendientes (pedidos DRAFT): se muestra el atajo de carrito y la cápsula
+  // reserva un poco más de ancho para ese ícono extra.
+  const [hasDraftCarts, setHasDraftCarts] = useState(false);
+  // ¿Hay conversaciones con mensajes sin leer para este usuario?
+  const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
+  const isTopbarOpen = topbarAtTop || topbarExpanded || topbarNotifOpen;
+
+  // Marca "algo pendiente" en el avatar: carritos sin pagar, notificaciones o mensajes sin leer.
+  const hasPending = hasDraftCarts || notifUnread > 0 || hasUnreadMessages;
 
   useEffect(() => {
     const handleScroll = () => {
-      setTopbarExpanded(false);
-      setTopbarNotifOpen(false);
-      setNotifOpen(false);
+      const atTop = window.scrollY <= 4;
+      setTopbarAtTop(atTop);
+      // Al alejarse del tope se cierran los paneles de notificaciones; el hover sigue vigente.
+      if (!atTop) {
+        setTopbarNotifOpen(false);
+        setNotifOpen(false);
+      }
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  const refreshUnreadMessages = async () => {
+    const uid = userProfile?.id;
+    if (!uid) return;
+    try {
+      const token = await getToken().catch(() => null);
+      const convs = await ordersApi.getConversations(token, { customerId: uid });
+      setHasUnreadMessages(convs.some((c) => c.participants.some((p) => p.userId === uid && p.unreadCount > 0)));
+    } catch {
+      /* sin conexión: no marcamos pendientes de mensajes */
+    }
+  };
+
+  // Mensajes sin leer del usuario (para el puntito del avatar). Se refresca al montar y al
+  // volver el foco a la pestaña; no es en vivo, basta para señalar que hay algo pendiente.
+  useEffect(() => {
+    const uid = userProfile?.id;
+    if (!uid) return;
+    let active = true;
+    (async () => {
+      try {
+        const token = await getToken().catch(() => null);
+        const convs = await ordersApi.getConversations(token, { customerId: uid });
+        const unread = convs.some((c) => c.participants.some((p) => p.userId === uid && p.unreadCount > 0));
+        if (active) setHasUnreadMessages(unread);
+      } catch {
+        /* sin conexión: no marcamos pendientes de mensajes */
+      }
+    })();
+    const onFocus = () => void refreshUnreadMessages();
+    window.addEventListener('focus', onFocus);
+    return () => { active = false; window.removeEventListener('focus', onFocus); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userProfile?.id]);
 
   const menuItems = [
     { id: 'home', icon: Grid, label: 'Inicio', path: '/home' },
@@ -107,7 +160,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         /* Cápsula flotante estilo liquid glass — anclada a la derecha */
         <div
           className={`fixed top-3 right-4 z-[70] flex h-14 items-center justify-end overflow-hidden border border-white/55 bg-white/65 backdrop-blur-2xl transition-all duration-300 ease-in-out [box-shadow:0_8px_32px_rgba(0,0,0,0.07),0_1px_0_rgba(255,255,255,0.85)_inset,0_-1px_0_rgba(0,0,0,0.04)_inset] md:right-5 ${
-            isTopbarOpen ? 'w-[178px] gap-1 rounded-full px-2.5' : 'w-14 rounded-full px-2'
+            isTopbarOpen ? `${hasDraftCarts ? 'w-[226px]' : 'w-[178px]'} gap-1 rounded-full px-2.5` : 'w-14 rounded-full px-2'
           }`}
           role="banner"
           onMouseEnter={() => setTopbarExpanded(true)}
@@ -130,6 +183,9 @@ const Sidebar: React.FC<SidebarProps> = ({
             <MessageCircle size={19} strokeWidth={2.2} aria-hidden="true" />
           </button>
 
+          {/* Atajo de carritos pendientes (solo aparece si hay algún pedido en carrito) */}
+          <CartDraftsBell onOpenChange={setTopbarNotifOpen} onHasDraftsChange={setHasDraftCarts} />
+
           {/* Campana */}
           <NotificationBell variant="topbar" onOpenChange={setTopbarNotifOpen} />
 
@@ -139,24 +195,32 @@ const Sidebar: React.FC<SidebarProps> = ({
             </>
           )}
 
-          {/* Avatar de usuario */}
-          <button
-            type="button"
-            onClick={() => {
-              onUserClick?.();
-              if (!onUserClick) navigate('/profile');
-            }}
-            className="relative inline-flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-amber-200 via-amber-300 to-orange-300 text-sm font-bold text-gray-900 shadow-[0_2px_8px_rgba(251,191,36,0.35),inset_0_1px_1px_rgba(255,255,255,0.5)] ring-2 ring-white/70 transition hover:ring-amber-200/80 hover:shadow-[0_4px_14px_rgba(251,191,36,0.45)] focus:outline-none focus:ring-2 focus:ring-amber-300"
-            title={userProfile?.fullName || 'Mi perfil'}
-            aria-label="Abrir perfil"
-          >
-            {userProfile?.avatarUrl ? (
-              <img src={userProfile.avatarUrl} alt="" className="h-full w-full object-cover" />
-            ) : (
-              <span>{(userProfile?.fullName || userProfile?.email || 'E').trim()[0]?.toUpperCase()}</span>
+          {/* Avatar de usuario. Los indicadores van FUERA del botón (que recorta con
+              overflow-hidden) y algo hacia adentro para que no se corten. */}
+          <div className="relative inline-flex flex-shrink-0">
+            <button
+              type="button"
+              onClick={() => {
+                onUserClick?.();
+                if (!onUserClick) navigate('/profile');
+              }}
+              className="inline-flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-amber-200 via-amber-300 to-orange-300 text-sm font-bold text-gray-900 shadow-[0_2px_8px_rgba(251,191,36,0.35),inset_0_1px_1px_rgba(255,255,255,0.5)] ring-2 ring-white/70 transition hover:ring-amber-200/80 hover:shadow-[0_4px_14px_rgba(251,191,36,0.45)] focus:outline-none focus:ring-2 focus:ring-amber-300"
+              title={userProfile?.fullName || 'Mi perfil'}
+              aria-label="Abrir perfil"
+            >
+              {userProfile?.avatarUrl ? (
+                <img src={userProfile.avatarUrl} alt="" className="h-full w-full object-cover" />
+              ) : (
+                <span>{(userProfile?.fullName || userProfile?.email || 'E').trim()[0]?.toUpperCase()}</span>
+              )}
+            </button>
+            {/* En línea (verde) */}
+            <span className="pointer-events-none absolute bottom-0.5 right-0.5 h-3 w-3 rounded-full border-2 border-white bg-emerald-400" aria-hidden="true" />
+            {/* Algo pendiente (rojo): carrito sin pagar, notificaciones o mensajes sin leer */}
+            {hasPending && (
+              <span className="pointer-events-none absolute top-0.5 right-0.5 h-3 w-3 rounded-full border-2 border-white bg-red-500" aria-hidden="true" />
             )}
-            <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white bg-emerald-400" aria-hidden="true" />
-          </button>
+          </div>
         </div>
       )}
 
