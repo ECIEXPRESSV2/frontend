@@ -8,6 +8,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useFavorites } from '../../hooks/useFavorites';
 import { getStoreById, getStoreSchedules, getDayName, type Store, type StoreSchedule } from '../../services/storeService';
 import { getStoreImage } from '../../services/storeImageStore';
+import { getStoreLogoUrl } from '../../services/storeAssets';
 
 const STATUS_LABELS: Record<string, { label: string; dot: string; color: string }> = {
   OPEN: { label: 'Abierto', dot: 'bg-green-500', color: 'text-green-700 bg-green-50 ring-1 ring-green-200' },
@@ -112,6 +113,7 @@ const StoreDetail: React.FC<StoreDetailProps> = ({ storeId: storeIdProp, onBack 
 
   const statusInfo = STATUS_LABELS[store.status] || { label: store.status, dot: 'bg-gray-400', color: 'text-gray-600 bg-gray-50 ring-1 ring-gray-200' };
   const storeImage = store.imageUrl || getStoreImage(store.id);
+  const logoUrl = getStoreLogoUrl(store.id);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-white to-yellow-100">
@@ -183,10 +185,19 @@ const StoreDetail: React.FC<StoreDetailProps> = ({ storeId: storeIdProp, onBack 
 
           {/* Logo circular centrado, sobresaliendo del borde inferior del banner; se desvanece al recoger. */}
           <div className={`relative z-30 -mt-12 flex justify-center transition-opacity duration-300 ${scrolled ? 'pointer-events-none opacity-0' : 'opacity-100'}`}>
-            <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border-4 border-white bg-white shadow-lg">
-              <div className="flex h-full w-full items-center justify-center rounded-full bg-gradient-to-br from-yellow-100 to-yellow-200 text-yellow-500">
+            <div className="relative flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border-4 border-white bg-white shadow-lg">
+              {/* Ícono de respaldo detrás: si el logo carga lo tapa; si no hay logo o falla (404), queda visible. */}
+              <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-yellow-100 to-yellow-200 text-yellow-500">
                 <StoreIcon size={34} strokeWidth={1.75} />
               </div>
+              {logoUrl && (
+                <img
+                  src={logoUrl}
+                  alt={`Logo de ${store.name}`}
+                  className="relative h-full w-full object-cover"
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                />
+              )}
             </div>
           </div>
 

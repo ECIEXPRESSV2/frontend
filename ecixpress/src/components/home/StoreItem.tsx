@@ -4,16 +4,19 @@ interface StoreItemProps {
   id: number;
   name: string;
   imageUrl: string;
+  /** Imagen de respaldo si `imageUrl` no carga (p. ej. el logo aún no está subido → 404). */
+  fallbackUrl?: string;
   isActive?: boolean;
   onClick?: () => void;
 }
 
-const StoreItem: React.FC<StoreItemProps> = ({ 
+const StoreItem: React.FC<StoreItemProps> = ({
   id,
-  name, 
-  imageUrl, 
+  name,
+  imageUrl,
+  fallbackUrl,
   isActive = false,
-  onClick 
+  onClick
 }) => {
   return (
     <button
@@ -31,6 +34,11 @@ const StoreItem: React.FC<StoreItemProps> = ({
           src={imageUrl}
           alt={name}
           className="w-full h-full object-cover"
+          onError={(e) => {
+            // Si el logo no existe (404), caemos a la imagen de respaldo una sola vez.
+            const img = e.currentTarget;
+            if (fallbackUrl && img.src !== fallbackUrl) img.src = fallbackUrl;
+          }}
         />
         {isActive && (
           <div className="absolute inset-0 bg-yellow-400/20" />
