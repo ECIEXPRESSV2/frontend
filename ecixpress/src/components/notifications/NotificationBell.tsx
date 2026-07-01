@@ -219,12 +219,12 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
       >
         <span className="relative flex-shrink-0">
           <Bell
-            size={variant === 'topbar' ? 21 : 18}
+            size={variant === 'topbar' ? 20 : 18}
             strokeWidth={variant === 'topbar' ? 2.2 : 2}
             className="transition-transform duration-300 group-hover:scale-110"
           />
           {unreadCount > 0 && (
-            <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
+            <span className="absolute -top-1.5 -right-1.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white">
               {unreadCount > 9 ? '9+' : unreadCount}
             </span>
           )}

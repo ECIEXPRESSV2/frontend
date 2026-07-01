@@ -262,6 +262,40 @@
   }
 }
 
+/* ── Tema "Papelería": todo lo amarillo/ámbar del contenido del Home pasa a azul ──
+   Tailwind v4 genera las utilidades de color como var(--color-<nombre>-<tono>). Redefiniendo
+   esas variables dentro de este alcance, TODAS las utilidades (incluidas las de opacidad y los
+   degradados from/via/to) que usan amarillo/ámbar se vuelven azules automáticamente, sin tocar
+   cada clase. Se aplica solo al <main> del Home, no al sidebar/topbar (que son hermanos). */
+.theme-papeleria {
+  --color-yellow-50: #eff9fc;
+  --color-yellow-100: #d6eff6;
+  --color-yellow-200: #b3e2ee;
+  --color-yellow-300: #86d0e2;
+  --color-yellow-400: #5ec1d9;
+  --color-yellow-500: #3fa7c2;
+  --color-yellow-600: #2f8ba3;
+  --color-yellow-700: #276f83;
+  --color-amber-50: #eff9fc;
+  --color-amber-100: #d6eff6;
+  --color-amber-200: #b3e2ee;
+  --color-amber-300: #86d0e2;
+  --color-amber-400: #5ec1d9;
+  --color-amber-500: #3fa7c2;
+  --color-amber-600: #2f8ba3;
+  --color-amber-700: #276f83;
+}
+
+/* Las utilidades con opacidad (p. ej. bg-amber-50/70) Tailwind las precompila a un hex fijo, así
+   que no pasan por la variable: se reemplazan aquí una a una con el azul equivalente. */
+.theme-papeleria .bg-amber-50\/40 { background-color: #eff9fc66; }
+.theme-papeleria .bg-amber-50\/50 { background-color: #eff9fc80; }
+.theme-papeleria .bg-amber-50\/70 { background-color: #eff9fcb3; }
+.theme-papeleria .bg-yellow-400\/20 { background-color: #5ec1d933; }
+.theme-papeleria .border-yellow-200\/80 { border-color: #b3e2eecc; }
+.theme-papeleria .shadow-yellow-200\/40 { --tw-shadow-color: #b3e2ee66; }
+.theme-papeleria .shadow-yellow-200\/60 { --tw-shadow-color: #b3e2ee99; }
+
 .building-pin {
   pointer-events: none;
 }
