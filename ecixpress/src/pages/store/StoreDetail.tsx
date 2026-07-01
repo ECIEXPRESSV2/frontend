@@ -1,10 +1,11 @@
 ﻿import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { MapPin, Clock, Tag, Search, Store as StoreIcon } from 'lucide-react';
+import { MapPin, Clock, Tag, Search, Store as StoreIcon, Heart } from 'lucide-react';
 import { toast } from 'react-toastify';
 import Sidebar from '../../components/home/Sidebar';
 import StoreCatalogCart from '../../components/store/StoreCatalogCart';
 import { useAuth } from '../../context/AuthContext';
+import { useFavorites } from '../../hooks/useFavorites';
 import { getStoreById, getStoreSchedules, getDayName, type Store, type StoreSchedule } from '../../services/storeService';
 import { getStoreImage } from '../../services/storeImageStore';
 
@@ -38,12 +39,17 @@ const StoreDetail: React.FC<StoreDetailProps> = ({ storeId: storeIdProp, onBack 
   // MISMA tienda — así se puede volver a CUALQUIERA de los carritos guardados, no solo el último.
   const resumeDraftId = searchParams.get('draft');
   const { getToken, userProfile } = useAuth();
-  const [activeSidebarItem, setActiveSidebarItem] = useState('home');
+  const { isFavorite, toggle: toggleFavorite } = useFavorites();
+  // La tienda no corresponde a ningún ítem del menú lateral (Inicio/Pedidos), así que no marcamos
+  // ninguno como activo mientras se está aquí.
+  const [activeSidebarItem, setActiveSidebarItem] = useState('');
   const [store, setStore] = useState<Store | null>(null);
   const [schedules, setSchedules] = useState<StoreSchedule[]>([]);
   const [loading, setLoading] = useState(true);
   // Búsqueda de productos, elevada aquí para que la barra viva arriba de la página.
   const [productSearch, setProductSearch] = useState('');
+  // La barra de búsqueda se expande hacia los lados al enfocarla.
+  const [searchFocused, setSearchFocused] = useState(false);
   // Al bajar, el banner se "recoge" hacia arriba y se oscurece (queda fijo como barra compacta).
   const [scrolled, setScrolled] = useState(false);
   useEffect(() => {
@@ -77,7 +83,7 @@ const StoreDetail: React.FC<StoreDetailProps> = ({ storeId: storeIdProp, onBack 
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-white to-yellow-100">
-        <Sidebar activeItem="home" onItemClick={() => {}} />
+        <Sidebar activeItem="" onItemClick={() => {}} />
         <div className="app-shift flex items-center justify-center min-h-screen">
           <div className="w-10 h-10 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin" />
         </div>
@@ -88,7 +94,7 @@ const StoreDetail: React.FC<StoreDetailProps> = ({ storeId: storeIdProp, onBack 
   if (!store) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-white to-yellow-100">
-        <Sidebar activeItem="home" onItemClick={() => {}} />
+        <Sidebar activeItem="" onItemClick={() => {}} />
         <div className="app-shift flex items-center justify-center min-h-screen">
           <div className="text-center">
             <h1 className="text-2xl font-bold text-gray-900 mb-4">Tienda no encontrada</h1>
@@ -122,7 +128,7 @@ const StoreDetail: React.FC<StoreDetailProps> = ({ storeId: storeIdProp, onBack 
               bolita del usuario y permanece visible siempre. */}
           <div
             className={`sticky top-0 z-20 -mx-3 overflow-hidden transition-all duration-300 ease-out md:-mx-6 ${
-              scrolled ? 'h-16 rounded-b-2xl shadow-xl' : 'h-80 rounded-b-[32px] md:h-[22rem]'
+              scrolled ? 'h-20 rounded-b-2xl shadow-xl' : 'h-80 rounded-b-[32px] md:h-[22rem]'
             }`}
           >
             {/* Fondo: imagen del banner de la tienda o degradado de marca (placeholder). */}
@@ -135,25 +141,43 @@ const StoreDetail: React.FC<StoreDetailProps> = ({ storeId: storeIdProp, onBack 
                 onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
               />
             )}
-            {/* Capa de oscurecido: casi opaca y oscura cuando el banner está recogido. */}
+            {/* Capa de oscurecido: al recogerse se pone MÁS oscuro (no negro del todo). */}
             <div
               className={`absolute inset-0 transition-colors duration-300 ${
-                scrolled ? 'bg-gray-900/90' : 'bg-gradient-to-t from-black/25 via-transparent to-transparent'
+                scrolled ? 'bg-gray-900/55' : 'bg-gradient-to-t from-black/25 via-transparent to-transparent'
               }`}
             />
 
-            {/* Barra de búsqueda superpuesta, a la altura de la bolita del usuario (top-3). El
-                padding derecho evita que el avatar de la esquina superior derecha la tape. */}
-            <div className="absolute inset-x-0 top-3 z-10 flex justify-center px-3">
-              <div className="relative w-full max-w-2xl pr-16 md:pr-24">
+            {/* Fila superpuesta a la altura de la bolita del usuario (top-3): búsqueda + favorito.
+                El padding derecho evita que el avatar de la esquina superior derecha los tape. */}
+            <div className="absolute inset-x-0 top-3 z-10 flex items-center justify-center gap-2 px-3 pr-16 md:pr-20">
+              {/* Búsqueda: más angosta por defecto y se expande hacia los lados al enfocarla. */}
+              <div className={`relative transition-all duration-300 ease-out ${searchFocused ? 'w-full max-w-2xl' : 'w-full max-w-md'}`}>
                 <Search size={18} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
                 <input
                   value={productSearch}
                   onChange={(e) => setProductSearch(e.target.value)}
+                  onFocus={() => setSearchFocused(true)}
+                  onBlur={() => setSearchFocused(false)}
                   placeholder={`Buscar en ${store.name}…`}
                   className="w-full rounded-2xl border border-white/60 bg-white/95 py-3 pl-12 pr-4 text-sm shadow-lg backdrop-blur transition focus:border-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-300"
                 />
               </div>
+
+              {/* Favorito: agrega/quita esta tienda de favoritas. */}
+              <button
+                type="button"
+                onClick={() => toggleFavorite(store.id)}
+                aria-pressed={isFavorite(store.id)}
+                aria-label={isFavorite(store.id) ? 'Quitar de favoritas' : 'Agregar a favoritas'}
+                title={isFavorite(store.id) ? 'Quitar de favoritas' : 'Agregar a favoritas'}
+                className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl border border-white/60 bg-white/95 shadow-lg backdrop-blur transition hover:scale-105 hover:bg-white focus:outline-none focus:ring-2 focus:ring-yellow-300 active:scale-95"
+              >
+                <Heart
+                  size={20}
+                  className={`transition-colors ${isFavorite(store.id) ? 'fill-red-500 text-red-500' : 'text-gray-400'}`}
+                />
+              </button>
             </div>
           </div>
 
