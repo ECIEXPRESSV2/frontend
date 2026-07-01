@@ -1,7 +1,7 @@
 ﻿import React, { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { io, Socket } from 'socket.io-client';
-import { ArrowLeft, RefreshCw, MessageCircle, RotateCcw, XCircle, Star, Plus, Undo2, X, Eye, EyeOff, CreditCard, Loader2, Store as StoreIcon, ChevronLeft, ChevronRight, Search } from 'lucide-react';
+import { ArrowLeft, RefreshCw, MessageCircle, RotateCcw, XCircle, Star, Plus, Undo2, X, Eye, EyeOff, CreditCard, Loader2, Store as StoreIcon, ChevronLeft, ChevronRight, Search, ShoppingCart } from 'lucide-react';
 import Sidebar from '../../components/home/Sidebar';
 import ModalShell from '../../components/wallet/ModalShell';
 import { OrderFulfillmentPanel } from '../../components/orders/OrderFulfillmentPanel';
@@ -145,6 +145,12 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
     setSearchParams(next);
     setSelectedId(id);
   };
+
+  // Un pedido en estado carrito (DRAFT) no se "ve", se continúa: se vuelve a la tienda con el
+  // draft para seguir agregando productos y pagar.
+  const continueDraft = (order: OrderResponse) => navigate(`/store/${order.storeId}?draft=${order.id}`);
+  const openOrder = (order: OrderResponse) =>
+    order.status === 'DRAFT' ? continueDraft(order) : openOrderSummary(order.id);
 
   const closeOrderSummary = () => {
     const next = new URLSearchParams(searchParams);
@@ -329,7 +335,7 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
     <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-white to-yellow-100">
       <Sidebar activeItem="orders" />
 
-      <main className="ml-16 px-4 pb-6 pt-20 md:ml-64 md:px-8 md:pb-8 lg:px-10">
+      <main className="ml-16 px-4 pb-6 pt-20 md:px-8 md:pb-8 lg:px-10">
         <div className="max-w-6xl mx-auto space-y-6">
           <header className="relative overflow-hidden rounded-[28px] border border-yellow-200/70 bg-[linear-gradient(135deg,#F4B942_0%,#FBBF24_48%,#FDE68A_100%)] p-5 shadow-lg shadow-yellow-200/60 md:p-6">
             <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-white/60" />
@@ -434,10 +440,10 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
                 return (
                 <article key={order.id} aria-label={`Pedido ${order.orderNumber} de ${order.storeName}`} className={`relative overflow-hidden rounded-2xl border bg-white shadow-sm transition hover:border-yellow-200 hover:shadow-md ${selectedId === order.id ? 'border-yellow-300 ring-2 ring-yellow-100' : 'border-gray-100'}`}>
                   <div className={`absolute inset-x-0 top-0 h-1 ${selectedId === order.id ? 'bg-yellow-400' : 'bg-amber-200'}`} aria-hidden="true" />
-                  <div className="grid gap-0 md:grid-cols-[220px_1fr_auto]">
+                  <div className="grid gap-0 md:grid-cols-[160px_1fr_auto]">
                       <button
                         type="button"
-                      onClick={() => openOrderSummary(order.id)}
+                      onClick={() => openOrder(order)}
                       className="flex min-h-[150px] flex-col items-center justify-center border-b border-gray-100 bg-white px-4 py-4 text-center transition hover:bg-yellow-50/40 md:border-b-0 md:border-r"
                     >
                       {firstItem?.imageUrl ? (
@@ -453,7 +459,7 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
 
                       <button
                         type="button"
-                      onClick={() => openOrderSummary(order.id)}
+                      onClick={() => openOrder(order)}
                       className="flex min-h-[150px] flex-col justify-center px-5 py-4 text-left transition hover:bg-yellow-50/40"
                     >
                       <div className="mb-3 flex items-center gap-2">
@@ -475,20 +481,32 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
                     <div className="flex min-h-[150px] flex-col items-stretch justify-between gap-4 border-t border-gray-100 bg-white px-4 py-4 md:w-64 md:border-l md:border-t-0">
                       <span className={`inline-flex justify-center rounded-2xl px-4 py-2 text-sm font-bold ${statusTone[order.status]}`}>{statusLabel[order.status]}</span>
                       <div className="grid gap-2">
-                        <button
-                          type="button"
-                          onClick={() => openOrderSummary(order.id)}
-                          className="inline-flex min-h-11 items-center justify-center rounded-xl bg-yellow-400 px-4 py-2 text-sm font-bold text-gray-950 transition hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-300"
-                        >
-                          Ver resumen
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => navigate(`/messages?orderId=${order.id}`)}
-                          className="inline-flex min-h-11 items-center justify-center rounded-xl border border-amber-200 bg-white px-4 py-2 text-sm font-bold text-amber-700 transition hover:bg-yellow-50 focus:outline-none focus:ring-2 focus:ring-yellow-300"
-                        >
-                          Contactar tienda
-                        </button>
+                        {order.status === 'DRAFT' ? (
+                          <button
+                            type="button"
+                            onClick={() => continueDraft(order)}
+                            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-yellow-400 px-4 py-2 text-sm font-bold text-gray-950 transition hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-300"
+                          >
+                            <ShoppingCart size={16} /> Continuar
+                          </button>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => openOrderSummary(order.id)}
+                              className="inline-flex min-h-11 items-center justify-center rounded-xl bg-yellow-400 px-4 py-2 text-sm font-bold text-gray-950 transition hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-300"
+                            >
+                              Ver resumen
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => navigate(`/messages?orderId=${order.id}`)}
+                              className="inline-flex min-h-11 items-center justify-center rounded-xl border border-amber-200 bg-white px-4 py-2 text-sm font-bold text-amber-700 transition hover:bg-yellow-50 focus:outline-none focus:ring-2 focus:ring-yellow-300"
+                            >
+                              Contactar tienda
+                            </button>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>
