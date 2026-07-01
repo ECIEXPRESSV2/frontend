@@ -155,7 +155,7 @@ const StoreDetail: React.FC<StoreDetailProps> = ({ storeId: storeIdProp, onBack 
             <div className="absolute inset-x-0 top-3 z-10 flex items-center justify-center gap-2 px-3 pr-16 md:pr-20">
               {/* Búsqueda: más angosta por defecto y se expande hacia los lados al enfocarla. */}
               <div className={`relative transition-all duration-300 ease-out ${searchFocused ? 'w-full max-w-2xl' : 'w-full max-w-md'}`}>
-                <Search size={18} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                <Search size={18} className="pointer-events-none absolute left-4 top-1/2 z-10 -translate-y-1/2 text-gray-400" />
                 <input
                   value={productSearch}
                   onChange={(e) => setProductSearch(e.target.value)}

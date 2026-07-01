@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { MessageCircle, PackageCheck, Store as StoreIcon, Heart } from 'lucide-react';
+import { MessageCircle, PackageCheck, Store as StoreIcon, Heart, Search } from 'lucide-react';
 import Sidebar from '../../components/home/Sidebar';
 import Banner from '../../components/home/Banner';
 import StoreItem from '../../components/home/StoreItem';
@@ -44,6 +44,9 @@ const Home: React.FC<HomeProps> = ({ onUserClick, onCartClick, onOrdersClick, on
   const [activeSidebarItem, setActiveSidebarItem] = useState('home');
   const [stores, setStores] = useState<Store[]>([]);
   const [loadingStores, setLoadingStores] = useState(true);
+  // Búsqueda de tiendas (barra superior, al nivel de la bolita del usuario).
+  const [storeQuery, setStoreQuery] = useState('');
+  const [homeSearchFocused, setHomeSearchFocused] = useState(false);
   const [orders, setOrders] = useState<OrderResponse[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(false);
 
@@ -95,6 +98,13 @@ const Home: React.FC<HomeProps> = ({ onUserClick, onCartClick, onOrdersClick, on
     [stores, favorites],
   );
 
+  // Búsqueda por nombre. Si hay texto, se busca en TODAS las tiendas (ignora la categoría);
+  // si no, se respeta el filtro de categoría de las pestañas.
+  const query = storeQuery.trim().toLowerCase();
+  const matchesQuery = (s: Store) => !query || s.name.toLowerCase().includes(query);
+  const shownStores = (query ? stores : filteredStores).filter(matchesQuery);
+  const shownFavoriteStores = favoriteStores.filter(matchesQuery);
+
   const activeOrder = useMemo(
     () =>
       orders
@@ -113,6 +123,22 @@ const Home: React.FC<HomeProps> = ({ onUserClick, onCartClick, onOrdersClick, on
         onOrdersClick={onOrdersClick}
         onMessagesClick={onMessagesClick}
       />
+
+      {/* Barra de búsqueda de tiendas — fija, a la altura de la bolita del usuario. El padding
+          derecho evita que la cápsula del avatar la tape. */}
+      <div className="app-shift fixed inset-x-0 top-3 z-[55] flex items-center justify-center px-3 pr-16 md:pr-24">
+        <div className={`relative transition-all duration-300 ease-out ${homeSearchFocused ? 'w-full max-w-2xl' : 'w-full max-w-md'}`}>
+          <Search size={18} className="pointer-events-none absolute left-4 top-1/2 z-10 -translate-y-1/2 text-gray-400" />
+          <input
+            value={storeQuery}
+            onChange={(e) => setStoreQuery(e.target.value)}
+            onFocus={() => setHomeSearchFocused(true)}
+            onBlur={() => setHomeSearchFocused(false)}
+            placeholder="Buscar una tienda…"
+            className="w-full rounded-2xl border border-white/60 bg-white/95 py-3 pl-12 pr-4 text-sm shadow-lg backdrop-blur transition focus:border-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-300"
+          />
+        </div>
+      </div>
 
       <main className="app-shift px-3 pb-6 pt-20 md:px-6 md:pb-8 lg:px-8">
         <div className="w-full space-y-8">
@@ -137,14 +163,14 @@ const Home: React.FC<HomeProps> = ({ onUserClick, onCartClick, onOrdersClick, on
             />
           ) : null}
 
-          {favoriteStores.length > 0 && (
+          {shownFavoriteStores.length > 0 && (
             <section>
               <h2 className="mb-4 flex items-center gap-2 text-xl font-bold text-gray-900">
                 <Heart size={20} className="fill-red-500 text-red-500" />
                 Tus tiendas favoritas
               </h2>
               <div className="flex flex-wrap gap-8 py-4 px-4">
-                {favoriteStores.map((store) => {
+                {shownFavoriteStores.map((store) => {
                   const fallback = getStoreImage(String(store.id)) || store.imageUrl || STORE_FALLBACK_IMAGE;
                   return (
                     <StoreItem
@@ -165,16 +191,20 @@ const Home: React.FC<HomeProps> = ({ onUserClick, onCartClick, onOrdersClick, on
           )}
 
           <section>
-            <h2 className="text-xl font-bold text-gray-900 mb-4">Tiendas Disponibles</h2>
+            <h2 className="text-xl font-bold text-gray-900 mb-4">
+              {query ? `Resultados para "${storeQuery.trim()}"` : 'Tiendas Disponibles'}
+            </h2>
             {loadingStores ? (
               <div className="flex justify-center py-8">
                 <div className="w-8 h-8 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin" />
               </div>
-            ) : filteredStores.length === 0 ? (
-              <p className="text-gray-500 text-sm py-4">No hay tiendas disponibles en esta categoría.</p>
+            ) : shownStores.length === 0 ? (
+              <p className="text-gray-500 text-sm py-4">
+                {query ? 'No se encontraron tiendas con ese nombre.' : 'No hay tiendas disponibles en esta categoría.'}
+              </p>
             ) : (
               <div className="flex flex-wrap gap-8 py-4 px-4">
-                {filteredStores.map((store, index) => {
+                {shownStores.map((store, index) => {
                   const fallback = getStoreImage(String(store.id)) || store.imageUrl || STORE_FALLBACK_IMAGE;
                   return (
                     <StoreItem
