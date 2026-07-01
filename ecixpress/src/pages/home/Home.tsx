@@ -15,6 +15,7 @@ import { formatCOP } from '../../lib/format';
 import { statusLabel, statusTone } from '../../lib/orders-ui';
 import { getAvailableStores, type Store } from '../../services/storeService';
 import { getStoreImage } from '../../services/storeImageStore';
+import { getStoreLogoUrl } from '../../services/storeAssets';
 import { useFavorites } from '../../hooks/useFavorites';
 
 const FALLBACK_PRODUCTS = [
@@ -143,18 +144,22 @@ const Home: React.FC<HomeProps> = ({ onUserClick, onCartClick, onOrdersClick, on
                 Tus tiendas favoritas
               </h2>
               <div className="flex flex-wrap gap-8 py-4 px-4">
-                {favoriteStores.map((store) => (
-                  <StoreItem
-                    key={store.id}
-                    id={store.id as unknown as number}
-                    name={store.name}
-                    imageUrl={getStoreImage(String(store.id)) || store.imageUrl || STORE_FALLBACK_IMAGE}
-                    onClick={() => {
-                      if (onStoreClick) onStoreClick(Number(store.id));
-                      else navigate(`/store/${store.id}`);
-                    }}
-                  />
-                ))}
+                {favoriteStores.map((store) => {
+                  const fallback = getStoreImage(String(store.id)) || store.imageUrl || STORE_FALLBACK_IMAGE;
+                  return (
+                    <StoreItem
+                      key={store.id}
+                      id={store.id as unknown as number}
+                      name={store.name}
+                      imageUrl={getStoreLogoUrl(store.id) ?? fallback}
+                      fallbackUrl={fallback}
+                      onClick={() => {
+                        if (onStoreClick) onStoreClick(Number(store.id));
+                        else navigate(`/store/${store.id}`);
+                      }}
+                    />
+                  );
+                })}
               </div>
             </section>
           )}
@@ -169,23 +174,27 @@ const Home: React.FC<HomeProps> = ({ onUserClick, onCartClick, onOrdersClick, on
               <p className="text-gray-500 text-sm py-4">No hay tiendas disponibles en esta categoría.</p>
             ) : (
               <div className="flex flex-wrap gap-8 py-4 px-4">
-                {filteredStores.map((store, index) => (
-                  <StoreItem
-                    key={store.id}
-                    id={store.id as unknown as number}
-                    name={store.name}
-                    imageUrl={getStoreImage(String(store.id)) || store.imageUrl || STORE_FALLBACK_IMAGE}
-                    isActive={activeStore === index}
-                    onClick={() => {
-                      setActiveStore(index);
-                      if (onStoreClick) {
-                        onStoreClick(Number(store.id));
-                      } else {
-                        navigate(`/store/${store.id}`);
-                      }
-                    }}
-                  />
-                ))}
+                {filteredStores.map((store, index) => {
+                  const fallback = getStoreImage(String(store.id)) || store.imageUrl || STORE_FALLBACK_IMAGE;
+                  return (
+                    <StoreItem
+                      key={store.id}
+                      id={store.id as unknown as number}
+                      name={store.name}
+                      imageUrl={getStoreLogoUrl(store.id) ?? fallback}
+                      fallbackUrl={fallback}
+                      isActive={activeStore === index}
+                      onClick={() => {
+                        setActiveStore(index);
+                        if (onStoreClick) {
+                          onStoreClick(Number(store.id));
+                        } else {
+                          navigate(`/store/${store.id}`);
+                        }
+                      }}
+                    />
+                  );
+                })}
               </div>
             )}
           </section>
