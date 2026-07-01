@@ -1,6 +1,6 @@
 ﻿import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, MapPin, Clock, Tag } from 'lucide-react';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { MapPin, Clock, Tag, Search, Store as StoreIcon } from 'lucide-react';
 import { toast } from 'react-toastify';
 import Sidebar from '../../components/home/Sidebar';
 import StoreCatalogCart from '../../components/store/StoreCatalogCart';
@@ -32,11 +32,26 @@ interface StoreDetailProps {
 const StoreDetail: React.FC<StoreDetailProps> = ({ storeId: storeIdProp, onBack }) => {
   const { storeId: routeStoreId } = useParams<{ storeId: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  // Carrito DRAFT a reanudar (viene del atajo "Carritos pendientes"). Sirve además como parte
+  // de la `key` del catálogo para forzar un montaje limpio al cambiar entre carritos de la
+  // MISMA tienda — así se puede volver a CUALQUIERA de los carritos guardados, no solo el último.
+  const resumeDraftId = searchParams.get('draft');
   const { getToken, userProfile } = useAuth();
   const [activeSidebarItem, setActiveSidebarItem] = useState('home');
   const [store, setStore] = useState<Store | null>(null);
   const [schedules, setSchedules] = useState<StoreSchedule[]>([]);
   const [loading, setLoading] = useState(true);
+  // Búsqueda de productos, elevada aquí para que la barra viva arriba de la página.
+  const [productSearch, setProductSearch] = useState('');
+  // Al bajar, el banner se "recoge" hacia arriba y se oscurece (queda fijo como barra compacta).
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 60);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
   const storeId = routeStoreId ?? (storeIdProp !== undefined ? String(storeIdProp) : undefined);
 
   useEffect(() => {
@@ -63,7 +78,7 @@ const StoreDetail: React.FC<StoreDetailProps> = ({ storeId: storeIdProp, onBack 
     return (
       <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-white to-yellow-100">
         <Sidebar activeItem="home" onItemClick={() => {}} />
-        <div className="ml-16 flex items-center justify-center min-h-screen">
+        <div className="app-shift flex items-center justify-center min-h-screen">
           <div className="w-10 h-10 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin" />
         </div>
       </div>
@@ -74,7 +89,7 @@ const StoreDetail: React.FC<StoreDetailProps> = ({ storeId: storeIdProp, onBack 
     return (
       <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-white to-yellow-100">
         <Sidebar activeItem="home" onItemClick={() => {}} />
-        <div className="ml-16 flex items-center justify-center min-h-screen">
+        <div className="app-shift flex items-center justify-center min-h-screen">
           <div className="text-center">
             <h1 className="text-2xl font-bold text-gray-900 mb-4">Tienda no encontrada</h1>
             <button
@@ -100,91 +115,75 @@ const StoreDetail: React.FC<StoreDetailProps> = ({ storeId: storeIdProp, onBack 
         onItemClick={setActiveSidebarItem}
       />
 
-      <main className="ml-16 px-4 pb-28 pt-20 md:px-8 lg:pb-8">
-        <div className="max-w-6xl mx-auto space-y-6">
-          {storeImage ? (
-            /* Con foto: el banner es la imagen a todo lo ancho (como una tarjeta de
-               delivery), con los controles flotando encima y el nombre/meta debajo en
-               una tarjeta blanca — la imagen manda, no compite con el degradado. */
-            <div className="space-y-0">
-              <div className="relative h-72 md:h-96 w-full overflow-hidden rounded-t-[28px]">
-                <img
-                  src={storeImage}
-                  alt={store.name}
-                  className="h-full w-full object-cover"
-                  onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+      <main className="app-shift px-3 pb-28 md:px-6 lg:pb-8">
+        <div className="w-full">
+          {/* HERO: banner grande y FIJO. Al bajar se "recoge" hacia arriba y se oscurece, quedando
+              como una barra compacta oscura. La barra de búsqueda va superpuesta a la altura de la
+              bolita del usuario y permanece visible siempre. */}
+          <div
+            className={`sticky top-0 z-20 -mx-3 overflow-hidden transition-all duration-300 ease-out md:-mx-6 ${
+              scrolled ? 'h-16 rounded-b-2xl shadow-xl' : 'h-80 rounded-b-[32px] md:h-[22rem]'
+            }`}
+          >
+            {/* Fondo: imagen del banner de la tienda o degradado de marca (placeholder). */}
+            <div className="absolute inset-0 bg-[linear-gradient(135deg,#F4B942_0%,#FBBF24_48%,#FDE68A_100%)]" />
+            {storeImage && (
+              <img
+                src={storeImage}
+                alt={store.name}
+                className="absolute inset-0 h-full w-full object-cover"
+                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+              />
+            )}
+            {/* Capa de oscurecido: casi opaca y oscura cuando el banner está recogido. */}
+            <div
+              className={`absolute inset-0 transition-colors duration-300 ${
+                scrolled ? 'bg-gray-900/90' : 'bg-gradient-to-t from-black/25 via-transparent to-transparent'
+              }`}
+            />
+
+            {/* Barra de búsqueda superpuesta, a la altura de la bolita del usuario (top-3). El
+                padding derecho evita que el avatar de la esquina superior derecha la tape. */}
+            <div className="absolute inset-x-0 top-3 z-10 flex justify-center px-3">
+              <div className="relative w-full max-w-2xl pr-16 md:pr-24">
+                <Search size={18} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  value={productSearch}
+                  onChange={(e) => setProductSearch(e.target.value)}
+                  placeholder={`Buscar en ${store.name}…`}
+                  className="w-full rounded-2xl border border-white/60 bg-white/95 py-3 pl-12 pr-4 text-sm shadow-lg backdrop-blur transition focus:border-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-300"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-black/10" />
-                <button
-                  onClick={() => onBack?.() ?? navigate('/home')}
-                  className="absolute top-4 left-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-gray-800 backdrop-blur-md transition hover:bg-white"
-                  aria-label="Volver"
-                >
-                  <ArrowLeft size={18} />
-                </button>
-                <span className={`absolute top-4 right-4 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold backdrop-blur-md ${statusInfo.color} bg-white/95`}>
-                  <span className={`w-1.5 h-1.5 rounded-full ${statusInfo.dot}`} />
-                  {statusInfo.label}
-                </span>
-              </div>
-              <div className="rounded-b-[28px] border border-t-0 border-yellow-100 bg-white px-5 py-4 md:px-6">
-                <nav className="mb-2 text-xs font-semibold text-gray-400" aria-label="Ruta de navegación">
-                  ECIxpress <span className="mx-1.5">/</span> Tiendas <span className="mx-1.5">/</span>
-                  <span className="text-gray-600">{store.name}</span>
-                </nav>
-                <h1 className="text-2xl font-bold text-gray-900 md:text-3xl">{store.name}</h1>
-                <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-gray-500">
-                  <span className="inline-flex items-center gap-1.5">
-                    <MapPin size={14} className="text-yellow-500" />
-                    {store.location}
-                  </span>
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-yellow-50 px-2.5 py-0.5 text-yellow-700">
-                    <Tag size={12} />
-                    {TYPE_LABELS[store.type] ?? store.type}
-                  </span>
-                </div>
               </div>
             </div>
-          ) : (
-            /* Sin foto todavía: degradado de marca, mismo lenguaje visual que "Mis pedidos". */
-            <header className="relative overflow-hidden rounded-[28px] border border-yellow-200/70 bg-[linear-gradient(135deg,#F4B942_0%,#FBBF24_48%,#FDE68A_100%)] p-5 md:p-6">
-              <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-white/60" />
-              <div className="pointer-events-none absolute -left-20 -top-24 h-64 w-64 rounded-full bg-white/22 blur-3xl" />
-              <div className="pointer-events-none absolute right-[-90px] top-[-110px] h-72 w-72 rounded-full bg-[#FB923C]/22 blur-3xl" />
-              <div className="relative flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-                <div className="max-w-3xl">
-                  <nav className="mb-3 inline-flex items-center rounded-xl border border-yellow-100 bg-white px-3 py-1.5 text-sm font-semibold text-gray-700" aria-label="Ruta de navegación">
-                    ECIxpress <span className="mx-2 text-gray-400">/</span>
-                    Tiendas <span className="mx-2 text-gray-400">/</span>
-                    <span className="text-gray-950">{store.name}</span>
-                  </nav>
-                  <h1 className="text-3xl font-bold text-white md:text-4xl">{store.name}</h1>
-                  <div className="mt-2 flex flex-wrap items-center gap-3 text-sm font-medium text-white/85">
-                    <span className="inline-flex items-center gap-1.5">
-                      <MapPin size={14} />
-                      {store.location}
-                    </span>
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-white/25 px-2.5 py-0.5 backdrop-blur-sm">
-                      <Tag size={12} />
-                      {TYPE_LABELS[store.type] ?? store.type}
-                    </span>
-                    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 font-semibold ${statusInfo.color} bg-white/95`}>
-                      <span className={`w-1.5 h-1.5 rounded-full ${statusInfo.dot}`} />
-                      {statusInfo.label}
-                    </span>
-                  </div>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <button
-                    onClick={() => onBack?.() ?? navigate('/home')}
-                    className="inline-flex min-h-11 items-center gap-2 rounded-2xl border border-yellow-100 bg-white px-4 py-2 text-sm font-bold text-gray-700 transition hover:bg-gray-50 hover:text-gray-950 focus:outline-none focus:ring-2 focus:ring-white"
-                  >
-                    <ArrowLeft size={16} /> Volver
-                  </button>
-                </div>
+          </div>
+
+          {/* Logo circular centrado, sobresaliendo del borde inferior del banner; se desvanece al recoger. */}
+          <div className={`relative z-30 -mt-12 flex justify-center transition-opacity duration-300 ${scrolled ? 'pointer-events-none opacity-0' : 'opacity-100'}`}>
+            <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border-4 border-white bg-white shadow-lg">
+              <div className="flex h-full w-full items-center justify-center rounded-full bg-gradient-to-br from-yellow-100 to-yellow-200 text-yellow-500">
+                <StoreIcon size={34} strokeWidth={1.75} />
               </div>
-            </header>
-          )}
+            </div>
+          </div>
+
+          {/* Nombre + badges (ubicación, tipo y estado "Abierto") centrados bajo el logo. */}
+          <div className="mb-6 mt-3 text-center">
+            <h1 className="font-display text-2xl font-semibold text-gray-900 md:text-3xl">{store.name}</h1>
+            <div className="mt-2 flex flex-wrap items-center justify-center gap-2.5 text-sm text-gray-500">
+              <span className="inline-flex items-center gap-1.5">
+                <MapPin size={14} className="text-yellow-500" />
+                {store.location}
+              </span>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-yellow-50 px-2.5 py-0.5 text-yellow-700">
+                <Tag size={12} />
+                {TYPE_LABELS[store.type] ?? store.type}
+              </span>
+              <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 font-semibold ${statusInfo.color}`}>
+                <span className={`h-1.5 w-1.5 rounded-full ${statusInfo.dot}`} />
+                {statusInfo.label}
+              </span>
+            </div>
+          </div>
 
           <div className="space-y-6">
             {/* Schedules */}
@@ -236,7 +235,15 @@ const StoreDetail: React.FC<StoreDetailProps> = ({ storeId: storeIdProp, onBack 
                   </button>
                 )}
               </div>
-              <StoreCatalogCart storeId={store.id} storeName={store.name} />
+              {/* `key` incluye el draft: al elegir otro carrito pendiente de la MISMA tienda, el
+                  catálogo se remonta y reanuda EXACTAMENTE ese carrito (no solo el último). */}
+              <StoreCatalogCart
+                key={`${store.id}:${resumeDraftId ?? 'new'}`}
+                storeId={store.id}
+                storeName={store.name}
+                search={productSearch}
+                onSearchChange={setProductSearch}
+              />
             </div>
           </div>
         </div>

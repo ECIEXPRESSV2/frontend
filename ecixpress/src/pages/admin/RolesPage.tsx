@@ -331,7 +331,7 @@ const RolesPage: React.FC = () => {
         onExpandedChange={setSidebarExpanded}
       />
 
-      <main className="relative z-[51] ml-16 min-h-screen px-4 pb-5 pt-20 md:px-8 lg:px-10">
+      <main className="relative z-[51] app-shift min-h-screen px-4 pb-5 pt-20 md:px-8 lg:px-10">
         {/* background blobs */}
         <div className="pointer-events-none fixed inset-0 overflow-hidden">
           <div className="absolute -top-52 left-1/2 h-[560px] w-[760px] -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgba(251,191,36,0.08)_0%,transparent_66%)] blur-3xl" />
