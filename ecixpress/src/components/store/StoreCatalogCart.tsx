@@ -11,10 +11,96 @@ import { formatCOP } from '../../lib/format';
 interface StoreCatalogCartProps {
   storeId: string;
   storeName: string;
+  /**
+   * Búsqueda controlada por el contenedor. Si se proveen, la barra de búsqueda vive fuera
+   * (p. ej. arriba de la página de la tienda) y el catálogo oculta su propio input. Si no,
+   * el catálogo gestiona la búsqueda internamente con su input clásico.
+   */
+  search?: string;
+  onSearchChange?: (value: string) => void;
 }
 
 /** Cuántas fichas de producto se dibujan como máximo dentro de la canasta del carrito. */
 const CART_VISUAL_SLOTS = 12;
+
+/**
+ * Umbral por defecto para avisar "últimas unidades" cuando la tienda no configuró un `minStock`
+ * propio. Con stock disponible <= este número (o <= minStock si la tienda lo definió) se muestra
+ * la etiqueta amarilla "Quedan N unidades".
+ */
+const LOW_STOCK_THRESHOLD = 5;
+
+/**
+ * Control de cantidad con dos formas de uso a la vez: los botones +/- suman/restan de a uno, y
+ * el campo del medio es EDITABLE para teclear una cantidad exacta (p. ej. 30) de un solo golpe.
+ * El texto se maneja localmente y se confirma al salir del campo o con Enter, para no disparar una
+ * llamada de red por cada tecla; `onCommit` recibe el número y el padre lo acota al stock disponible.
+ */
+const QuantityStepper: React.FC<{
+  qty: number;
+  max: number;
+  disabled: boolean;
+  atLimit: boolean;
+  onCommit: (next: number) => void;
+}> = ({ qty, max, disabled, atLimit, onCommit }) => {
+  const [text, setText] = useState(String(qty));
+  // Al cambiar la cantidad efectiva (tras acotar por stock, sincronizar con la orden, etc.)
+  // reflejamos el valor real en el campo. Se sincroniza EN RENDER (patrón recomendado de React)
+  // en vez de un efecto, para no disparar renders en cascada. `qty` solo cambia tras confirmar
+  // (blur/Enter/+/-), nunca mientras se teclea, así que no pisa lo que el usuario está escribiendo.
+  const [syncedQty, setSyncedQty] = useState(qty);
+  if (qty !== syncedQty) {
+    setSyncedQty(qty);
+    setText(String(qty));
+  }
+
+  const commit = (): void => {
+    const n = Number.parseInt(text, 10);
+    if (Number.isNaN(n) || n < 0) {
+      setText(String(qty)); // entrada inválida: se descarta y se restaura el valor actual
+      return;
+    }
+    if (n !== qty) onCommit(n);
+    else setText(String(qty));
+  };
+
+  return (
+    <div className="flex items-center gap-1.5">
+      <button
+        disabled={disabled}
+        onClick={() => onCommit(qty - 1)}
+        aria-label="Quitar una unidad"
+        className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 disabled:opacity-50"
+      >
+        <Minus size={14} />
+      </button>
+      <input
+        type="text"
+        inputMode="numeric"
+        value={text}
+        disabled={disabled}
+        aria-label="Cantidad"
+        onChange={(e) => setText(e.target.value.replace(/[^0-9]/g, ''))}
+        onFocus={(e) => e.currentTarget.select()}
+        onBlur={commit}
+        onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
+        className="w-10 h-7 text-center text-sm font-semibold rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-yellow-300 focus:border-yellow-300 disabled:opacity-50"
+      />
+      {/* El "+" NO se deshabilita al llegar al tope: así, al intentar pasarse, `changeQuantity`
+          hace vibrar el recuadro en vez de simplemente quedar inerte. Solo se bloquea si hay una
+          mutación en curso (`disabled`). */}
+      <button
+        disabled={disabled}
+        title={atLimit ? `Solo quedan ${max} unidades` : undefined}
+        onClick={() => onCommit(qty + 1)}
+        aria-label="Agregar una unidad"
+        className="w-7 h-7 rounded-full bg-yellow-400 text-white flex items-center justify-center hover:bg-yellow-500 disabled:opacity-50"
+      >
+        <Plus size={14} />
+      </button>
+    </div>
+  );
+};
 
 /**
  * Posiciones aleatorias (no un patrón de rejilla) para las fichas dentro de la canasta.
@@ -33,12 +119,14 @@ const CART_SCATTER = Array.from({ length: CART_VISUAL_SLOTS }, () => ({
  * asíncrona, por lo que tras cada cambio refrescamos la orden para mostrar el total
  * autoritativo. Mientras llega, mostramos un total provisional con el precio de lista.
  */
-const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName }) => {
+const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName, search: controlledSearch, onSearchChange }) => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const resumeDraftId = searchParams.get('draft');
   const { getToken } = useAuth();
   const api = useOrdersApi();
+  // Búsqueda: controlada por el contenedor si llega por props, o interna en caso contrario.
+  const searchControlled = onSearchChange !== undefined;
 
   const [categories, setCategories] = useState<ProductCategory[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -46,18 +134,19 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName 
   const [appliedCategoryIds, setAppliedCategoryIds] = useState<Set<string>>(new Set());
   // Selección en curso dentro del panel, hasta que se confirme con "Ok".
   const [draftCategoryIds, setDraftCategoryIds] = useState<Set<string>>(new Set());
-  const [search, setSearch] = useState('');
+  const [internalSearch, setInternalSearch] = useState('');
+  const search = searchControlled ? (controlledSearch ?? '') : internalSearch;
+  const setSearch = searchControlled ? (onSearchChange ?? (() => {})) : setInternalSearch;
   const [loading, setLoading] = useState(true);
 
   const [orderId, setOrderId] = useState<string | null>(null);
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [order, setOrder] = useState<OrderResponse | null>(null);
-  // Cuenta las mutaciones de carrito en vuelo (no un booleano: con clics rápidos en
-  // distintos productos puede haber varias a la vez, y la primera en resolver no debe
-  // "liberar" el carrito mientras otra sigue pendiente).
-  const [pendingMutations, setPendingMutations] = useState(0);
-  const busy = pendingMutations > 0;
   const [checkingOut, setCheckingOut] = useState(false);
+  // Producto cuyo recuadro está "rechazando" un intento de pedir más de lo disponible: se le
+  // aplica la clase de sacudida + borde rojo por un instante (feedback en el sitio, sin toasts).
+  const [rejectedProductId, setRejectedProductId] = useState<string | null>(null);
+  const rejectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [mobileCartOpen, setMobileCartOpen] = useState(false);
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
   const [categoryQuery, setCategoryQuery] = useState('');
@@ -73,6 +162,23 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName 
   // (lost update) y perder el producto agregado primero. Checkout espera esta cadena
   // antes de cerrar la orden, para no confirmarla con una mutación todavía en vuelo.
   const mutationChain = useRef<Promise<void>>(Promise.resolve());
+  // Escrituras de carrito pendientes de enviar (productId → cantidad ABSOLUTA deseada). Los
+  // clics/tecleos actualizan la UI al instante y solo aquí se acumula lo que falta persistir;
+  // se envía con un pequeño debounce para que agregar sea FLUIDO (sin una petición por clic ni
+  // bloqueo de botones). La validación fuerte de stock ocurre al confirmar el pago, no aquí.
+  const pendingWrites = useRef<Map<string, number>>(new Map());
+  const flushTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Id del carrito accesible de forma síncrona desde callbacks (checkout/flush) sin depender del
+  // `orderId` capturado en el closure del render.
+  const orderIdRef = useRef<string | null>(null);
+  useEffect(() => { orderIdRef.current = orderId; }, [orderId]);
+  // Espejo de `quantities` accesible desde callbacks asíncronos (el poll de cotización) sin
+  // recrearlos: así el reconciliador siempre compara la orden contra lo que hay EN PANTALLA ahora.
+  const quantitiesRef = useRef<Record<string, number>>({});
+  useEffect(() => { quantitiesRef.current = quantities; });
+  // Secuencia monótona: cada cambio de carrito invalida los polls de cotización anteriores para
+  // que una respuesta de red que llega tarde (out-of-order) NUNCA pise la orden con un total viejo.
+  const refreshSeq = useRef(0);
 
   const productById = useMemo(() => {
     const map = new Map<string, Product>();
@@ -165,6 +271,7 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName 
         const existing = await api.getOrderById(resumeDraftId);
         if (!active || existing.status !== 'DRAFT' || existing.storeId !== storeId) return;
         hydratedDraftRef.current = resumeDraftId;
+        orderIdRef.current = existing.id;
         setOrderId(existing.id);
         setOrder(existing);
         setQuantities(Object.fromEntries(existing.items.map((it) => [it.productId, it.quantity])));
@@ -195,6 +302,26 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName 
     return () => { active = false; clearTimeout(handle); };
   }, [storeId, search, getToken]);
 
+  // Stock en (casi) tiempo real: re-sondea el catálogo en segundo plano para reflejar lo que
+  // otros compradores van reservando (baja `stock`/sube `reservedStock`) sin recargar la página
+  // ni mostrar el spinner. Así, si a un producto se le agotan las unidades mientras lo miras, su
+  // etiqueta pasa a "Agotado" y el tope de "+" se ajusta solo.
+  useEffect(() => {
+    const REFRESH_MS = 10000;
+    let active = true;
+    const handle = setInterval(async () => {
+      if (document.hidden) return; // no gastar red si la pestaña no está visible
+      try {
+        const token = await getToken().catch(() => null);
+        const list = await productsApi.getProducts(storeId, { search: search.trim() || undefined }, token);
+        if (active) setProducts(list);
+      } catch {
+        /* fallo transitorio de red: se reintenta en el siguiente tick */
+      }
+    }, REFRESH_MS);
+    return () => { active = false; clearInterval(handle); };
+  }, [storeId, search, getToken]);
+
   const displayProducts = useMemo(
     () => (appliedCategoryIds.size === 0 ? products : products.filter((p) => appliedCategoryIds.has(p.categoryId))),
     [products, appliedCategoryIds],
@@ -212,13 +339,53 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName 
     }
   };
 
+  /**
+   * Una línea de la orden está "cotizada en firme" cuando products-service ya devolvió su
+   * precio real Y ese precio es coherente con la cantidad actual. orders-service, al cambiar
+   * la cantidad de una línea que ya existía, conserva el `unitPrice`/`totalAmount` VIEJOS
+   * (calculados para la cantidad anterior) hasta que llega el evento `products.cart.priced`.
+   * Por eso no basta con `unitPrice > 0`: exigimos además que `totalAmount === unitPrice * quantity`,
+   * lo que descarta esa ventana de datos rancios (evita mostrar un total mal sumado).
+   */
+  const isItemFreshlyQuoted = (item: OrderResponse['items'][number]): boolean =>
+    item.unitPrice > 0 && item.totalAmount === item.unitPrice * item.quantity;
+
+  /** ¿La orden refleja EXACTAMENTE las cantidades en pantalla, con todas sus líneas ya cotizadas en firme? */
+  const orderMatchesLocal = (fresh: OrderResponse, local: Record<string, number>): boolean => {
+    const ids = Object.keys(local);
+    if (fresh.items.length !== ids.length) return false;
+    return fresh.items.every((item) => local[item.productId] === item.quantity && isItemFreshlyQuoted(item));
+  };
+
   /** ¿Esta orden ya tiene cotización autoritativa (precio real) para todas sus líneas? */
   const isOrderFullyQuoted = (fresh: OrderResponse): boolean =>
-    fresh.items.length > 0 && fresh.items.every((item) => item.unitPrice > 0);
+    fresh.items.length > 0 && fresh.items.every(isItemFreshlyQuoted);
+
+  /**
+   * Reconcilia la orden con products-service tras un cambio de carrito. products cotiza de
+   * forma ASÍNCRONA (evento de ida y vuelta), así que sondeamos la orden hasta que refleje las
+   * cantidades actuales con precio en firme, en vez de un único refresco a ciegas que podía
+   * quedarse con la cotización vieja. Está protegido por `refreshSeq`: si el usuario vuelve a
+   * tocar el carrito, este poll se cancela y no puede sobrescribir la orden con datos rancios.
+   */
+  const reconcileOrder = (id: string): void => {
+    const seq = ++refreshSeq.current;
+    let attempts = 0;
+    const poll = async (): Promise<void> => {
+      if (seq !== refreshSeq.current) return; // lo reemplazó un cambio más nuevo
+      const fresh = await api.getOrderById(id).catch(() => null);
+      if (seq !== refreshSeq.current) return; // llegó tarde: no pisar el estado actual
+      if (fresh) setOrder(fresh);
+      attempts += 1;
+      const done = fresh && orderMatchesLocal(fresh, quantitiesRef.current);
+      if (!done && attempts < 8) setTimeout(() => void poll(), 600);
+    };
+    setTimeout(() => void poll(), 400);
+  };
 
   /** Crea el carrito DRAFT la primera vez que se agrega un producto. */
   const ensureDraft = async (): Promise<string | null> => {
-    if (orderId) return orderId;
+    if (orderIdRef.current) return orderIdRef.current;
     if (creatingDraft.current) return null;
     creatingDraft.current = true;
     try {
@@ -229,6 +396,7 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName 
         deliveryMethod: 'pickup',
         currency: 'COP',
       });
+      orderIdRef.current = draft.id;
       setOrderId(draft.id);
       setOrder(draft);
       return draft.id;
@@ -243,39 +411,81 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName 
   /** Unidades disponibles para vender: stock físico menos lo ya reservado por otros carritos. */
   const availableStock = (product: Product): number => Math.max(0, product.stock - product.reservedStock);
 
-  const changeQuantity = (product: Product, nextQty: number): void => {
-    const available = availableStock(product);
-    if (nextQty > available) {
-      toast.error(available > 0 ? `Solo quedan ${available} unidades de ${product.name}` : `${product.name} está agotado`);
-    }
-    const qty = Math.max(0, Math.min(nextQty, available));
-    // Optimista: refleja el cambio en la UI de inmediato; la llamada de red se encola.
-    setQuantities((prev) => {
-      const copy = { ...prev };
-      if (qty === 0) delete copy[product.id];
-      else copy[product.id] = qty;
-      return copy;
-    });
-    setPendingMutations((n) => n + 1);
+  /**
+   * Dispara el rechazo visual en el recuadro del producto: vibra y su borde titila en rojo por
+   * un momento. Se reinicia la animación en cada intento (quita y vuelve a poner la clase) para
+   * que sacuda de nuevo aunque el usuario insista varias veces seguidas.
+   */
+  const flashRejected = (productId: string): void => {
+    if (rejectTimer.current) clearTimeout(rejectTimer.current);
+    setRejectedProductId(null);
+    // Doble rAF: garantiza que el nodo se re-renderice SIN la clase antes de volver a aplicarla,
+    // reiniciando la animación CSS.
+    requestAnimationFrame(() => requestAnimationFrame(() => setRejectedProductId(productId)));
+    rejectTimer.current = setTimeout(() => setRejectedProductId(null), 500);
+  };
+  // Limpia temporizadores al desmontar.
+  useEffect(() => () => {
+    if (rejectTimer.current) clearTimeout(rejectTimer.current);
+    if (flushTimer.current) clearTimeout(flushTimer.current);
+  }, []);
+
+  /**
+   * Envía al backend las cantidades pendientes (acumuladas por `changeQuantity`) en una sola
+   * pasada, encadenada tras la mutación anterior para no pisar el array de items en orders. Envía
+   * la cantidad ABSOLUTA de cada producto, así que si el usuario tocó "+" varias veces solo viaja
+   * el valor final. Devuelve la promesa de la cadena para que el checkout pueda esperarla.
+   */
+  const flushCart = (): Promise<void> => {
+    if (flushTimer.current) { clearTimeout(flushTimer.current); flushTimer.current = null; }
+    if (pendingWrites.current.size === 0) return mutationChain.current;
+    const writes = Array.from(pendingWrites.current.entries());
+    pendingWrites.current.clear();
     mutationChain.current = mutationChain.current
       .then(async () => {
         const id = await ensureDraft();
         if (!id) return;
-        await api.setCartItem(id, {
-          productId: product.id,
-          quantity: qty,
-          name: product.name,
-          imageUrl: product.imageUrl ?? undefined,
-        });
-        // products cotiza de forma asíncrona; refrescamos para tomar el total real.
-        setTimeout(() => void refreshOrder(id), 900);
+        for (const [productId, qty] of writes) {
+          const product = productById.get(productId);
+          await api.setCartItem(id, {
+            productId,
+            quantity: qty,
+            name: product?.name,
+            imageUrl: product?.imageUrl ?? undefined,
+          });
+        }
+        // products cotiza de forma asíncrona; sondeamos (a prueba de carreras) hasta que la orden
+        // refleje las cantidades actuales con su precio real.
+        reconcileOrder(id);
       })
       .catch((e: unknown) => {
         toast.error((e as Error).message || 'No se pudo actualizar el carrito');
-      })
-      .finally(() => {
-        setPendingMutations((n) => n - 1);
       });
+    return mutationChain.current;
+  };
+
+  const changeQuantity = (product: Product, nextQty: number): void => {
+    const available = availableStock(product);
+    // Se intentó pedir más de lo disponible: no se permite (se acota) y el recuadro avisa vibrando.
+    if (nextQty > available) {
+      flashRejected(product.id);
+    }
+    const qty = Math.max(0, Math.min(nextQty, available));
+    // Si tras acotar la cantidad no cambia (p. ej. ya estaba en el tope de stock), no hay nada
+    // que hacer salvo el aviso visual.
+    const currentQty = quantitiesRef.current[product.id] ?? 0;
+    if (qty === currentQty) return;
+    // Optimista: refleja el cambio en la UI AL INSTANTE (sin bloquear ni esperar la red).
+    const next = { ...quantitiesRef.current };
+    if (qty === 0) delete next[product.id];
+    else next[product.id] = qty;
+    quantitiesRef.current = next; // sync para que clics/tecleos consecutivos partan del valor real
+    setQuantities(next);
+    // Acumula la escritura y agenda el envío con debounce: agregar es fluido y no dispara una
+    // petición por cada clic.
+    pendingWrites.current.set(product.id, qty);
+    if (flushTimer.current) clearTimeout(flushTimer.current);
+    flushTimer.current = setTimeout(() => void flushCart(), 250);
   };
 
   /** Líneas de la orden ya cotizadas por products-service (unitPrice/totalAmount autoritativos), por productId. */
@@ -292,24 +502,25 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName 
           const product = productById.get(productId);
           if (!product) return null;
           const quoted = quotedByProductId.get(productId);
-          // Si ya llegó la cotización para esta línea (misma cantidad y precio ya calculado —
-          // products-service lo cotiza de forma asíncrona y puede devolver unitPrice 0 mientras
-          // tanto), usamos su precio/total autoritativo (con promociones); si no, mostramos el
-          // precio de lista como provisional.
-          const isLineQuoted = !!quoted && quoted.quantity === qty && quoted.unitPrice > 0;
-          const lineUnitPrice = isLineQuoted ? quoted.unitPrice : priceToCents(product.price);
+          const listUnitPrice = priceToCents(product.price);
+          // Consideramos la línea "cotizada en firme" solo cuando products ya devolvió un precio
+          // COHERENTE con la cantidad actual (ver isItemFreshlyQuoted). Mientras tanto usamos el
+          // precio de lista: así la línea SIEMPRE está internamente cuadrada (total = unidad × cantidad)
+          // y el total del carrito nunca muestra una suma rancia ni "salta" de la nada.
+          const isLineQuoted =
+            !!quoted && quoted.quantity === qty && quoted.unitPrice > 0 && quoted.totalAmount === quoted.unitPrice * qty;
+          const lineUnitPrice = isLineQuoted ? quoted.unitPrice : listUnitPrice;
           const lineTotal = isLineQuoted ? quoted.totalAmount : lineUnitPrice * qty;
-          return { product, qty, lineUnitPrice, lineTotal, isLineQuoted };
+          const lineListTotal = listUnitPrice * qty;
+          return { product, qty, lineUnitPrice, lineTotal, lineListTotal, isLineQuoted };
         })
-        .filter((x): x is { product: Product; qty: number; lineUnitPrice: number; lineTotal: number; isLineQuoted: boolean } => x !== null),
+        .filter(
+          (x): x is { product: Product; qty: number; lineUnitPrice: number; lineTotal: number; lineListTotal: number; isLineQuoted: boolean } =>
+            x !== null,
+        ),
     [quantities, productById, quotedByProductId],
   );
 
-  // Subtotal con precio de lista (o cotizado por línea cuando ya llegó).
-  const provisionalTotal = useMemo(
-    () => cartLines.reduce((sum, line) => sum + line.lineTotal, 0),
-    [cartLines],
-  );
   const itemCount = useMemo(() => cartLines.reduce((sum, { qty }) => sum + qty, 0), [cartLines]);
 
   // Una "ficha" por unidad en el carrito (con imagen del producto) para llenar visualmente la
@@ -325,33 +536,43 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName 
 
   // Todas las líneas cotizadas y el conteo de la orden coincide con el carrito local.
   const isQuoted = !!order && order.items.length === cartLines.length && cartLines.every((l) => l.isLineQuoted);
-  // Subtotal y total autoritativos solo cuando todo el carrito ya fue cotizado; mientras tanto, provisional.
-  const displaySubtotal = isQuoted ? order!.subtotalAmount : provisionalTotal;
-  const displayDiscount = isQuoted ? order!.discountAmount : 0;
-  const displayTotal = isQuoted ? order!.totalAmount : provisionalTotal;
+  // Los totales se DERIVAN de las líneas del carrito (no del agregado `order.totalAmount`, que
+  // orders-service deja rancio hasta que llega la cotización). Al construirlos sumando líneas
+  // que siempre están cuadradas (total = unidad × cantidad), el carrito suma bien de forma
+  // constante: subtotal a precio de lista, total con el precio en firme cuando ya llegó, y el
+  // descuento es la diferencia — nunca negativo, nunca inconsistente.
+  const displaySubtotal = useMemo(() => cartLines.reduce((sum, l) => sum + l.lineListTotal, 0), [cartLines]);
+  const displayTotal = useMemo(() => cartLines.reduce((sum, l) => sum + l.lineTotal, 0), [cartLines]);
+  const displayDiscount = Math.max(0, displaySubtotal - displayTotal);
 
   const handleCheckout = async () => {
-    if (!orderId || itemCount === 0) return;
+    if (itemCount === 0) return;
     setCheckingOut(true);
     try {
-      // Espera a que termine de procesarse toda mutación de carrito en vuelo (ej. el
-      // usuario agregó un producto justo antes de pagar) para no confirmar sin ese ítem.
+      // Vacía de inmediato cualquier cambio pendiente (el debounce) y espera a que se escriban
+      // todos: aquí SÍ hay que esperar la red, porque estamos a punto de cobrar y descontar stock.
+      await flushCart();
       await mutationChain.current;
+      const id = orderIdRef.current;
+      if (!id) {
+        toast.error('No se pudo iniciar el carrito');
+        return;
+      }
 
       // products-service cotiza el carrito de forma asíncrona (evento de ida y vuelta);
       // reintentamos unas cuantas veces antes de cobrar, en vez de fallar con un 409
       // apenas el usuario agregó algo y la cotización todavía no llegó.
-      let fresh = await refreshOrder(orderId);
+      let fresh = await refreshOrder(id);
       for (let attempt = 0; attempt < 6 && (!fresh || !isOrderFullyQuoted(fresh)); attempt++) {
         await new Promise((resolve) => setTimeout(resolve, 500));
-        fresh = await refreshOrder(orderId);
+        fresh = await refreshOrder(id);
       }
       if (!fresh || !isOrderFullyQuoted(fresh)) {
         toast.error('El carrito todavía se está cotizando, intenta de nuevo en un momento.');
         return;
       }
 
-      await api.checkout(orderId);
+      await api.checkout(id);
       toast.success('Pedido confirmado. Se cobrará de tu billetera.');
       setMobileCartOpen(false);
       navigate('/orders');
@@ -510,15 +731,19 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName 
     <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
       {/* Catálogo: más angosto, una sola columna de productos */}
       <div className="lg:col-span-2 space-y-4">
-        <div className="relative">
-          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar producto por nombre…"
-            className="w-full pl-10 pr-3 py-2.5 rounded-xl bg-white border border-gray-100 shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-yellow-300 focus:border-yellow-300"
-          />
-        </div>
+        {/* Barra de búsqueda interna: solo cuando NO está controlada desde afuera (en la página
+            de tienda vive arriba). */}
+        {!searchControlled && (
+          <div className="relative">
+            <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar producto por nombre…"
+              className="w-full pl-10 pr-3 py-2.5 rounded-xl bg-white border border-gray-100 shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-yellow-300 focus:border-yellow-300"
+            />
+          </div>
+        )}
 
         {/* Filtro por categoría: botón que despliega un panel anclado con búsqueda, multi-selección y scroll infinito */}
         {activeCategories.length > 0 && (
@@ -635,78 +860,87 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName 
               const qty = quantities[product.id] ?? 0;
               const available = availableStock(product);
               const outOfStock = available <= 0;
-              const lowStock = !outOfStock && available <= product.minStock && product.minStock > 0;
+              // "Últimas unidades": avisa cuando queda poco stock. Umbral = minStock de la tienda si
+              // lo configuró, o LOW_STOCK_THRESHOLD por defecto.
+              const lowStockThreshold = product.minStock > 0 ? product.minStock : LOW_STOCK_THRESHOLD;
+              const lowStock = !outOfStock && available <= lowStockThreshold;
+              // Tope: solo impide PASARSE del stock disponible (se puede pedir hasta la última unidad).
               const atStockLimit = qty >= available;
               return (
                 <div
                   key={product.id}
-                  className={`group rounded-2xl bg-white border border-gray-100 shadow-sm hover:shadow-md transition-shadow overflow-hidden flex flex-col ${outOfStock ? 'opacity-60' : ''}`}
+                  className={`group relative rounded-2xl bg-white border border-gray-100 shadow-sm transition-shadow overflow-hidden flex flex-col ${
+                    outOfStock
+                      ? 'pointer-events-none select-none' // agotado: no seleccionable
+                      : 'hover:shadow-md'
+                  } ${rejectedProductId === product.id ? 'animate-stock-reject' : ''}`}
+                  aria-disabled={outOfStock}
                 >
-                  {/* Imagen con badges superpuestos */}
-                  <div className="relative h-32 bg-gradient-to-br from-yellow-50 to-yellow-100">
-                    {product.imageUrl ? (
-                      <img
-                        src={product.imageUrl}
-                        alt={product.name}
-                        className="w-full h-full object-cover"
-                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-yellow-300">
-                        <ShoppingCart size={28} />
-                      </div>
-                    )}
-                    {product.category?.name && (
-                      <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-white/90 backdrop-blur-sm text-[11px] font-semibold text-gray-700 shadow-sm">
-                        {product.category.name}
-                      </span>
-                    )}
-                    {outOfStock ? (
-                      <span className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-gray-800/90 text-[11px] font-semibold text-white shadow-sm">
-                        Agotado
-                      </span>
-                    ) : lowStock ? (
-                      <span className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-red-500/90 text-[11px] font-semibold text-white shadow-sm">
-                        Quedan {available}
-                      </span>
-                    ) : null}
-                    {/* Botón flotante de añadir, anclado al borde inferior de la imagen */}
-                    {qty === 0 && (
-                      <button
-                        disabled={busy || outOfStock}
-                        onClick={() => changeQuantity(product, 1)}
-                        className="absolute -bottom-4 right-3 w-9 h-9 rounded-full bg-yellow-400 text-white flex items-center justify-center shadow-lg shadow-yellow-400/50 hover:bg-yellow-500 hover:scale-105 transition-all disabled:opacity-50 disabled:hover:scale-100"
-                      >
-                        <Plus size={18} />
-                      </button>
-                    )}
-                  </div>
+                  {/* Etiqueta de stock — va FUERA del contenido atenuado para que el rojo de
+                      "Agotado" (y el amarillo de "quedan N") se vea nítido y no se apague con el
+                      filtro gris/opacidad que se aplica al resto del recuadro cuando está agotado. */}
+                  {outOfStock ? (
+                    <span className="absolute top-2 right-2 z-20 px-2 py-0.5 rounded-full bg-red-600 text-[11px] font-semibold text-white shadow-sm">
+                      Agotado
+                    </span>
+                  ) : lowStock ? (
+                    <span className="absolute top-2 right-2 z-20 px-2 py-0.5 rounded-full bg-yellow-400 text-[11px] font-semibold text-yellow-950 shadow-sm">
+                      Quedan {available} {available === 1 ? 'unidad' : 'unidades'}
+                    </span>
+                  ) : null}
 
-                  <div className="flex-1 flex flex-col p-3.5 pt-4">
-                    <h4 className="font-semibold text-gray-900 text-sm truncate">{product.name}</h4>
-                    {product.description ? (
-                      <p className="text-xs text-gray-500 line-clamp-2 mt-0.5 flex-1">{product.description}</p>
-                    ) : (
-                      <div className="flex-1" />
-                    )}
-                    <div className="mt-2.5 flex items-center justify-between">
-                      <span className="text-sm font-bold text-gray-900">{formatCOP(priceToCents(product.price))}</span>
-                      {qty > 0 && (
-                        <div className="flex items-center gap-2">
-                          <button disabled={busy} onClick={() => changeQuantity(product, qty - 1)} className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 disabled:opacity-50">
-                            <Minus size={14} />
-                          </button>
-                          <span className="w-5 text-center text-sm font-semibold">{qty}</span>
-                          <button
-                            disabled={busy || atStockLimit}
-                            title={atStockLimit ? `Solo quedan ${available} unidades` : undefined}
-                            onClick={() => changeQuantity(product, qty + 1)}
-                            className="w-7 h-7 rounded-full bg-yellow-400 text-white flex items-center justify-center hover:bg-yellow-500 disabled:opacity-50"
-                          >
-                            <Plus size={14} />
-                          </button>
+                  {/* Contenido del producto: se atenúa (muy opaco + gris) cuando está agotado. */}
+                  <div className={`flex flex-1 flex-col ${outOfStock ? 'opacity-40 grayscale' : ''}`}>
+                    {/* Imagen con badges superpuestos */}
+                    <div className="relative h-32 bg-gradient-to-br from-yellow-50 to-yellow-100">
+                      {product.imageUrl ? (
+                        <img
+                          src={product.imageUrl}
+                          alt={product.name}
+                          className="w-full h-full object-cover"
+                          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-yellow-300">
+                          <ShoppingCart size={28} />
                         </div>
                       )}
+                      {product.category?.name && (
+                        <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-white/90 backdrop-blur-sm text-[11px] font-semibold text-gray-700 shadow-sm">
+                          {product.category.name}
+                        </span>
+                      )}
+                      {/* Botón flotante de añadir, anclado al borde inferior de la imagen */}
+                      {qty === 0 && (
+                        <button
+                          disabled={outOfStock}
+                          onClick={() => changeQuantity(product, 1)}
+                          className="absolute -bottom-4 right-3 w-9 h-9 rounded-full bg-yellow-400 text-white flex items-center justify-center shadow-lg shadow-yellow-400/50 hover:bg-yellow-500 hover:scale-105 transition-all disabled:opacity-50 disabled:hover:scale-100"
+                        >
+                          <Plus size={18} />
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="flex-1 flex flex-col p-3.5 pt-4">
+                      <h4 className="font-semibold text-gray-900 text-sm truncate">{product.name}</h4>
+                      {product.description ? (
+                        <p className="text-xs text-gray-500 line-clamp-2 mt-0.5 flex-1">{product.description}</p>
+                      ) : (
+                        <div className="flex-1" />
+                      )}
+                      <div className="mt-2.5 flex items-center justify-between">
+                        <span className="text-sm font-bold text-gray-900">{formatCOP(priceToCents(product.price))}</span>
+                        {qty > 0 && (
+                          <QuantityStepper
+                            qty={qty}
+                            max={available}
+                            disabled={false}
+                            atLimit={atStockLimit}
+                            onCommit={(next) => changeQuantity(product, next)}
+                          />
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>

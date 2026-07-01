@@ -52,9 +52,19 @@ const Sidebar: React.FC<SidebarProps> = ({
     if (expanded === undefined) setInternalExpanded(next);
     onExpandedChange?.(next);
   };
+
+  // Publica el ancho actual del sidebar para que el contenido de la página (con la clase
+  // `app-shift`) se corra a la derecha en vez de quedar tapado. En pantallas md- el CSS ya
+  // fuerza 4rem, porque ahí el sidebar no se ensancha aunque esté "expandido".
+  useEffect(() => {
+    document.documentElement.style.setProperty('--sidebar-w', isExpanded ? '16rem' : '4rem');
+  }, [isExpanded]);
   // Cuando el panel de notificaciones está abierto, el sidebar se comprime y no se
   // vuelve a expandir con el hover hasta que se cierre.
   const [notifOpen, setNotifOpen] = useState(false);
+  // Menú desplegable del usuario (Gestionar cuenta / Cerrar sesión) que aparece al hacer clic
+  // en la bolita del avatar de la cápsula superior derecha.
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [topbarExpanded, setTopbarExpanded] = useState(false);
   const [topbarNotifOpen, setTopbarNotifOpen] = useState(false);
   // Con el scroll arriba del todo la cápsula aparece desplegada (como si el mouse estuviera
@@ -65,7 +75,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   const [hasDraftCarts, setHasDraftCarts] = useState(false);
   // ¿Hay conversaciones con mensajes sin leer para este usuario?
   const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
-  const isTopbarOpen = topbarAtTop || topbarExpanded || topbarNotifOpen;
+  const isTopbarOpen = topbarAtTop || topbarExpanded || topbarNotifOpen || userMenuOpen;
 
   // Marca "algo pendiente" en el avatar: carritos sin pagar, notificaciones o mensajes sin leer.
   const hasPending = hasDraftCarts || notifUnread > 0 || hasUnreadMessages;
@@ -74,10 +84,12 @@ const Sidebar: React.FC<SidebarProps> = ({
     const handleScroll = () => {
       const atTop = window.scrollY <= 4;
       setTopbarAtTop(atTop);
-      // Al alejarse del tope se cierran los paneles de notificaciones; el hover sigue vigente.
+      // Al alejarse del tope se cierran los paneles de notificaciones y el menú del usuario;
+      // el hover sigue vigente.
       if (!atTop) {
         setTopbarNotifOpen(false);
         setNotifOpen(false);
+        setUserMenuOpen(false);
       }
     };
 
@@ -138,8 +150,17 @@ const Sidebar: React.FC<SidebarProps> = ({
   ];
 
   const handleLogout = async () => {
+    setUserMenuOpen(false);
     await signOut();
     navigate('/signin');
+  };
+
+  // "Gestionar cuenta" desde el menú del avatar: respeta el callback si la página lo provee
+  // (p. ej. Home navega a /profile); si no, navega directo.
+  const handleManageAccount = () => {
+    setUserMenuOpen(false);
+    onUserClick?.();
+    if (!onUserClick) navigate('/profile');
   };
 
   const handleMenuClick = (item: (typeof menuItems)[number]) => {
@@ -157,7 +178,8 @@ const Sidebar: React.FC<SidebarProps> = ({
   return (
     <>
       {showTopbar && (
-        /* Cápsula flotante estilo liquid glass — anclada a la derecha */
+        <>
+        {/* Cápsula flotante estilo liquid glass — anclada a la derecha */}
         <div
           className={`fixed top-3 right-4 z-[70] flex h-14 items-center justify-end overflow-hidden border border-white/55 bg-white/65 backdrop-blur-2xl transition-all duration-300 ease-in-out [box-shadow:0_8px_32px_rgba(0,0,0,0.07),0_1px_0_rgba(255,255,255,0.85)_inset,0_-1px_0_rgba(0,0,0,0.04)_inset] md:right-5 ${
             isTopbarOpen ? `${hasDraftCarts ? 'w-[226px]' : 'w-[178px]'} gap-1 rounded-full px-2.5` : 'w-14 rounded-full px-2'
@@ -200,13 +222,12 @@ const Sidebar: React.FC<SidebarProps> = ({
           <div className="relative inline-flex flex-shrink-0">
             <button
               type="button"
-              onClick={() => {
-                onUserClick?.();
-                if (!onUserClick) navigate('/profile');
-              }}
+              onClick={() => setUserMenuOpen((open) => !open)}
               className="inline-flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-amber-200 via-amber-300 to-orange-300 text-sm font-bold text-gray-900 shadow-[0_2px_8px_rgba(251,191,36,0.35),inset_0_1px_1px_rgba(255,255,255,0.5)] ring-2 ring-white/70 transition hover:ring-amber-200/80 hover:shadow-[0_4px_14px_rgba(251,191,36,0.45)] focus:outline-none focus:ring-2 focus:ring-amber-300"
-              title={userProfile?.fullName || 'Mi perfil'}
-              aria-label="Abrir perfil"
+              title={userProfile?.fullName || 'Mi cuenta'}
+              aria-haspopup="menu"
+              aria-expanded={userMenuOpen}
+              aria-label="Abrir menú de la cuenta"
             >
               {userProfile?.avatarUrl ? (
                 <img src={userProfile.avatarUrl} alt="" className="h-full w-full object-cover" />
@@ -222,6 +243,40 @@ const Sidebar: React.FC<SidebarProps> = ({
             )}
           </div>
         </div>
+
+        {/* Menú del avatar: Gestionar cuenta / Cerrar sesión. Se renderiza FUERA de la cápsula
+            (que recorta con overflow-hidden) como capa fija anclada bajo el avatar. */}
+        {userMenuOpen && (
+          <>
+            {/* Capa para cerrar al hacer clic fuera, sin oscurecer la pantalla */}
+            <div className="fixed inset-0 z-[75]" onClick={() => setUserMenuOpen(false)} aria-hidden="true" />
+            <div
+              role="menu"
+              aria-label="Menú de la cuenta"
+              className="animate-menu-pop fixed right-4 top-[4.75rem] z-[80] w-56 overflow-hidden rounded-2xl border border-white/60 bg-white/85 p-1.5 backdrop-blur-2xl [box-shadow:0_16px_40px_rgba(0,0,0,0.12),0_1px_0_rgba(255,255,255,0.85)_inset] md:right-5"
+            >
+              <button
+                type="button"
+                role="menuitem"
+                onClick={handleManageAccount}
+                className="group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-gray-700 transition-all duration-200 hover:translate-x-0.5 hover:bg-amber-50 hover:text-amber-700"
+              >
+                <User size={18} className="flex-shrink-0 transition-transform duration-300 group-hover:scale-110" />
+                <span>Gestionar cuenta</span>
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={handleLogout}
+                className="group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-gray-600 transition-all duration-200 hover:translate-x-0.5 hover:bg-red-50 hover:text-red-600"
+              >
+                <LogOut size={18} className="flex-shrink-0 transition-transform duration-300 group-hover:scale-110" />
+                <span>Cerrar sesión</span>
+              </button>
+            </div>
+          </>
+        )}
+        </>
       )}
 
       <aside
@@ -251,8 +306,8 @@ const Sidebar: React.FC<SidebarProps> = ({
         </button>
         {isExpanded && !showProfile && (
           <div className="ml-3 min-w-0 flex-1">
-            <p className="truncate text-xs font-semibold uppercase tracking-[0.14em] text-amber-700">Hola</p>
-            <p className="truncate text-sm font-bold leading-tight text-gray-800">{firstName}</p>
+            <p className="truncate font-display text-xl font-semibold leading-tight text-amber-600">Hola,</p>
+            <p className="truncate font-display text-xl font-semibold leading-tight text-gray-900">{firstName}</p>
           </div>
         )}
         {isExpanded && showProfile && (
@@ -363,26 +418,8 @@ const Sidebar: React.FC<SidebarProps> = ({
           </>
         )}
 
-        {/* Profile section */}
-        <>
-          {isExpanded && <p className="text-xs text-gray-500 font-medium px-1 pt-3 pb-1 uppercase tracking-wider">Tu perfil</p>}
-          {!isExpanded && <div className="border-t border-gray-100 my-2" />}
-          <button
-            type="button"
-            onClick={() => {
-              onUserClick?.();
-              if (!onUserClick) navigate('/profile');
-            }}
-            className={`relative w-full h-11 rounded-xl flex items-center transition-all duration-300 ease-in-out group overflow-hidden text-gray-600 hover:bg-white/70 hover:text-amber-700 ${
-              isExpanded ? 'px-4' : 'justify-center'
-            }`}
-            title="Gestionar cuenta"
-            aria-label="Gestionar cuenta"
-          >
-            <User size={18} className="flex-shrink-0" />
-            {isExpanded && <span className="ml-3 font-medium text-sm whitespace-nowrap">Gestionar cuenta</span>}
-          </button>
-        </>
+        {/* "Gestionar cuenta" y "Cerrar sesión" ya no viven aquí: ahora salen del menú del
+            avatar (la bolita) en la cápsula superior derecha. */}
       </nav>
 
       {/* Wallet — solo saldo; al hacer click navega al perfil donde están los controles */}
@@ -413,16 +450,6 @@ const Sidebar: React.FC<SidebarProps> = ({
         >
           <Plus size={18} className="flex-shrink-0" />
           {isExpanded && <span className="ml-3 font-medium text-sm whitespace-nowrap">Nuevo pedido</span>}
-        </button>
-
-        <button
-          onClick={handleLogout}
-          className={`w-full h-11 rounded-xl flex items-center text-gray-500 hover:bg-red-50 hover:text-red-500 transition-all overflow-hidden
-            ${isExpanded ? 'px-4' : 'justify-center'}`}
-          title="Cerrar sesión"
-        >
-          <LogOut size={18} className="flex-shrink-0" />
-          {isExpanded && <span className="ml-3 font-medium text-sm whitespace-nowrap">Cerrar sesión</span>}
         </button>
       </div>
       </aside>

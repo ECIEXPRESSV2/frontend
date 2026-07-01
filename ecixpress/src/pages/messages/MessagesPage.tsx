@@ -261,8 +261,8 @@ const MessagesPage: React.FC<MessagesPageProps> = ({ onBack }) => {
     <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-white to-yellow-100">
       <Sidebar activeItem="messages" />
 
-      <main className="ml-16 px-6 pb-6 pt-20 md:px-8 md:pb-8">
-        <div className="max-w-6xl mx-auto space-y-6">
+      <main className="app-shift px-6 pb-6 pt-20 md:px-8 md:pb-8">
+        <div className="w-full space-y-6">
           <div className="flex items-center gap-3">
             <button onClick={() => (onBack ? onBack() : navigate('/home'))} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/55 backdrop-blur-xl border border-white/50 text-gray-700 font-medium text-sm shadow-sm shadow-gray-200/40 hover:bg-white/80 hover:text-yellow-600 hover:shadow-md transition-all duration-300">
               <ArrowLeft size={16} /> Volver

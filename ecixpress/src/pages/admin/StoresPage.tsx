@@ -1037,7 +1037,7 @@ const StoresPage: React.FC = () => {
         onExpandedChange={setSidebarExpanded}
       />
 
-      <main className="relative z-[51] ml-16 min-h-screen px-4 pb-5 pt-20 md:px-8 lg:px-10">
+      <main className="relative z-[51] app-shift min-h-screen px-4 pb-5 pt-20 md:px-8 lg:px-10">
         <div className="relative mx-auto max-w-6xl space-y-6">
           {!isStoreProfileRoute && (
             <>

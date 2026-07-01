@@ -55,8 +55,8 @@ const CartPage: React.FC<CartPageProps> = ({ onBack, onContinue }) => {
       />
 
       {/* Main Content */}
-      <main className="ml-16 px-6 pb-6 pt-20 md:px-8 md:pb-8">
-        <div className="max-w-6xl mx-auto space-y-8">
+      <main className="app-shift px-6 pb-6 pt-20 md:px-8 md:pb-8">
+        <div className="w-full space-y-8">
           {/* Back Button */}
           <button
             onClick={() => onBack?.() ?? navigate('/home')}
