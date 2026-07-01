@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { MessageCircle, PackageCheck, Store as StoreIcon } from 'lucide-react';
+import { MessageCircle, PackageCheck, Store as StoreIcon, Heart } from 'lucide-react';
 import Sidebar from '../../components/home/Sidebar';
 import Banner from '../../components/home/Banner';
 import StoreItem from '../../components/home/StoreItem';
@@ -15,6 +15,7 @@ import { formatCOP } from '../../lib/format';
 import { statusLabel, statusTone } from '../../lib/orders-ui';
 import { getAvailableStores, type Store } from '../../services/storeService';
 import { getStoreImage } from '../../services/storeImageStore';
+import { useFavorites } from '../../hooks/useFavorites';
 
 const FALLBACK_PRODUCTS = [
   { id: 1, title: 'Cappuccino Italiano', description: 'Café espresso con leche espumada', imageUrl: 'https://images.unsplash.com/photo-1572442388796-11668a67e53d?w=400&auto=format&fit=crop', price: 4.50, rating: 4.8, estimatedTime: '5 min' },
@@ -86,6 +87,13 @@ const Home: React.FC<HomeProps> = ({ onUserClick, onCartClick, onOrdersClick, on
     return true;
   });
 
+  // Tiendas marcadas como favoritas (independiente del filtro de categoría).
+  const { favorites } = useFavorites();
+  const favoriteStores = useMemo(
+    () => stores.filter((s) => favorites.includes(String(s.id))),
+    [stores, favorites],
+  );
+
   const activeOrder = useMemo(
     () =>
       orders
@@ -127,6 +135,29 @@ const Home: React.FC<HomeProps> = ({ onUserClick, onCartClick, onOrdersClick, on
               onChat={() => navigate(`/messages?orderId=${activeOrder.id}`)}
             />
           ) : null}
+
+          {favoriteStores.length > 0 && (
+            <section>
+              <h2 className="mb-4 flex items-center gap-2 text-xl font-bold text-gray-900">
+                <Heart size={20} className="fill-red-500 text-red-500" />
+                Tus tiendas favoritas
+              </h2>
+              <div className="flex flex-wrap gap-8 py-4 px-4">
+                {favoriteStores.map((store) => (
+                  <StoreItem
+                    key={store.id}
+                    id={store.id as unknown as number}
+                    name={store.name}
+                    imageUrl={getStoreImage(String(store.id)) || store.imageUrl || STORE_FALLBACK_IMAGE}
+                    onClick={() => {
+                      if (onStoreClick) onStoreClick(Number(store.id));
+                      else navigate(`/store/${store.id}`);
+                    }}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
 
           <section>
             <h2 className="text-xl font-bold text-gray-900 mb-4">Tiendas Disponibles</h2>
