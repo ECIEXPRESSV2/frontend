@@ -2,11 +2,13 @@ import React, { useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../../components/landing/Navbar';
 import HeroSection from '../../components/landing/HeroSection';
+import SocialProofSection from '../../components/landing/SocialProofSection';
 import FeaturesSection from '../../components/landing/FeaturesSection';
 import HowItWorksSection from '../../components/landing/HowItWorksSection';
 import WalletShowcaseSection from '../../components/landing/WalletShowcaseSection';
 import UniversityContextSection from '../../components/landing/UniversityContextSection';
 import ModulesSection from '../../components/landing/ModulesSection';
+import FAQSection from '../../components/landing/FAQSection';
 import { CTAFinal, Footer } from '../../components/landing/CTASection';
 
 interface LandingPageProps {
@@ -44,6 +46,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigateToLogin, onNavigate
           onSignInClick={handleLoginClick}
         />
 
+        {/* Social Proof Section */}
+        <SocialProofSection />
+
         {/* Features Section */}
         <FeaturesSection />
 
@@ -58,6 +63,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigateToLogin, onNavigate
 
         {/* Modules */}
         <ModulesSection />
+
+        {/* FAQ Section */}
+        <FAQSection />
 
         {/* Final CTA */}
         <CTAFinal onSignUpClick={handleSignUpClick} />

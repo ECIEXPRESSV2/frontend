@@ -75,10 +75,13 @@ const HowItWorksSection: React.FC = () => {
                       {/* CARD */}
                       <div
                           className="relative p-6 rounded-2xl border border-gray-200
-                    bg-white/40 backdrop-blur-md
+                    bg-white/50 backdrop-blur-md
                     shadow-lg shadow-gray-200/50
                     hover:shadow-2xl hover:shadow-yellow-200/40
-                    hover:-translate-y-2 transition-all duration-500"
+                    hover:-translate-y-2 transition-all duration-500 focus-within:ring-2 focus-within:ring-yellow-500 focus-within:ring-offset-2"
+                          tabIndex={0}
+                          role="button"
+                          aria-label={`Paso ${step.number}: ${step.title} - ${step.description}`}
                       >
 
                         {/* glow */}
@@ -91,7 +94,7 @@ const HowItWorksSection: React.FC = () => {
                           <div className="flex justify-center">
                             <div
                                 className={`w-14 h-14 rounded-xl flex items-center justify-center
-                          bg-white/70 backdrop-blur border border-white/50 shadow-md
+                          bg-white/70 backdrop-blur-md border border-white/50 shadow-md
                           group-hover:scale-110 group-hover:shadow-lg transition`}
                             >
                               <Icon className="w-6 h-6 text-gray-800" />
@@ -128,10 +131,10 @@ const HowItWorksSection: React.FC = () => {
           {/* CTA */}
           <div className="mt-24 text-center">
             <button
-                className="relative px-10 py-4 rounded-xl font-semibold text-white
+                className="relative px-8 py-4 rounded-xl font-semibold text-gray-900
             bg-gradient-to-r from-yellow-400 to-yellow-500
             shadow-lg hover:shadow-yellow-300/50
-            hover:scale-105 transition-all duration-300 group overflow-hidden"
+            hover:scale-105 transition-all duration-300 group overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-500 focus-visible:ring-offset-2"
             >
               <span className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition" />
               Comenzar ahora
@@ -151,6 +154,16 @@ const HowItWorksSection: React.FC = () => {
 
           .animate-progress-line {
             animation: progressLine 2s ease-out forwards;
+          }
+
+          @media (prefers-reduced-motion: reduce) {
+            *,
+            *::before,
+            *::after {
+              animation-duration: 0.01ms !important;
+              animation-iteration-count: 1 !important;
+              transition-duration: 0.01ms !important;
+            }
           }
         `}
         </style>

@@ -77,8 +77,11 @@ const ModulesSection: React.FC = () => {
             return (
               <div
                 key={index}
-                className="group relative p-8 rounded-2xl border border-gray-200 bg-white hover:border-yellow-200 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 animate-fade-in-up"
+                className="group relative p-8 rounded-2xl border border-gray-200 bg-white hover:border-yellow-200 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 animate-fade-in-up focus-within:ring-2 focus-within:ring-yellow-500 focus-within:ring-offset-2"
                 style={{ animationDelay: `${index * 0.1}s`, opacity: 0 }}
+                tabIndex={0}
+                role="button"
+                aria-label={`${module.title}: ${module.description}`}
               >
                 {/* Gradient background on hover */}
                 <div className={`absolute inset-0 bg-gradient-to-br ${module.color} opacity-0 group-hover:opacity-5 transition-opacity duration-300`} />
@@ -120,7 +123,7 @@ const ModulesSection: React.FC = () => {
           <p className="text-lg text-gray-600">
             ¿Listo para transformar la forma en que compras en tu campus?
           </p>
-          <button className="px-10 py-4 rounded-xl font-semibold text-white bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all inline-block">
+          <button className="px-8 py-4 rounded-xl font-semibold text-gray-900 bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all inline-block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-500 focus-visible:ring-offset-2">
             Crear cuenta gratis
           </button>
         </div>

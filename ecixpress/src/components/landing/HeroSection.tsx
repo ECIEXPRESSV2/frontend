@@ -19,14 +19,14 @@ const HeroSection: React.FC<HeroProps> = ({ onGetStartedClick, onSignInClick }) 
           {/* Left Content */}
           <div className="space-y-8 animate-fade-in-left">
             {/* Badge */}
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-yellow-50 border border-yellow-200 animate-bounce-slow">
-              <div className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse" />
-              <span className="text-sm font-semibold text-yellow-800">Pide. Llega. Recoge.</span>
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-yellow-100 border border-yellow-300 animate-bounce-slow">
+              <div className="w-2 h-2 rounded-full bg-yellow-600 animate-pulse" />
+              <span className="text-sm font-semibold text-a11y-yellow-darker">Pide. Llega. Recoge.</span>
             </div>
 
             {/* Main Heading */}
             <div className="space-y-5">
-              <h1 className="text-8xl md:text-8xl font-bold text-gray-900 leading-tight animate-slide-up">
+              <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-gray-900 leading-tight animate-slide-up">
                 Compra en el campus{' '}
                 <span className="bg-gradient-to-r from-yellow-400 to-yellow-600 bg-clip-text text-transparent animate-gradient-shift">
                   sin hacer filas
@@ -42,14 +42,14 @@ const HeroSection: React.FC<HeroProps> = ({ onGetStartedClick, onSignInClick }) 
             <div className="flex flex-col sm:flex-row gap-4 pt-4 animate-slide-up-delay-2">
               <button
                 onClick={onGetStartedClick}
-                className="px-8 py-4 rounded-xl font-semibold text-white bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 shadow-lg hover:shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2 group hover:shadow-yellow-500/25"
+                className="px-8 py-4 rounded-xl font-semibold text-gray-900 bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 shadow-lg hover:shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2 group hover:shadow-yellow-500/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-500 focus-visible:ring-offset-2"
               >
                 Comenzar ahora
                 <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
               </button>
               <button
                 onClick={onSignInClick}
-                className="px-8 py-4 rounded-xl font-semibold text-gray-900 bg-gray-100 hover:bg-gray-200 transition-all hover:shadow-md"
+                className="px-8 py-4 rounded-xl font-semibold text-gray-900 bg-gray-100 hover:bg-gray-200 transition-all hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-500 focus-visible:ring-offset-2"
               >
                 Iniciar sesión
               </button>
@@ -65,7 +65,7 @@ const HeroSection: React.FC<HeroProps> = ({ onGetStartedClick, onSignInClick }) 
             <div className="absolute top-0 right-0 w-72 h-72 bg-yellow-100 rounded-full opacity-30 blur-3xl animate-float" />
             <div className="absolute bottom-0 left-0 w-72 h-72 bg-blue-100 rounded-full opacity-20 blur-3xl animate-float-delay" />
 
-            {/* Floating shapes */}
+            {/* Floating shapes - reduced for better hierarchy */}
             <FloatingShape
                 type="circle"
                 size={80}
@@ -93,35 +93,6 @@ const HeroSection: React.FC<HeroProps> = ({ onGetStartedClick, onSignInClick }) 
                 animationDuration="4s"
                 animationDelay="0.5s"
             />
-            <FloatingShape
-                type="square"
-                size={35}
-                color="rgba(245, 158, 11, 0.25)"
-                blur={10}
-                position="top-left"
-                animation="float"
-                animationDuration="6s"
-                animationDelay="1s"
-            />
-            <FloatingShape
-                type="circle"
-                size={25}
-                color="rgba(251, 191, 36, 0.4)"
-                blur={8}
-                position="bottom-right"
-                animation="pulse"
-                animationDuration="3.5s"
-                animationDelay="1.5s"
-            />
-            <FloatingShape
-                type="diamond"
-                size={30}
-                color="rgba(251, 146, 60, 0.25)"
-                position="center"
-                animation="spin"
-                animationDuration="20s"
-                animationDelay="2s"
-            />
 
             {/* iPhone Mockup */}
             <div className="relative z-10 animate-fade-in-up">
@@ -131,7 +102,7 @@ const HeroSection: React.FC<HeroProps> = ({ onGetStartedClick, onSignInClick }) 
                 <img
 
                     src="/iPhone 17 Pro.png"
-                    alt="iPhone ECIXPRESS QR"
+                    alt="Mockup de iPhone mostrando la aplicación ECIXPRESS con código QR para recoger pedidos sin filas en el campus"
                     className="
                     absolute right-[-550px] top-[50%] -translate-y-1/2
                     w-[900px]
@@ -155,3 +126,15 @@ const HeroSection: React.FC<HeroProps> = ({ onGetStartedClick, onSignInClick }) 
 
 export default HeroSection;
 
+{/* Accessibility: prefers-reduced-motion */}
+<style>{`
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+`}</style>

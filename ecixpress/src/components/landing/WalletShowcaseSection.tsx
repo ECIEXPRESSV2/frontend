@@ -90,7 +90,7 @@ const GlassOverlay: React.FC<{
   large?: boolean;
 }> = ({ icon: Icon, title, description }) => (
     <div className="relative z-10 p-6 space-y-4 text-white">
-      <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-white/20 backdrop-blur-sm border border-white/30 group-hover:scale-110 transition">
+      <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-white/20 backdrop-blur-md border border-white/30 group-hover:scale-110 transition">
         <Icon className="w-5 h-5" />
       </div>
       <h3 className="font-bold text-lg">
@@ -321,7 +321,7 @@ const WalletShowcaseSection: React.FC = () => {
           >
             <button
                 onClick={() => navigate('/signin')}
-                className="inline-flex items-center gap-3 px-10 py-5 rounded-2xl font-semibold text-white bg-gradient-to-r from-yellow-400 to-orange-500 shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300"
+                className="inline-flex items-center gap-3 px-8 py-4 rounded-xl font-semibold text-gray-900 bg-gradient-to-r from-yellow-400 to-yellow-500 shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-500 focus-visible:ring-offset-2"
             >
               <span className="text-base font-bold tracking-tight">
                 Comenzar a usar tu wallet
@@ -383,7 +383,7 @@ const ImageCard: React.FC<{
         {/* Image */}
         <img
             src={item.image}
-            alt={item.title}
+            alt={`${item.title}: ${item.description}`}
             className="absolute inset-0 w-full h-full object-cover scale-110 group-hover:scale-125 transition duration-700"
             loading="lazy"
         />

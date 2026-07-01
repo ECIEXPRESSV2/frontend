@@ -133,6 +133,7 @@ const UniversityContextSection: React.FC = () => {
 
               <img
                   src= "/EDIFICIO-E-ESCUELA.JPG"
+                  alt="Edificio de la escuela universitaria mostrando el campus donde opera ECIXPRESS"
                   className="relative w-[340px] h-[340px] object-cover rounded-2xl shadow-3xl
               hover:scale-105 transition duration-500"
               />
@@ -148,13 +149,17 @@ const UniversityContextSection: React.FC = () => {
               return (
                   <div
                       key={index}
-                      className={`group relative rounded-2xl overflow-hidden transition-all duration-700 ease-out
+                      className={`group relative rounded-2xl overflow-hidden transition-all duration-700 ease-out focus-within:ring-2 focus-within:ring-yellow-500 focus-within:ring-offset-2
                 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-16'}`}
                       style={{ transitionDelay: `${index * 120}ms` }}
+                      tabIndex={0}
+                      role="button"
+                      aria-label={`${stat.title}: ${stat.description}`}
                   >
 
                     <img
                         src={stat.image}
+                        alt={`${stat.title}: ${stat.description}`}
                         className="absolute inset-0 w-full h-full object-cover scale-110 group-hover:scale-125 transition duration-700"
                     />
 
@@ -165,7 +170,7 @@ const UniversityContextSection: React.FC = () => {
                     <div className="relative z-10 p-6 space-y-4 text-white">
 
                       <div className={`w-12 h-12 rounded-xl flex items-center justify-center 
-                  bg-white/20 backdrop-blur-sm border border-white/30
+                  bg-white/20 backdrop-blur-md border border-white/30
                   group-hover:scale-110 transition`}>
                         <Icon className="w-5 h-5" />
                       </div>
@@ -196,3 +201,16 @@ const UniversityContextSection: React.FC = () => {
 };
 
 export default UniversityContextSection;
+
+{/* Accessibility: prefers-reduced-motion */}
+<style>{`
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+`}</style>

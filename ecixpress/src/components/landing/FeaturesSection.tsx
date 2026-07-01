@@ -64,8 +64,14 @@ const FeaturesSection: React.FC = () => {
 
           {/* HEADER */}
           <div className="text-center space-y-4 mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold text-gray-900">
-              ¿Por qué ECIXPRESS?
+            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 flex items-center justify-center gap-3">
+              ¿Por qué{' '}
+              <img
+                src="/logotipoEcixpress.svg"
+                alt="ECIXPRESS"
+                className="h-8 md:h-9 w-auto self-center"
+ />
+              ?
             </h2>
             <p className="text-lg text-gray-600 max-w-2xl mx-auto">
               Diseñado para hacer tu experiencia en campus más rápida y eficiente
@@ -82,8 +88,11 @@ const FeaturesSection: React.FC = () => {
                   <div
                       key={index}
                       className="group relative p-8 rounded-2xl border border-gray-200
-                bg-white/30 backdrop-blur-md
-                hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 overflow-hidden"
+                bg-white/40 backdrop-blur-md
+                hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 overflow-hidden focus-within:ring-2 focus-within:ring-yellow-500 focus-within:ring-offset-2"
+                      tabIndex={0}
+                      role="button"
+                      aria-label={`${feature.title}: ${feature.description}`}
                   >
 
                     {/* imagen de fondo suave */}
@@ -128,3 +137,16 @@ const FeaturesSection: React.FC = () => {
 };
 
 export default FeaturesSection;
+
+{/* Accessibility: prefers-reduced-motion */}
+<style>{`
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+`}</style>
