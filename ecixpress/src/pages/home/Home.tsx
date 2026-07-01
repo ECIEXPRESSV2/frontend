@@ -85,17 +85,21 @@ const Home: React.FC<HomeProps> = ({ onUserClick, onCartClick, onOrdersClick, on
     return () => { active = false; };
   }, [ordersApi, userProfile?.id]);
 
-  const filteredStores = stores.filter(s => {
+  // Pertenencia a la categoría activa: Cafetería agrupa cafeterías y restaurantes; Papelería, papelerías.
+  const inCategory = (s: Store) => {
     if (activeCategory === 'Cafetería') return s.type === 'CAFETERIA' || s.type === 'RESTAURANTE';
     if (activeCategory === 'Papelería') return s.type === 'PAPELERIA';
     return true;
-  });
+  };
+  const filteredStores = stores.filter(inCategory);
 
-  // Tiendas marcadas como favoritas (independiente del filtro de categoría).
+  // Favoritas de la categoría actual (los restaurantes favoritos en Cafetería, las papelerías en
+  // Papelería) — así no aparecen restaurantes en la pestaña de Papelería.
   const { favorites } = useFavorites();
   const favoriteStores = useMemo(
-    () => stores.filter((s) => favorites.includes(String(s.id))),
-    [stores, favorites],
+    () => stores.filter((s) => favorites.includes(String(s.id)) && inCategory(s)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [stores, favorites, activeCategory],
   );
 
   // Búsqueda por nombre. Si hay texto, se busca en TODAS las tiendas (ignora la categoría);
@@ -124,6 +128,15 @@ const Home: React.FC<HomeProps> = ({ onUserClick, onCartClick, onOrdersClick, on
         onMessagesClick={onMessagesClick}
       />
 
+      {/* Toggle de categoría — arriba a la IZQUIERDA, al nivel de la barra de búsqueda. */}
+      <div className="app-shift fixed left-0 top-3 z-[56] pl-3 md:pl-6">
+        <CategoryTabs
+          categories={categories}
+          activeCategory={activeCategory}
+          onCategoryChange={setActiveCategory}
+        />
+      </div>
+
       {/* Barra de búsqueda de tiendas — fija, a la altura de la bolita del usuario. El padding
           derecho evita que la cápsula del avatar la tape. */}
       <div className="app-shift fixed inset-x-0 top-3 z-[55] flex items-center justify-center px-3 pr-16 md:pr-24">
@@ -140,14 +153,8 @@ const Home: React.FC<HomeProps> = ({ onUserClick, onCartClick, onOrdersClick, on
         </div>
       </div>
 
-      <main className="app-shift px-3 pb-6 pt-20 md:px-6 md:pb-8 lg:px-8">
+      <main className={`app-shift px-3 pb-6 pt-20 md:px-6 md:pb-8 lg:px-8 ${activeCategory === 'Papelería' ? 'theme-papeleria' : ''}`}>
         <div className="w-full space-y-8">
-          <CategoryTabs
-            categories={categories}
-            activeCategory={activeCategory}
-            onCategoryChange={setActiveCategory}
-          />
-
           <Banner />
 
           {loadingOrders ? (
@@ -169,7 +176,7 @@ const Home: React.FC<HomeProps> = ({ onUserClick, onCartClick, onOrdersClick, on
                 <Heart size={20} className="fill-red-500 text-red-500" />
                 Tus tiendas favoritas
               </h2>
-              <div className="flex flex-wrap gap-8 py-4 px-4">
+              <div className="flex flex-wrap gap-6 py-4 px-1">
                 {shownFavoriteStores.map((store) => {
                   const fallback = getStoreImage(String(store.id)) || store.imageUrl || STORE_FALLBACK_IMAGE;
                   return (
@@ -203,7 +210,7 @@ const Home: React.FC<HomeProps> = ({ onUserClick, onCartClick, onOrdersClick, on
                 {query ? 'No se encontraron tiendas con ese nombre.' : 'No hay tiendas disponibles en esta categoría.'}
               </p>
             ) : (
-              <div className="flex flex-wrap gap-8 py-4 px-4">
+              <div className="flex flex-wrap gap-6 py-4 px-1">
                 {shownStores.map((store, index) => {
                   const fallback = getStoreImage(String(store.id)) || store.imageUrl || STORE_FALLBACK_IMAGE;
                   return (

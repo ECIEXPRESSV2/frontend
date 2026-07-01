@@ -198,11 +198,11 @@ const Sidebar: React.FC<SidebarProps> = ({
               onMessagesClick?.();
               if (!onMessagesClick) navigate('/messages');
             }}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/60 bg-white/50 text-gray-600 backdrop-blur-sm transition hover:bg-white/80 hover:text-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-300"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/70 bg-white/55 text-gray-500 backdrop-blur-sm transition hover:border-yellow-200/80 hover:bg-yellow-50/70 hover:text-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-300"
             title="Mensajes"
             aria-label="Abrir mensajes"
           >
-            <MessageCircle size={19} strokeWidth={2.2} aria-hidden="true" />
+            <MessageCircle size={20} strokeWidth={2.2} aria-hidden="true" />
           </button>
 
           {/* Atajo de carritos pendientes (solo aparece si hay algún pedido en carrito) */}
