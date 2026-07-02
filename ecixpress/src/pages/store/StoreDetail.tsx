@@ -7,7 +7,6 @@ import StoreCatalogCart from '../../components/store/StoreCatalogCart';
 import { useAuth } from '../../context/AuthContext';
 import { useFavorites } from '../../hooks/useFavorites';
 import { getStoreById, getStoreSchedules, getDayName, type Store, type StoreSchedule } from '../../services/storeService';
-import { getStoreImage } from '../../services/storeImageStore';
 import { getStoreBannerUrl, getStoreLogoUrl } from '../../services/storeAssets';
 
 const STATUS_LABELS: Record<string, { label: string; dot: string; color: string }> = {
@@ -112,7 +111,7 @@ const StoreDetail: React.FC<StoreDetailProps> = ({ storeId: storeIdProp, onBack 
   }
 
   const statusInfo = STATUS_LABELS[store.status] || { label: store.status, dot: 'bg-gray-400', color: 'text-gray-600 bg-gray-50 ring-1 ring-gray-200' };
-  const storeImage = store.imageUrl || getStoreImage(store.id);
+  const storeImage = store.imageUrl;
   const bannerUrl = getStoreBannerUrl(store.id);
   const logoUrl = getStoreLogoUrl(store.id);
 

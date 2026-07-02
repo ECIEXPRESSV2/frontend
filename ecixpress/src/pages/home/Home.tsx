@@ -14,7 +14,6 @@ import type { OrderResponse } from '../../lib/orders-api';
 import { formatCOP } from '../../lib/format';
 import { statusLabel, statusTone } from '../../lib/orders-ui';
 import { getAvailableStores, type Store } from '../../services/storeService';
-import { getStoreImage } from '../../services/storeImageStore';
 import { getStoreLogoUrl } from '../../services/storeAssets';
 import { useFavorites } from '../../hooks/useFavorites';
 
@@ -178,7 +177,7 @@ const Home: React.FC<HomeProps> = ({ onUserClick, onCartClick, onOrdersClick, on
               </h2>
               <div className="flex flex-wrap gap-6 py-4 px-1">
                 {shownFavoriteStores.map((store) => {
-                  const fallback = getStoreImage(String(store.id)) || store.imageUrl || STORE_FALLBACK_IMAGE;
+                  const fallback = store.imageUrl || STORE_FALLBACK_IMAGE;
                   return (
                     <StoreItem
                       key={store.id}
@@ -212,7 +211,7 @@ const Home: React.FC<HomeProps> = ({ onUserClick, onCartClick, onOrdersClick, on
             ) : (
               <div className="flex flex-wrap gap-6 py-4 px-1">
                 {shownStores.map((store, index) => {
-                  const fallback = getStoreImage(String(store.id)) || store.imageUrl || STORE_FALLBACK_IMAGE;
+                  const fallback = store.imageUrl || STORE_FALLBACK_IMAGE;
                   return (
                     <StoreItem
                       key={store.id}
