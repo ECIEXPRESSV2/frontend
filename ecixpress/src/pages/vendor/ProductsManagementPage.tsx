@@ -16,6 +16,11 @@ import {
   History,
   AlertTriangle,
   LayoutGrid,
+  Loader2,
+  Upload,
+  Image as ImageIcon,
+  Box,
+  ExternalLink,
 } from 'lucide-react';
 import Sidebar from '../../components/home/Sidebar';
 import ModalShell from '../../components/wallet/ModalShell';
@@ -32,6 +37,7 @@ import {
   type ProductCategory,
 } from '../../lib/products-api';
 import { formatCOP } from '../../lib/format';
+import { fileToDataUrl } from '../../services/storeAssets';
 
 const emptyForm = {
   open: false,
@@ -44,6 +50,53 @@ const emptyForm = {
   description: '',
   imageUrl: '',
   sku: '',
+};
+
+const emptyAssetState = {
+  front: null as File | null,
+  left: null as File | null,
+  back: null as File | null,
+  frontPreview: '',
+  leftPreview: '',
+  backPreview: '',
+};
+
+const ASSET_SLOTS = [
+  { key: 'front', label: 'Frontal', help: 'Vista principal del producto' },
+  { key: 'left', label: 'Lateral', help: 'Lado izquierdo' },
+  { key: 'back', label: 'Trasera', help: 'Vista posterior' },
+] as const;
+
+type AssetSlot = (typeof ASSET_SLOTS)[number]['key'];
+
+const generationLabel = (status?: Product['modelGenerationStatus']): string => {
+  switch (status) {
+    case 'PROCESSING':
+      return 'Generando 3D';
+    case 'READY':
+      return '3D listo';
+    case 'FAILED':
+      return 'Falló la IA';
+    default:
+      return 'Pendiente';
+  }
+};
+
+const GenerationRing: React.FC<{ status?: Product['modelGenerationStatus']; progress?: number | null }> = ({ status, progress }) => {
+  if (!status || status === 'PENDING') return null;
+  const clamped = Math.max(0, Math.min(100, progress ?? (status === 'READY' ? 100 : 0)));
+  const color = status === 'FAILED' ? '#E2725B' : status === 'READY' ? '#2E8B95' : '#4F8CFF';
+  return (
+    <div
+      className="relative h-11 w-11 shrink-0 rounded-full"
+      style={{ background: `conic-gradient(${color} ${clamped * 3.6}deg, #E5E7EB 0deg)` }}
+      title={`${generationLabel(status)} · ${clamped}%`}
+    >
+      <div className="absolute inset-[3px] rounded-full bg-white flex items-center justify-center text-[10px] font-bold text-gray-700">
+        {status === 'FAILED' ? '!' : `${clamped}%`}
+      </div>
+    </div>
+  );
 };
 
 /** Estado visual de inventario derivado de stock vs. minStock — alimenta el color del anillo y el badge. */
@@ -91,6 +144,8 @@ const ProductsManagementPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [categoryFilter, setCategoryFilter] = useState<string>('');
   const [form, setForm] = useState(emptyForm);
+  const [assets, setAssets] = useState(emptyAssetState);
+  const [submitLoading, setSubmitLoading] = useState(false);
   const [stockModal, setStockModal] = useState<{ open: boolean; product: Product | null; value: string }>({ open: false, product: null, value: '' });
   const [historyModal, setHistoryModal] = useState<{ open: boolean; product: Product | null }>({ open: false, product: null });
 
@@ -108,6 +163,11 @@ const ProductsManagementPage: React.FC = () => {
   const visibleProducts = useMemo(
     () => (categoryFilter ? products.filter((p) => p.categoryId === categoryFilter) : products),
     [products, categoryFilter],
+  );
+
+  const editingProduct = useMemo(
+    () => products.find((p) => p.id === form.editingId) ?? null,
+    [products, form.editingId],
   );
 
   const load = async () => {
@@ -134,12 +194,29 @@ const ProductsManagementPage: React.FC = () => {
 
   useEffect(() => { void load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [storeId]);
 
+  useEffect(() => {
+    const refreshOnFocus = () => {
+      void load();
+    };
+    const refreshOnVisible = () => {
+      if (!document.hidden) void load();
+    };
+    window.addEventListener('focus', refreshOnFocus);
+    document.addEventListener('visibilitychange', refreshOnVisible);
+    return () => {
+      window.removeEventListener('focus', refreshOnFocus);
+      document.removeEventListener('visibilitychange', refreshOnVisible);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [storeId]);
+
   const openCreate = () => {
     if (categories.length === 0) {
       toast.info('Crea primero una categoría');
       return;
     }
     setForm({ ...emptyForm, open: true, categoryId: categoryFilter || categories[0].id });
+    setAssets(emptyAssetState);
   };
 
   const openEdit = (p: Product) => {
@@ -152,9 +229,26 @@ const ProductsManagementPage: React.FC = () => {
       stock: String(p.stock),
       minStock: String(p.minStock ?? 0),
       description: p.description ?? '',
-      imageUrl: p.imageUrl ?? '',
+      imageUrl: p.frontImageUrl ?? p.imageUrl ?? '',
       sku: '',
     });
+    setAssets(emptyAssetState);
+  };
+
+  const setAssetFile = async (slot: AssetSlot, file: File | null) => {
+    setAssets((current) => ({
+      ...current,
+      [slot]: file,
+      [`${slot}Preview`]: file ? current[`${slot}Preview` as const] : '',
+    } as typeof current));
+    if (!file) return;
+    const preview = await fileToDataUrl(file);
+    setAssets((current) => ({ ...current, [slot]: file, [`${slot}Preview`]: preview } as typeof current));
+  };
+
+  const resetForm = () => {
+    setForm(emptyForm);
+    setAssets(emptyAssetState);
   };
 
   const submitForm = async () => {
@@ -164,6 +258,7 @@ const ProductsManagementPage: React.FC = () => {
       return;
     }
     try {
+      setSubmitLoading(true);
       const token = await getToken();
       const base = {
         name: form.name.trim(),
@@ -178,16 +273,23 @@ const ProductsManagementPage: React.FC = () => {
         setProducts((list) => list.map((p) => (p.id === updated.id ? updated : p)));
         toast.success('Producto actualizado');
       } else {
-        const created = await productsApi.createProduct(
+        if (!assets.front || !assets.left || !assets.back) {
+          toast.error('Debes subir las 3 imágenes obligatorias: frontal, lateral y trasera');
+          return;
+        }
+        const created = await productsApi.createProductWithAssets(
           { storeId, slug: slugify(form.name), stock: Number(form.stock) || 0, sku: form.sku.trim() || undefined, ...base },
+          { front: assets.front, left: assets.left, back: assets.back },
           token,
         );
         setProducts((list) => [created, ...list]);
-        toast.success('Producto creado');
+        toast.success('Producto creado. Se está generando el modelo 3D en segundo plano');
       }
-      setForm(emptyForm);
+      resetForm();
     } catch (e) {
       toast.error((e as Error).message || 'No se pudo guardar el producto');
+    } finally {
+      setSubmitLoading(false);
     }
   };
 
@@ -337,16 +439,20 @@ const ProductsManagementPage: React.FC = () => {
                 <div key={p.id} className={`relative overflow-hidden rounded-2xl bg-surface border border-gray-100 shadow-card transition-shadow hover:shadow-lg ${!p.isActive ? 'opacity-60' : ''}`}>
                   <div className="p-4 space-y-3">
                     <div className="flex items-start gap-3">
-                      {p.imageUrl ? (
-                        <img src={p.imageUrl} alt={p.name} className="w-12 h-12 rounded-xl object-cover shrink-0" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                      {p.frontImageUrl ?? p.imageUrl ? (
+                        <img src={p.frontImageUrl ?? p.imageUrl ?? ''} alt={p.name} className="w-12 h-12 rounded-xl object-cover shrink-0" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                       ) : (
                         <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0"><Package size={18} /></div>
                       )}
                       <div className="flex-1 min-w-0">
                         <h3 className="font-semibold text-gray-900 leading-tight truncate">{p.name}</h3>
                         <p className="text-xs text-gray-500 truncate">{categoryName(p.categoryId)}</p>
+                        <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">{generationLabel(p.modelGenerationStatus)}</p>
                       </div>
-                      <StockRing stock={p.stock} minStock={p.minStock} />
+                      <div className="flex flex-col items-end gap-2">
+                        <StockRing stock={p.stock} minStock={p.minStock} />
+                        <GenerationRing status={p.modelGenerationStatus} progress={p.modelGenerationProgress} />
+                      </div>
                     </div>
 
                     <div className="flex items-center justify-between">
@@ -385,7 +491,7 @@ const ProductsManagementPage: React.FC = () => {
       </main>
 
       {/* Modal crear/editar producto */}
-      <ModalShell open={form.open} onClose={() => setForm(emptyForm)} title={form.editingId ? 'Editar producto' : 'Nuevo producto'} subtitle="Catálogo de la tienda">
+      <ModalShell open={form.open} onClose={resetForm} title={form.editingId ? 'Editar producto' : 'Nuevo producto'} subtitle="Catálogo de la tienda">
         <div className="space-y-4">
           <div className="space-y-3">
             <p className="text-[11px] font-bold uppercase tracking-wide text-gray-400">Datos generales</p>
@@ -410,11 +516,102 @@ const ProductsManagementPage: React.FC = () => {
 
           <div className="space-y-3 pt-3 border-t border-gray-100">
             <p className="text-[11px] font-bold uppercase tracking-wide text-gray-400">Multimedia</p>
-            <FormInput label="URL de imagen (opcional)" value={form.imageUrl} onChange={(v) => setForm((f) => ({ ...f, imageUrl: v }))} />
+            {form.editingId ? (
+              <div className="space-y-3">
+                <FormInput label="URL de imagen principal (opcional)" value={form.imageUrl} onChange={(v) => setForm((f) => ({ ...f, imageUrl: v }))} />
+                {editingProduct && (
+                  <>
+                    <div className="grid gap-3 md:grid-cols-3">
+                      {[
+                        { label: 'Frontal', url: editingProduct.frontImageUrl ?? editingProduct.imageUrl },
+                        { label: 'Lateral', url: editingProduct.leftImageUrl },
+                        { label: 'Trasera', url: editingProduct.backImageUrl },
+                      ].map((asset) => (
+                        <div key={asset.label} className="rounded-2xl border border-gray-100 bg-white p-3">
+                          <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-gray-600">
+                            <ImageIcon size={14} />
+                            {asset.label}
+                          </div>
+                          <div className="flex h-28 items-center justify-center overflow-hidden rounded-xl bg-gray-50 text-gray-300">
+                            {asset.url ? (
+                              <img src={asset.url} alt={`${editingProduct.name} ${asset.label}`} className="h-full w-full object-cover" />
+                            ) : (
+                              <ImageIcon size={22} />
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="rounded-2xl border border-gray-100 bg-white p-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex min-w-0 items-center gap-3">
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                            <Box size={18} />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-gray-900">{generationLabel(editingProduct.modelGenerationStatus)}</p>
+                            <p className="truncate text-xs text-gray-500">
+                              {editingProduct.modelGenerationError || `${editingProduct.modelGenerationProgress ?? 0}% completado`}
+                            </p>
+                          </div>
+                        </div>
+                        {editingProduct.model3dUrl && (
+                          <a
+                            href={editingProduct.model3dUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-gray-900 px-3 py-2 text-xs font-semibold text-white hover:bg-gray-800"
+                          >
+                            <ExternalLink size={13} />
+                            Abrir 3D
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            ) : (
+              <div className="grid gap-3 md:grid-cols-3">
+                {ASSET_SLOTS.map((slot) => {
+                  const previewKey = `${slot.key}Preview` as const;
+                  return (
+                    <label key={slot.key} className="group block rounded-2xl border border-dashed border-gray-200 bg-white/70 p-3 transition hover:border-primary/40 hover:bg-primary/5">
+                      <div className="flex items-center justify-between gap-2">
+                        <div>
+                          <p className="text-sm font-semibold text-gray-900">{slot.label}</p>
+                          <p className="text-[11px] text-gray-500">{slot.help}</p>
+                        </div>
+                        <span className="rounded-full bg-primary/10 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-primary">Obligatoria</span>
+                      </div>
+                      <div className="mt-3 flex min-h-32 items-center justify-center overflow-hidden rounded-xl border border-gray-100 bg-gray-50">
+                        {assets[previewKey] ? (
+                          <img src={assets[previewKey]} alt={slot.label} className="h-32 w-full object-cover" />
+                        ) : (
+                          <div className="flex flex-col items-center gap-2 py-8 text-center text-gray-400">
+                            <Upload size={18} />
+                            <span className="text-xs font-medium">Subir imagen</span>
+                          </div>
+                        )}
+                      </div>
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png"
+                        className="sr-only"
+                        onChange={(e) => { void setAssetFile(slot.key, e.target.files?.[0] ?? null); }}
+                      />
+                    </label>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
-          <button onClick={submitForm} className="w-full py-3 rounded-xl bg-primary text-white font-semibold hover:bg-primary/90">
-            {form.editingId ? 'Guardar cambios' : 'Crear producto'}
+          <button onClick={submitForm} disabled={submitLoading} className="w-full py-3 rounded-xl bg-primary text-white font-semibold hover:bg-primary/90 disabled:opacity-70 disabled:cursor-not-allowed">
+            <span className="inline-flex items-center justify-center gap-2">
+              {submitLoading && <Loader2 size={16} className="animate-spin" />}
+              {form.editingId ? 'Guardar cambios' : 'Crear producto'}
+            </span>
           </button>
         </div>
       </ModalShell>

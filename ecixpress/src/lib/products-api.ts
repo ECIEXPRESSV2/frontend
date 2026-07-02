@@ -36,6 +36,13 @@ export interface Product {
   /** Precio unitario en PESOS COP (string decimal, p. ej. "3500.00"). */
   price: string;
   imageUrl?: string | null;
+  frontImageUrl?: string | null;
+  leftImageUrl?: string | null;
+  backImageUrl?: string | null;
+  model3dUrl?: string | null;
+  modelGenerationStatus?: 'PENDING' | 'PROCESSING' | 'READY' | 'FAILED';
+  modelGenerationProgress?: number | null;
+  modelGenerationError?: string | null;
   sku?: string | null;
   stock: number;
   reservedStock: number;
@@ -90,6 +97,12 @@ export interface CreateProductInput {
   minStock?: number;
   sortOrder?: number;
   isActive?: boolean;
+}
+
+export interface ProductAssetFiles {
+  front: File;
+  left: File;
+  back: File;
 }
 
 export type StockOperation = 'set' | 'add' | 'subtract';
@@ -187,6 +200,17 @@ export const productsApi = {
   create: (input: CreateProductInput, token?: string | null) =>
     catalogFetch<Product>('/products', token, { method: 'POST', body: JSON.stringify(input) }),
 
+  createWithAssets: (input: CreateProductInput, files: ProductAssetFiles, token?: string | null) => {
+    const formData = new FormData();
+    for (const [key, value] of Object.entries(input)) {
+      if (value !== undefined && value !== null) formData.append(key, String(value));
+    }
+    formData.append('front', files.front);
+    formData.append('left', files.left);
+    formData.append('back', files.back);
+    return catalogFetch<Product>('/products/with-assets', token, { method: 'POST', body: formData });
+  },
+
   update: (id: string, input: Partial<CreateProductInput>, token?: string | null) =>
     catalogFetch<Product>(`/products/${id}`, token, { method: 'PATCH', body: JSON.stringify(input) }),
 
@@ -218,6 +242,10 @@ export const productsApi = {
   /** Alias retrocompatible de `create` (nombre previo). */
   createProduct: (input: CreateProductInput, token?: string | null) =>
     productsApi.create(input, token),
+
+  /** Alta con 3 imágenes obligatorias y generación 3D en segundo plano. */
+  createProductWithAssets: (input: CreateProductInput, files: ProductAssetFiles, token?: string | null) =>
+    productsApi.createWithAssets(input, files, token),
 
   /** Alias retrocompatible de `update` (nombre previo). */
   updateProduct: (id: string, input: Partial<CreateProductInput>, token?: string | null) =>
