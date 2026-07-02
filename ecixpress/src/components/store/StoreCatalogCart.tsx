@@ -550,7 +550,8 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName,
     setCheckingOut(true);
     try {
       // Vacía de inmediato cualquier cambio pendiente (el debounce) y espera a que se escriban
-      // todos: aquí SÍ hay que esperar la red, porque estamos a punto de cobrar y descontar stock.
+      // todos: aquí SÍ hay que esperar la red, porque estamos a punto de validar y reservar stock
+      // (y, solo si hay, cobrar).
       await flushCart();
       await mutationChain.current;
       const id = orderIdRef.current;
@@ -573,7 +574,10 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName,
       }
 
       await api.checkout(id);
-      toast.success('Pedido confirmado. Se cobrará de tu billetera.');
+      // El cobro NO ocurre aquí: primero se valida y reserva el stock de forma atómica.
+      // Solo si hay stock se cobra; si no, el pedido se rechaza por falta de stock. El
+      // resultado llega en tiempo real a "Mis pedidos" (WebSocket order:status-updated).
+      toast.success('Pedido recibido. Validando disponibilidad de stock…');
       setMobileCartOpen(false);
       navigate('/orders');
     } catch (e) {

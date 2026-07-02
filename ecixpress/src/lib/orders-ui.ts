@@ -4,6 +4,7 @@ import type { OrderStatus } from './orders-api';
 export const statusTone: Record<OrderStatus, string> = {
   DRAFT: 'bg-slate-100 text-slate-600',
   CREATED: 'bg-gray-100 text-gray-700',
+  PENDING_STOCK: 'bg-sky-100 text-sky-700',
   PENDING_PAYMENT: 'bg-amber-100 text-amber-700',
   PAYMENT_APPROVED: 'bg-blue-100 text-blue-700',
   CONFIRMED: 'bg-emerald-100 text-emerald-700',
@@ -19,6 +20,7 @@ export const statusTone: Record<OrderStatus, string> = {
 export const statusLabel: Record<OrderStatus, string> = {
   DRAFT: 'Carrito',
   CREATED: 'Creado',
+  PENDING_STOCK: 'Validando stock',
   PENDING_PAYMENT: 'Pago pendiente',
   PAYMENT_APPROVED: 'Pago aprobado',
   CONFIRMED: 'Confirmado',
@@ -34,6 +36,7 @@ export const statusLabel: Record<OrderStatus, string> = {
 /** Flujo "feliz" para la línea de seguimiento (RF-08). */
 export const ORDER_FLOW: OrderStatus[] = [
   'CREATED',
+  'PENDING_STOCK',
   'PENDING_PAYMENT',
   'PAYMENT_APPROVED',
   'CONFIRMED',
