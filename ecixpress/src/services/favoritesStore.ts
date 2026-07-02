@@ -1,4 +1,4 @@
-// Tiendas favoritas del usuario — almacenamiento local (localStorage), igual que storeImageStore.
+// Tiendas favoritas del usuario — almacenamiento local (localStorage).
 //
 // TODO: mover a un backend de preferencias del usuario (p. ej. identity-service) cuando exista
 // el servicio; por ahora las favoritas viven solo en el navegador donde se marcaron.

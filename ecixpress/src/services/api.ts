@@ -14,9 +14,12 @@ export async function apiFetch<T>(
   options: RequestInit = {}
 ): Promise<T> {
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
     ...(options.headers as Record<string, string>),
   };
+  // Con FormData el navegador fija el Content-Type (incluye el boundary); no lo forzamos a JSON.
+  if (!(options.body instanceof FormData)) {
+    headers['Content-Type'] = 'application/json';
+  }
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
   const sessionId = sessionStorage.getItem('sessionId');
