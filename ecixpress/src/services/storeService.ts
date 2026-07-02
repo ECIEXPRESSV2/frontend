@@ -101,6 +101,19 @@ export const uploadStoreLogo = (id: string, file: File, token: string) => {
   return apiFetch<Store>(`/stores/${id}/logo`, token, { method: 'POST', body });
 };
 
+/**
+ * Sube el banner (multipart) al backend, que lo guarda en Azure Blob Storage como
+ * store-banners/<storeId>.png. El banner se lee por convención (no hay campo en la tienda).
+ */
+export const uploadStoreBanner = (id: string, file: File, token: string) => {
+  const body = new FormData();
+  body.append('file', file);
+  return apiFetch<{ storeId: string; bannerUrl: string }>(`/stores/${id}/banner`, token, {
+    method: 'POST',
+    body,
+  });
+};
+
 export const updateStoreStatus = (id: string, status: string, token: string) =>
   apiFetch<Store>(`/stores/${id}/status`, token, {
     method: 'PATCH',
