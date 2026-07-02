@@ -51,18 +51,18 @@ export async function catalogFetch<T>(
   _auth?: string | null,
   init?: RequestInit,
 ): Promise<T> {
+  const isFormData = typeof FormData !== 'undefined' && init?.body instanceof FormData;
   // Bearer de Firebase: requerido al pasar por el API Gateway (valida y enriquece;
   // descarta el x-user-id del cliente). En modo directo products lo ignora.
   const token = await getFirebaseIdToken();
+  const headers = new Headers(init?.headers);
+  if (!isFormData) headers.set('Content-Type', 'application/json');
+  if (token) headers.set('Authorization', `Bearer ${token}`);
+  if (catalogUserId) headers.set('x-user-id', catalogUserId);
+  if (catalogUserRole) headers.set('x-user-role', catalogUserRole);
   const response = await fetch(`${CATALOG_API_BASE_URL}${path}`, {
     ...init,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(catalogUserId ? { 'x-user-id': catalogUserId } : {}),
-      ...(catalogUserRole ? { 'x-user-role': catalogUserRole } : {}),
-      ...(init?.headers ?? {}),
-    },
+    headers,
   });
 
   if (!response.ok) {
