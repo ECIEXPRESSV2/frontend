@@ -26,7 +26,7 @@ import { CardSkeleton, TableSkeleton } from '../../components/common/LoadingSkel
 const LocationPickerModal = lazy(() => import('../../components/admin/LocationPickerModal'));
 import { useAuth } from '../../context/AuthContext';
 import {
-  getStores, createStore, updateStore, updateStoreStatus,
+  getStores, createStore, updateStore, updateStoreStatus, uploadStoreLogo,
   getStoreSchedules, createSchedule, updateSchedule, deleteSchedule,
   getStoreClosures, createClosure, cancelClosure,
   assignStaff, removeStaff, getStoreById,
@@ -35,7 +35,7 @@ import {
 } from '../../services/storeService';
 import { getUsers, type UserItem } from '../../services/userService';
 import { deletePageCache, getPageCache, pageCacheKeys, setPageCache } from '../../services/pageCache';
-import { getStoreImage, setStoreImage, fileToDataUrl } from '../../services/storeImageStore';
+import { getStoreLogoUrl, fileToDataUrl } from '../../services/storeAssets';
 
 type TabType = 'schedules' | 'staff' | 'menu';
 type StatusAction = { store: Store; nextStatus: Store['status'] } | null;
@@ -136,7 +136,12 @@ const getStoreInitials = (name: string) =>
     .map(part => part[0]?.toUpperCase())
     .join('') || 'EC';
 
-const getStoreVisual = (store: Store) => getStoreImage(store.id) ?? store.imageUrl ?? '';
+// Imagen de la tienda: la URL pública del Blob (imageUrl, seteada por el backend al subir el logo),
+// con cache-bust por updatedAt para reflejar reemplazos al instante; si no hay, la URL por convención.
+const getStoreVisual = (store: Store): string =>
+  store.imageUrl
+    ? `${store.imageUrl}?v=${encodeURIComponent(store.updatedAt ?? '')}`
+    : getStoreLogoUrl(store.id) ?? '';
 
 
 const formatDaySet = (days: number[]) => {
@@ -298,12 +303,14 @@ const StoresPage: React.FC = () => {
   const [showCreate, setShowCreate] = useState(false);
   const [createForm, setCreateForm] = useState<CreateStoreDto>({ name: '', type: 'CAFETERIA', location: '' });
   const [createImage, setCreateImage] = useState<string | undefined>(undefined);
+  const [createImageFile, setCreateImageFile] = useState<File | null>(null);
   const [creating, setCreating] = useState(false);
 
   // Edit store
   const [editingStore, setEditingStore] = useState<Store | null>(null);
   const [editForm, setEditForm] = useState<Partial<CreateStoreDto>>({});
   const [editImage, setEditImage] = useState<string | undefined>(undefined);
+  const [editImageFile, setEditImageFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
 
   // Selector de ubicación (mapa 3D); 'create' | 'edit' indica a qué formulario aplica.
@@ -489,13 +496,22 @@ const StoresPage: React.FC = () => {
     try {
       const token = await getToken();
       const created = await createStore(createForm, token);
-      // La imagen elegida desde el dispositivo se guarda localmente (ver storeImageStore).
-      // TODO: subirla a un Blob Storage y mandar la URL al backend cuando exista el servicio.
-      if (createImage && created?.id) setStoreImage(created.id, createImage);
-      toast.success('Tienda creada correctamente.');
+      // La imagen viaja al backend, que la sube a Azure Blob Storage como <storeId>.png.
+      let logoOk = true;
+      if (createImageFile && created?.id) {
+        try {
+          await uploadStoreLogo(created.id, createImageFile, token);
+        } catch {
+          logoOk = false;
+        }
+      }
+      toast[logoOk ? 'success' : 'warning'](
+        logoOk ? 'Tienda creada correctamente.' : 'Tienda creada, pero no se pudo subir el logo.',
+      );
       setShowCreate(false);
       setCreateForm({ name: '', type: 'CAFETERIA', location: '' });
       setCreateImage(undefined);
+      setCreateImageFile(null);
       await loadStores();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'No fue posible crear la tienda.');
@@ -506,15 +522,21 @@ const StoresPage: React.FC = () => {
 
   const handleImageFile = async (
     file: File | undefined,
-    set: (v: string | undefined) => void,
+    setPreview: (v: string | undefined) => void,
+    setFile: (f: File | null) => void,
   ) => {
     if (!file) return;
     if (!file.type.startsWith('image/')) {
       toast.error('El archivo debe ser una imagen');
       return;
     }
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('La imagen no debe superar 2 MB');
+      return;
+    }
     try {
-      set(await fileToDataUrl(file));
+      setPreview(await fileToDataUrl(file)); // vista previa local (base64)
+      setFile(file);                          // archivo real que se subirá al guardar
     } catch {
       toast.error('No se pudo leer la imagen');
     }
@@ -528,7 +550,8 @@ const StoresPage: React.FC = () => {
       location: store.location,
       imageUrl: store.imageUrl ?? undefined,
     });
-    setEditImage(getStoreImage(store.id) ?? store.imageUrl ?? undefined);
+    setEditImage(store.imageUrl ?? undefined); // vista previa del logo actual (si existe)
+    setEditImageFile(null);
     setEditingStore(store);
   };
 
@@ -541,12 +564,22 @@ const StoresPage: React.FC = () => {
         Object.entries(editForm).filter(([, v]) => v !== '' && v !== undefined)
       ) as Partial<CreateStoreDto>;
       await updateStore(editingStore.id, payload, token);
-      // Imagen local (TODO: migrar a Blob Storage).
-      if (editImage) setStoreImage(editingStore.id, editImage);
-      toast.success('Tienda actualizada correctamente.');
+      // Si el usuario eligió una nueva imagen, se sube al Blob vía backend.
+      let logoOk = true;
+      if (editImageFile) {
+        try {
+          await uploadStoreLogo(editingStore.id, editImageFile, token);
+        } catch {
+          logoOk = false;
+        }
+      }
+      toast[logoOk ? 'success' : 'warning'](
+        logoOk ? 'Tienda actualizada correctamente.' : 'Datos guardados, pero no se pudo subir el logo.',
+      );
       deletePageCache(pageCacheKeys.adminStoreDetail(editingStore.id));
       setEditingStore(null);
       setEditImage(undefined);
+      setEditImageFile(null);
       await loadStores();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'No fue posible guardar los cambios.');
@@ -1081,7 +1114,7 @@ const StoresPage: React.FC = () => {
                   </label>
                   <button
                     type="button"
-                    onClick={() => setShowCreate(true)}
+                    onClick={() => { setCreateImage(undefined); setCreateImageFile(null); setShowCreate(true); }}
                     className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-yellow-400 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-300"
                   >
                     <Plus size={16} aria-hidden="true" />
@@ -1296,7 +1329,7 @@ const StoresPage: React.FC = () => {
                   </div>
                   <h3 className="text-lg font-bold text-gray-950">No hay tiendas registradas</h3>
                   <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-gray-500">Crea la primera tienda para empezar a configurar horarios, responsables y disponibilidad.</p>
-                  <button type="button" onClick={() => setShowCreate(true)} className="mt-5 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-yellow-400 px-4 py-2 text-sm font-bold text-gray-950 transition hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-300">
+                  <button type="button" onClick={() => { setCreateImage(undefined); setCreateImageFile(null); setShowCreate(true); }} className="mt-5 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-yellow-400 px-4 py-2 text-sm font-bold text-gray-950 transition hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-300">
                     <Plus size={16} aria-hidden="true" />
                     Nueva tienda
                   </button>
@@ -1490,7 +1523,7 @@ const StoresPage: React.FC = () => {
                 <p className="text-xs font-bold uppercase tracking-wide text-amber-600">Editar tienda</p>
                 <h3 className="mt-1 text-xl font-bold text-gray-950">{editingStore.name}</h3>
               </div>
-              <button type="button" onClick={() => { setEditingStore(null); setEditImage(undefined); }} className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 transition hover:bg-gray-50 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-yellow-300" aria-label="Cerrar">
+              <button type="button" onClick={() => { setEditingStore(null); setEditImage(undefined); setEditImageFile(null); }} className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 transition hover:bg-gray-50 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-yellow-300" aria-label="Cerrar">
                 <X size={16} aria-hidden="true" />
               </button>
             </div>
@@ -1519,7 +1552,7 @@ const StoresPage: React.FC = () => {
                 onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))}
               />
               <div>
-                <input ref={editFileRef} type="file" accept="image/*" className="hidden" onChange={e => { handleImageFile(e.target.files?.[0], setEditImage); e.target.value = ''; }} />
+                <input ref={editFileRef} type="file" accept="image/*" className="hidden" onChange={e => { handleImageFile(e.target.files?.[0], setEditImage, setEditImageFile); e.target.value = ''; }} />
                 <button type="button" onClick={() => editFileRef.current?.click()} className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-gray-300 px-3 py-4 text-sm font-bold text-gray-500 transition hover:border-yellow-400 hover:text-amber-700 focus:outline-none focus:ring-2 focus:ring-yellow-300">
                   <ImagePlus size={16} aria-hidden="true" /> {editImage ? 'Cambiar imagen' : 'Subir imagen (opcional)'}
                 </button>
@@ -1527,7 +1560,7 @@ const StoresPage: React.FC = () => {
               </div>
             </div>
             <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row">
-              <button onClick={() => { setEditingStore(null); setEditImage(undefined); }} className="inline-flex min-h-11 flex-1 items-center justify-center rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700 transition hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-yellow-300">
+              <button onClick={() => { setEditingStore(null); setEditImage(undefined); setEditImageFile(null); }} className="inline-flex min-h-11 flex-1 items-center justify-center rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700 transition hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-yellow-300">
                 Cancelar
               </button>
               <button
@@ -1552,7 +1585,7 @@ const StoresPage: React.FC = () => {
                 <p className="text-xs font-bold uppercase tracking-wide text-amber-600">Nuevo punto de venta</p>
                 <h3 className="mt-1 text-xl font-bold text-gray-950">Crear tienda</h3>
               </div>
-              <button type="button" onClick={() => { setShowCreate(false); setCreateImage(undefined); }} className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 transition hover:bg-gray-50 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-yellow-300" aria-label="Cerrar">
+              <button type="button" onClick={() => { setShowCreate(false); setCreateImage(undefined); setCreateImageFile(null); }} className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 transition hover:bg-gray-50 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-yellow-300" aria-label="Cerrar">
                 <X size={16} aria-hidden="true" />
               </button>
             </div>
@@ -1571,7 +1604,7 @@ const StoresPage: React.FC = () => {
               </div>
               <input className="w-full rounded-xl border border-gray-200 px-3 py-3 text-sm outline-none transition focus:border-yellow-400 focus:ring-2 focus:ring-yellow-100" placeholder="Descripción (opcional)" value={createForm.description || ''} onChange={e => setCreateForm(f => ({ ...f, description: e.target.value }))} />
               <div>
-                <input ref={createFileRef} type="file" accept="image/*" className="hidden" onChange={e => { handleImageFile(e.target.files?.[0], setCreateImage); e.target.value = ''; }} />
+                <input ref={createFileRef} type="file" accept="image/*" className="hidden" onChange={e => { handleImageFile(e.target.files?.[0], setCreateImage, setCreateImageFile); e.target.value = ''; }} />
                 <button type="button" onClick={() => createFileRef.current?.click()} className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-gray-300 px-3 py-4 text-sm font-bold text-gray-500 transition hover:border-yellow-400 hover:text-amber-700 focus:outline-none focus:ring-2 focus:ring-yellow-300">
                   <ImagePlus size={16} aria-hidden="true" /> {createImage ? 'Cambiar imagen' : 'Subir imagen (opcional)'}
                 </button>
@@ -1579,7 +1612,7 @@ const StoresPage: React.FC = () => {
               </div>
             </div>
             <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row">
-              <button onClick={() => { setShowCreate(false); setCreateImage(undefined); }} className="inline-flex min-h-11 flex-1 items-center justify-center rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700 transition hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-yellow-300">
+              <button onClick={() => { setShowCreate(false); setCreateImage(undefined); setCreateImageFile(null); }} className="inline-flex min-h-11 flex-1 items-center justify-center rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700 transition hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-yellow-300">
                 Cancelar
               </button>
               <button onClick={handleCreateStore} disabled={creating || !createForm.name || !createForm.location} className="inline-flex min-h-11 flex-1 items-center justify-center rounded-xl bg-yellow-400 px-4 py-2 text-sm font-bold text-gray-950 transition hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-300 disabled:cursor-not-allowed disabled:opacity-50">

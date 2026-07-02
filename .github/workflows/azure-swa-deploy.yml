@@ -11,6 +11,7 @@
 #       VITE_WOMPI_PUBLIC_KEY     = pub_test_...
 #       VITE_FIREBASE_API_KEY / _AUTH_DOMAIN / _PROJECT_ID / _STORAGE_BUCKET /
 #       _MESSAGING_SENDER_ID / _APP_ID
+#       VITE_BLOB_STORAGE         = https://<cuenta>.blob.core.windows.net   (cuenta de Blob)
 #   (Firebase web config y la llave pública de Wompi son públicas: van en el bundle.)
 # ═════════════════════════════════════════════════════════════════════════════
 name: azure-swa-deploy
@@ -59,3 +60,5 @@ jobs:
           VITE_FIREBASE_STORAGE_BUCKET: ${{ vars.VITE_FIREBASE_STORAGE_BUCKET }}
           VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ vars.VITE_FIREBASE_MESSAGING_SENDER_ID }}
           VITE_FIREBASE_APP_ID: ${{ vars.VITE_FIREBASE_APP_ID }}
+          # Cuenta de Azure Blob (el código añade el contenedor store-logos / store-banners).
+          VITE_BLOB_STORAGE: ${{ vars.VITE_BLOB_STORAGE }}

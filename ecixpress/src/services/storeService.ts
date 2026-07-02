@@ -34,6 +34,7 @@ export interface Store {
   status: 'OPEN' | 'CLOSED' | 'TEMPORARILY_CLOSED';
   isActive: boolean;
   createdAt: string;
+  updatedAt?: string;
   schedules?: StoreSchedule[];
   closures?: StoreClosure[];
   staff?: StoreStaff[];
@@ -89,6 +90,16 @@ export const createStore = (data: CreateStoreDto, token: string) =>
 
 export const updateStore = (id: string, data: Partial<CreateStoreDto>, token: string) =>
   apiFetch<Store>(`/stores/${id}`, token, { method: 'PUT', body: JSON.stringify(data) });
+
+/**
+ * Sube el logo de la tienda (multipart) al backend, que lo guarda en Azure Blob Storage como
+ * <storeId>.png y actualiza `imageUrl`. Devuelve la tienda ya actualizada.
+ */
+export const uploadStoreLogo = (id: string, file: File, token: string) => {
+  const body = new FormData();
+  body.append('file', file);
+  return apiFetch<Store>(`/stores/${id}/logo`, token, { method: 'POST', body });
+};
 
 export const updateStoreStatus = (id: string, status: string, token: string) =>
   apiFetch<Store>(`/stores/${id}/status`, token, {

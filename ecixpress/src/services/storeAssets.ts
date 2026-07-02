@@ -8,8 +8,17 @@
 // IMPORTANTE: aquí solo va la URL pública de LECTURA. La cadena de conexión / AccountKey (que da
 // permiso de ESCRITURA) nunca debe estar en el frontend: solo se usa para SUBIR las imágenes.
 
-const LOGOS_BASE = (import.meta.env.VITE_STORE_LOGOS_URL ?? '').replace(/\/$/, '');
-const BANNERS_BASE = (import.meta.env.VITE_STORE_BANNERS_URL ?? '').replace(/\/$/, '');
+// Base de la cuenta de Azure Blob (p. ej. https://<cuenta>.blob.core.windows.net). El nombre del
+// contenedor NO va en la variable: es una convención fija del código, así una sola variable de
+// entorno basta para toda la cuenta. Se normaliza la barra final para no duplicarla al concatenar.
+const STORAGE_BASE = (import.meta.env.VITE_BLOB_STORAGE ?? '').replace(/\/$/, '');
+
+// Contenedores públicos (lectura anónima). Los archivos se llaman <storeId>.png.
+const LOGOS_CONTAINER = 'store-logos';
+const BANNERS_CONTAINER = 'store-banners';
+
+const LOGOS_BASE = STORAGE_BASE ? `${STORAGE_BASE}/${LOGOS_CONTAINER}` : '';
+const BANNERS_BASE = STORAGE_BASE ? `${STORAGE_BASE}/${BANNERS_CONTAINER}` : '';
 
 /** URL pública del logo de una tienda, o null si aún no se configuró el contenedor. */
 export const getStoreLogoUrl = (storeId: string | number): string | null =>
@@ -18,3 +27,12 @@ export const getStoreLogoUrl = (storeId: string | number): string | null =>
 /** URL pública del banner de una tienda, o null si aún no se configuró el contenedor. */
 export const getStoreBannerUrl = (storeId: string | number): string | null =>
   BANNERS_BASE ? `${BANNERS_BASE}/${storeId}.png` : null;
+
+/** Lee un archivo de imagen como data URL (base64) para previsualizarlo antes de subirlo. */
+export const fileToDataUrl = (file: File): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(new Error('No se pudo leer la imagen'));
+    reader.readAsDataURL(file);
+  });
