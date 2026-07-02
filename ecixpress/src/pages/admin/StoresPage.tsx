@@ -26,7 +26,7 @@ import { CardSkeleton, TableSkeleton } from '../../components/common/LoadingSkel
 const LocationPickerModal = lazy(() => import('../../components/admin/LocationPickerModal'));
 import { useAuth } from '../../context/AuthContext';
 import {
-  getStores, createStore, updateStore, updateStoreStatus, uploadStoreLogo,
+  getStores, createStore, updateStore, updateStoreStatus, uploadStoreLogo, uploadStoreBanner,
   getStoreSchedules, createSchedule, updateSchedule, deleteSchedule,
   getStoreClosures, createClosure, cancelClosure,
   assignStaff, removeStaff, getStoreById,
@@ -35,7 +35,7 @@ import {
 } from '../../services/storeService';
 import { getUsers, type UserItem } from '../../services/userService';
 import { deletePageCache, getPageCache, pageCacheKeys, setPageCache } from '../../services/pageCache';
-import { getStoreLogoUrl, fileToDataUrl } from '../../services/storeAssets';
+import { getStoreLogoUrl, fileToDataUrl, compressImageToWebp } from '../../services/storeAssets';
 
 type TabType = 'schedules' | 'staff' | 'menu';
 type StatusAction = { store: Store; nextStatus: Store['status'] } | null;
@@ -142,6 +142,12 @@ const getStoreVisual = (store: Store): string =>
   store.imageUrl
     ? `${store.imageUrl}?v=${encodeURIComponent(store.updatedAt ?? '')}`
     : getStoreLogoUrl(store.id) ?? '';
+
+// Formatos que acepta el backend (ver ALLOWED_IMAGE_TYPES en identity). La optimización convierte a
+// WebP; si el navegador no soportara la conversión, se sube el original y debe ser uno de estos.
+const ACCEPTED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
+// Tope tras optimizar (red de seguridad). Con la compresión a WebP casi nunca se alcanza.
+const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 
 
 const formatDaySet = (days: number[]) => {
@@ -304,6 +310,8 @@ const StoresPage: React.FC = () => {
   const [createForm, setCreateForm] = useState<CreateStoreDto>({ name: '', type: 'CAFETERIA', location: '' });
   const [createImage, setCreateImage] = useState<string | undefined>(undefined);
   const [createImageFile, setCreateImageFile] = useState<File | null>(null);
+  const [createBanner, setCreateBanner] = useState<string | undefined>(undefined);
+  const [createBannerFile, setCreateBannerFile] = useState<File | null>(null);
   const [creating, setCreating] = useState(false);
 
   // Edit store
@@ -311,12 +319,16 @@ const StoresPage: React.FC = () => {
   const [editForm, setEditForm] = useState<Partial<CreateStoreDto>>({});
   const [editImage, setEditImage] = useState<string | undefined>(undefined);
   const [editImageFile, setEditImageFile] = useState<File | null>(null);
+  const [editBanner, setEditBanner] = useState<string | undefined>(undefined);
+  const [editBannerFile, setEditBannerFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
 
   // Selector de ubicación (mapa 3D); 'create' | 'edit' indica a qué formulario aplica.
   const [locationPickerFor, setLocationPickerFor] = useState<'create' | 'edit' | null>(null);
   const createFileRef = useRef<HTMLInputElement>(null);
   const editFileRef = useRef<HTMLInputElement>(null);
+  const createBannerRef = useRef<HTMLInputElement>(null);
+  const editBannerRef = useRef<HTMLInputElement>(null);
 
   // Edit schedule
   const [editingSchedule, setEditingSchedule] = useState<StoreSchedule | null>(null);
@@ -496,22 +508,24 @@ const StoresPage: React.FC = () => {
     try {
       const token = await getToken();
       const created = await createStore(createForm, token);
-      // La imagen viaja al backend, que la sube a Azure Blob Storage como <storeId>.png.
-      let logoOk = true;
-      if (createImageFile && created?.id) {
-        try {
-          await uploadStoreLogo(created.id, createImageFile, token);
-        } catch {
-          logoOk = false;
-        }
+      // Logo y banner viajan al backend, que los sube a Azure Blob Storage como <storeId>.png.
+      const failed: string[] = [];
+      if (created?.id && createImageFile) {
+        try { await uploadStoreLogo(created.id, createImageFile, token); }
+        catch { failed.push('el logo'); }
       }
-      toast[logoOk ? 'success' : 'warning'](
-        logoOk ? 'Tienda creada correctamente.' : 'Tienda creada, pero no se pudo subir el logo.',
-      );
+      if (created?.id && createBannerFile) {
+        try { await uploadStoreBanner(created.id, createBannerFile, token); }
+        catch { failed.push('el banner'); }
+      }
+      if (failed.length) toast.warning(`Tienda creada, pero no se pudo subir ${failed.join(' ni ')}.`);
+      else toast.success('Tienda creada correctamente.');
       setShowCreate(false);
       setCreateForm({ name: '', type: 'CAFETERIA', location: '' });
       setCreateImage(undefined);
       setCreateImageFile(null);
+      setCreateBanner(undefined);
+      setCreateBannerFile(null);
       await loadStores();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'No fue posible crear la tienda.');
@@ -530,15 +544,21 @@ const StoresPage: React.FC = () => {
       toast.error('El archivo debe ser una imagen');
       return;
     }
-    if (file.size > 2 * 1024 * 1024) {
-      toast.error('La imagen no debe superar 2 MB');
-      return;
-    }
     try {
-      setPreview(await fileToDataUrl(file)); // vista previa local (base64)
-      setFile(file);                          // archivo real que se subirá al guardar
+      // Redimensiona y recomprime a WebP en el navegador para que el peso no sea problema.
+      const optimized = (await compressImageToWebp(file)) ?? file;
+      if (!ACCEPTED_IMAGE_TYPES.includes(optimized.type)) {
+        toast.error('Formato no soportado. Usa PNG, JPG o WebP.');
+        return;
+      }
+      if (optimized.size > MAX_UPLOAD_BYTES) {
+        toast.error('La imagen es demasiado grande (máx. 5 MB tras optimizar).');
+        return;
+      }
+      setPreview(await fileToDataUrl(optimized)); // vista previa = lo que realmente se subirá
+      setFile(optimized);                          // archivo optimizado que se sube al guardar
     } catch {
-      toast.error('No se pudo leer la imagen');
+      toast.error('No se pudo procesar la imagen');
     }
   };
 
@@ -552,6 +572,9 @@ const StoresPage: React.FC = () => {
     });
     setEditImage(store.imageUrl ?? undefined); // vista previa del logo actual (si existe)
     setEditImageFile(null);
+    // El banner no tiene campo en BD; no pre-cargamos preview para no mostrar un 404 si no hay.
+    setEditBanner(undefined);
+    setEditBannerFile(null);
     setEditingStore(store);
   };
 
@@ -564,22 +587,24 @@ const StoresPage: React.FC = () => {
         Object.entries(editForm).filter(([, v]) => v !== '' && v !== undefined)
       ) as Partial<CreateStoreDto>;
       await updateStore(editingStore.id, payload, token);
-      // Si el usuario eligió una nueva imagen, se sube al Blob vía backend.
-      let logoOk = true;
+      // Si el usuario eligió nuevas imágenes, se suben al Blob vía backend.
+      const failed: string[] = [];
       if (editImageFile) {
-        try {
-          await uploadStoreLogo(editingStore.id, editImageFile, token);
-        } catch {
-          logoOk = false;
-        }
+        try { await uploadStoreLogo(editingStore.id, editImageFile, token); }
+        catch { failed.push('el logo'); }
       }
-      toast[logoOk ? 'success' : 'warning'](
-        logoOk ? 'Tienda actualizada correctamente.' : 'Datos guardados, pero no se pudo subir el logo.',
-      );
+      if (editBannerFile) {
+        try { await uploadStoreBanner(editingStore.id, editBannerFile, token); }
+        catch { failed.push('el banner'); }
+      }
+      if (failed.length) toast.warning(`Datos guardados, pero no se pudo subir ${failed.join(' ni ')}.`);
+      else toast.success('Tienda actualizada correctamente.');
       deletePageCache(pageCacheKeys.adminStoreDetail(editingStore.id));
       setEditingStore(null);
       setEditImage(undefined);
       setEditImageFile(null);
+      setEditBanner(undefined);
+      setEditBannerFile(null);
       await loadStores();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'No fue posible guardar los cambios.');
@@ -1114,7 +1139,7 @@ const StoresPage: React.FC = () => {
                   </label>
                   <button
                     type="button"
-                    onClick={() => { setCreateImage(undefined); setCreateImageFile(null); setShowCreate(true); }}
+                    onClick={() => { setCreateImage(undefined); setCreateImageFile(null); setCreateBanner(undefined); setCreateBannerFile(null); setShowCreate(true); }}
                     className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-yellow-400 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-300"
                   >
                     <Plus size={16} aria-hidden="true" />
@@ -1329,7 +1354,7 @@ const StoresPage: React.FC = () => {
                   </div>
                   <h3 className="text-lg font-bold text-gray-950">No hay tiendas registradas</h3>
                   <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-gray-500">Crea la primera tienda para empezar a configurar horarios, responsables y disponibilidad.</p>
-                  <button type="button" onClick={() => { setCreateImage(undefined); setCreateImageFile(null); setShowCreate(true); }} className="mt-5 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-yellow-400 px-4 py-2 text-sm font-bold text-gray-950 transition hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-300">
+                  <button type="button" onClick={() => { setCreateImage(undefined); setCreateImageFile(null); setCreateBanner(undefined); setCreateBannerFile(null); setShowCreate(true); }} className="mt-5 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-yellow-400 px-4 py-2 text-sm font-bold text-gray-950 transition hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-300">
                     <Plus size={16} aria-hidden="true" />
                     Nueva tienda
                   </button>
@@ -1523,7 +1548,7 @@ const StoresPage: React.FC = () => {
                 <p className="text-xs font-bold uppercase tracking-wide text-amber-600">Editar tienda</p>
                 <h3 className="mt-1 text-xl font-bold text-gray-950">{editingStore.name}</h3>
               </div>
-              <button type="button" onClick={() => { setEditingStore(null); setEditImage(undefined); setEditImageFile(null); }} className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 transition hover:bg-gray-50 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-yellow-300" aria-label="Cerrar">
+              <button type="button" onClick={() => { setEditingStore(null); setEditImage(undefined); setEditImageFile(null); setEditBanner(undefined); setEditBannerFile(null); }} className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 transition hover:bg-gray-50 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-yellow-300" aria-label="Cerrar">
                 <X size={16} aria-hidden="true" />
               </button>
             </div>
@@ -1554,13 +1579,20 @@ const StoresPage: React.FC = () => {
               <div>
                 <input ref={editFileRef} type="file" accept="image/*" className="hidden" onChange={e => { handleImageFile(e.target.files?.[0], setEditImage, setEditImageFile); e.target.value = ''; }} />
                 <button type="button" onClick={() => editFileRef.current?.click()} className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-gray-300 px-3 py-4 text-sm font-bold text-gray-500 transition hover:border-yellow-400 hover:text-amber-700 focus:outline-none focus:ring-2 focus:ring-yellow-300">
-                  <ImagePlus size={16} aria-hidden="true" /> {editImage ? 'Cambiar imagen' : 'Subir imagen (opcional)'}
+                  <ImagePlus size={16} aria-hidden="true" /> {editImage ? 'Cambiar logo' : 'Subir logo (opcional)'}
                 </button>
-                {editImage && <img src={editImage} alt="Vista previa" className="mt-3 h-36 w-full rounded-xl border border-gray-100 object-cover" />}
+                {editImage && <img src={editImage} alt="Vista previa del logo" className="mt-3 h-36 w-full rounded-xl border border-gray-100 object-cover" />}
+              </div>
+              <div>
+                <input ref={editBannerRef} type="file" accept="image/*" className="hidden" onChange={e => { handleImageFile(e.target.files?.[0], setEditBanner, setEditBannerFile); e.target.value = ''; }} />
+                <button type="button" onClick={() => editBannerRef.current?.click()} className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-gray-300 px-3 py-4 text-sm font-bold text-gray-500 transition hover:border-yellow-400 hover:text-amber-700 focus:outline-none focus:ring-2 focus:ring-yellow-300">
+                  <ImagePlus size={16} aria-hidden="true" /> {editBanner ? 'Cambiar banner' : 'Subir banner (opcional)'}
+                </button>
+                {editBanner && <img src={editBanner} alt="Vista previa del banner" className="mt-3 h-24 w-full rounded-xl border border-gray-100 object-cover" />}
               </div>
             </div>
             <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row">
-              <button onClick={() => { setEditingStore(null); setEditImage(undefined); setEditImageFile(null); }} className="inline-flex min-h-11 flex-1 items-center justify-center rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700 transition hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-yellow-300">
+              <button onClick={() => { setEditingStore(null); setEditImage(undefined); setEditImageFile(null); setEditBanner(undefined); setEditBannerFile(null); }} className="inline-flex min-h-11 flex-1 items-center justify-center rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700 transition hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-yellow-300">
                 Cancelar
               </button>
               <button
@@ -1585,7 +1617,7 @@ const StoresPage: React.FC = () => {
                 <p className="text-xs font-bold uppercase tracking-wide text-amber-600">Nuevo punto de venta</p>
                 <h3 className="mt-1 text-xl font-bold text-gray-950">Crear tienda</h3>
               </div>
-              <button type="button" onClick={() => { setShowCreate(false); setCreateImage(undefined); setCreateImageFile(null); }} className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 transition hover:bg-gray-50 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-yellow-300" aria-label="Cerrar">
+              <button type="button" onClick={() => { setShowCreate(false); setCreateImage(undefined); setCreateImageFile(null); setCreateBanner(undefined); setCreateBannerFile(null); }} className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 transition hover:bg-gray-50 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-yellow-300" aria-label="Cerrar">
                 <X size={16} aria-hidden="true" />
               </button>
             </div>
@@ -1606,13 +1638,20 @@ const StoresPage: React.FC = () => {
               <div>
                 <input ref={createFileRef} type="file" accept="image/*" className="hidden" onChange={e => { handleImageFile(e.target.files?.[0], setCreateImage, setCreateImageFile); e.target.value = ''; }} />
                 <button type="button" onClick={() => createFileRef.current?.click()} className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-gray-300 px-3 py-4 text-sm font-bold text-gray-500 transition hover:border-yellow-400 hover:text-amber-700 focus:outline-none focus:ring-2 focus:ring-yellow-300">
-                  <ImagePlus size={16} aria-hidden="true" /> {createImage ? 'Cambiar imagen' : 'Subir imagen (opcional)'}
+                  <ImagePlus size={16} aria-hidden="true" /> {createImage ? 'Cambiar logo' : 'Subir logo (opcional)'}
                 </button>
-                {createImage && <img src={createImage} alt="Vista previa" className="mt-3 h-36 w-full rounded-xl border border-gray-100 object-cover" />}
+                {createImage && <img src={createImage} alt="Vista previa del logo" className="mt-3 h-36 w-full rounded-xl border border-gray-100 object-cover" />}
+              </div>
+              <div>
+                <input ref={createBannerRef} type="file" accept="image/*" className="hidden" onChange={e => { handleImageFile(e.target.files?.[0], setCreateBanner, setCreateBannerFile); e.target.value = ''; }} />
+                <button type="button" onClick={() => createBannerRef.current?.click()} className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-gray-300 px-3 py-4 text-sm font-bold text-gray-500 transition hover:border-yellow-400 hover:text-amber-700 focus:outline-none focus:ring-2 focus:ring-yellow-300">
+                  <ImagePlus size={16} aria-hidden="true" /> {createBanner ? 'Cambiar banner' : 'Subir banner (opcional)'}
+                </button>
+                {createBanner && <img src={createBanner} alt="Vista previa del banner" className="mt-3 h-24 w-full rounded-xl border border-gray-100 object-cover" />}
               </div>
             </div>
             <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row">
-              <button onClick={() => { setShowCreate(false); setCreateImage(undefined); setCreateImageFile(null); }} className="inline-flex min-h-11 flex-1 items-center justify-center rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700 transition hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-yellow-300">
+              <button onClick={() => { setShowCreate(false); setCreateImage(undefined); setCreateImageFile(null); setCreateBanner(undefined); setCreateBannerFile(null); }} className="inline-flex min-h-11 flex-1 items-center justify-center rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700 transition hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-yellow-300">
                 Cancelar
               </button>
               <button onClick={handleCreateStore} disabled={creating || !createForm.name || !createForm.location} className="inline-flex min-h-11 flex-1 items-center justify-center rounded-xl bg-yellow-400 px-4 py-2 text-sm font-bold text-gray-950 transition hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-300 disabled:cursor-not-allowed disabled:opacity-50">
