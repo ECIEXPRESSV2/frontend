@@ -9,7 +9,12 @@
 // permiso de ESCRITURA) nunca debe estar en el frontend: solo se usa para SUBIR las imágenes.
 
 const LOGOS_BASE = (import.meta.env.VITE_STORE_LOGOS_URL ?? '').replace(/\/$/, '');
+const BANNERS_BASE = (import.meta.env.VITE_STORE_BANNERS_URL ?? '').replace(/\/$/, '');
 
 /** URL pública del logo de una tienda, o null si aún no se configuró el contenedor. */
 export const getStoreLogoUrl = (storeId: string | number): string | null =>
   LOGOS_BASE ? `${LOGOS_BASE}/${storeId}.png` : null;
+
+/** URL pública del banner de una tienda, o null si aún no se configuró el contenedor. */
+export const getStoreBannerUrl = (storeId: string | number): string | null =>
+  BANNERS_BASE ? `${BANNERS_BASE}/${storeId}.png` : null;

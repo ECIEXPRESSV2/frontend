@@ -8,7 +8,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useFavorites } from '../../hooks/useFavorites';
 import { getStoreById, getStoreSchedules, getDayName, type Store, type StoreSchedule } from '../../services/storeService';
 import { getStoreImage } from '../../services/storeImageStore';
-import { getStoreLogoUrl } from '../../services/storeAssets';
+import { getStoreBannerUrl, getStoreLogoUrl } from '../../services/storeAssets';
 
 const STATUS_LABELS: Record<string, { label: string; dot: string; color: string }> = {
   OPEN: { label: 'Abierto', dot: 'bg-green-500', color: 'text-green-700 bg-green-50 ring-1 ring-green-200' },
@@ -113,6 +113,7 @@ const StoreDetail: React.FC<StoreDetailProps> = ({ storeId: storeIdProp, onBack 
 
   const statusInfo = STATUS_LABELS[store.status] || { label: store.status, dot: 'bg-gray-400', color: 'text-gray-600 bg-gray-50 ring-1 ring-gray-200' };
   const storeImage = store.imageUrl || getStoreImage(store.id);
+  const bannerUrl = getStoreBannerUrl(store.id);
   const logoUrl = getStoreLogoUrl(store.id);
 
   return (
@@ -133,12 +134,20 @@ const StoreDetail: React.FC<StoreDetailProps> = ({ storeId: storeIdProp, onBack 
               scrolled ? 'h-20 rounded-b-2xl shadow-xl' : 'h-80 rounded-b-[32px] md:h-[22rem]'
             }`}
           >
-            {/* Fondo: imagen del banner de la tienda o degradado de marca (placeholder). */}
+            {/* Fondo: banner remoto de la tienda, o imagen local temporal, o degradado de marca. */}
             <div className="absolute inset-0 bg-[linear-gradient(135deg,#F4B942_0%,#FBBF24_48%,#FDE68A_100%)]" />
             {storeImage && (
               <img
                 src={storeImage}
                 alt={store.name}
+                className="absolute inset-0 h-full w-full object-cover"
+                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+              />
+            )}
+            {bannerUrl && (
+              <img
+                src={bannerUrl}
+                alt={`Banner de ${store.name}`}
                 className="absolute inset-0 h-full w-full object-cover"
                 onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
               />
