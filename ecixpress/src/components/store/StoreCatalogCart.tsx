@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Search, Plus, Minus, ShoppingCart, Loader2, ImageOff, X, Tag, Check } from 'lucide-react';
+import { Search, Plus, Minus, ShoppingCart, Loader2, ImageOff, X, Tag, Check, Box, ExternalLink } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -899,9 +899,9 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName,
                   <div className={`flex flex-1 flex-col ${outOfStock ? 'opacity-40 grayscale' : ''}`}>
                     {/* Imagen con badges superpuestos */}
                     <div className="relative h-32 bg-gradient-to-br from-yellow-50 to-yellow-100">
-                      {product.imageUrl ? (
+                      {product.frontImageUrl ?? product.imageUrl ? (
                         <img
-                          src={product.imageUrl}
+                          src={product.frontImageUrl ?? product.imageUrl ?? ''}
                           alt={product.name}
                           className="w-full h-full object-cover"
                           onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
@@ -915,6 +915,19 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName,
                         <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-white/90 backdrop-blur-sm text-[11px] font-semibold text-gray-700 shadow-sm">
                           {product.category.name}
                         </span>
+                      )}
+                      {product.model3dUrl && product.modelGenerationStatus === 'READY' && (
+                        <a
+                          href={product.model3dUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          onClick={(event) => event.stopPropagation()}
+                          className="absolute bottom-2 left-2 z-10 inline-flex items-center gap-1.5 rounded-full bg-gray-900/90 px-2.5 py-1 text-[11px] font-semibold text-white shadow-sm transition hover:bg-gray-800"
+                        >
+                          <Box size={12} />
+                          Ver 3D
+                          <ExternalLink size={10} />
+                        </a>
                       )}
                       {/* Botón flotante de añadir, anclado al borde inferior de la imagen */}
                       {qty === 0 && (
