@@ -46,14 +46,14 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigateToLogin, onNavigate
           onSignInClick={handleLoginClick}
         />
 
+        {/* How It Works */}
+        <HowItWorksSection />
+
         {/* Social Proof Section */}
         <SocialProofSection />
 
         {/* Features Section */}
         <FeaturesSection />
-
-        {/* How It Works */}
-        <HowItWorksSection />
 
         {/* Wallet Showcase */}
         <WalletShowcaseSection />

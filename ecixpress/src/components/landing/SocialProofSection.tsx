@@ -21,155 +21,231 @@ const SocialProofSection: React.FC = () => {
     return () => observer.disconnect();
   }, []);
 
-  const testimonials = [
+  // Featured testimonial (estudiante principal)
+  const featuredTestimonial = {
+    name: 'Eliza Rodríguez',
+    role: 'Estudiante de Ingeniería de Sistemas',
+    university: 'Escuela Colombiana de Ingeniería Julio Garavito',
+    image: '/FOTOELIZAFINAL.png',
+    rating: 5,
+    text: 'Con ECIXPRESS ahorro 30 minutos de filas cada día. Puedo concentrarme en mis proyectos y pasar más tiempo con mis amigos.',
+  };
+
+  // Testimonios secundarios (burbujas flotantes)
+  const floatingTestimonials = [
     {
-      name: 'María González',
-      role: 'Estudiante de Ingeniería',
-      university: 'Universidad Central',
-      image: '/student1.png',
-      rating: 5,
-      text: 'ECIXPRESS me ahorró horas de filas en la cafetería. Ahora puedo usar ese tiempo para estudiar o descansar entre clases.',
+      text: 'La app es tan fácil de usar que incluso mi abuela pudo hacer un pedido.',
+      author: 'Carlos M.',
+      initial: 'C',
     },
     {
-      name: 'Carlos Rodríguez',
-      role: 'Estudiante de Medicina',
-      university: 'Universidad Nacional',
-      image: '/student2.png',
-      rating: 5,
-      text: 'La app es increíble. Pido mi comida mientras salgo de laboratorio y cuando llego ya está lista. Sin filas, sin estrés.',
+      text: 'He ahorrado 30 min de tiempo en filas cada semana. ¡Eso es increíble!',
+      author: 'Sofía L.',
+      initial: 'S',
     },
     {
-      name: 'Ana Martínez',
-      role: 'Estudiante de Arquitectura',
-      university: 'Universidad Politécnica',
-      image: '/student3.png',
-      rating: 5,
-      text: 'El sistema de QR es genial. Solo escaneo y recojo. Es la forma más eficiente de comprar en el campus.',
+      text: 'El sistema QR es genial. Sin contacto, sin papeles. Perfecto para ahora.',
+      author: 'Juan P.',
+      initial: 'J',
     },
   ];
 
   return (
     <section
       ref={sectionRef}
-      className="relative py-24 px-6 overflow-hidden bg-gradient-to-br from-gray-50 via-white to-yellow-50"
+      className="relative py-32 px-6 overflow-hidden bg-gradient-to-b from-white via-gray-50 to-white"
     >
-      {/* Decorative glow */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[800px] bg-yellow-200/20 blur-[120px] rounded-full pointer-events-none" />
+      {/* Decorative glow - Background */}
+      <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-yellow-300/15 blur-[100px] rounded-full pointer-events-none" />
+      <div className="absolute bottom-0 left-1/4 w-[500px] h-[500px] bg-cyan-300/10 blur-[100px] rounded-full pointer-events-none" />
 
       {/* Floating shapes */}
       <FloatingShape
         type="circle"
-        size={60}
-        color="rgba(251, 191, 36, 0.25)"
-        blur={15}
-        position="top-right"
+        size={50}
+        color="rgba(251, 191, 36, 0.2)"
+        blur={12}
+        position="top-left"
         animation="pulse"
-        animationDuration="4s"
+        animationDuration="5s"
       />
       <FloatingShape
         type="diamond"
-        size={40}
-        color="rgba(251, 146, 60, 0.2)"
-        position="bottom-left"
+        size={35}
+        color="rgba(34, 211, 238, 0.15)"
+        position="bottom-right"
         animation="spin"
-        animationDuration="18s"
+        animationDuration="20s"
       />
 
-      <div className="relative max-w-6xl mx-auto">
+      <div className="relative max-w-7xl mx-auto">
         {/* Header */}
         <div className="text-center mb-16 space-y-4">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-yellow-100 border border-yellow-300">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-yellow-100/80 border border-yellow-300/60 backdrop-blur-sm">
             <div className="w-2 h-2 rounded-full bg-yellow-600 animate-pulse" />
-            <span className="text-sm font-semibold text-a11y-yellow-darker">
+            <span className="text-sm font-semibold text-yellow-900">
               Lo que dicen los estudiantes
             </span>
           </div>
-          <h2 className="text-4xl md:text-5xl font-bold text-gray-900 leading-tight flex flex-col md:flex-row items-center justify-center gap-3">
-            <span>Más de 5,000 estudiantes ya usan</span>
-            <img
-              src="/logotipoEcixpress.svg"
-              alt="ECIXPRESS"
-              className="h-8 md:h-9 w-auto self-center"
-            />
+          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 leading-tight">
+            Confían en nosotros más de <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-500 to-orange-500">5,000 estudiantes</span>
           </h2>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            Descubre por qué miles de estudiantes en universidades de todo el país han transformado su experiencia de compra en el campus.
+          <p className="text-base text-gray-600 max-w-2xl mx-auto">
+            Descubre cómo ECIXPRESS simplifica la vida diaria en el campus.
           </p>
         </div>
 
-        {/* Testimonials Grid */}
-        <div className="grid md:grid-cols-3 gap-8">
-          {testimonials.map((testimonial, index) => (
+        {/* FEATURED TESTIMONIAL - Premium Layout */}
+        <div
+          className="relative mb-20"
+          style={{
+            opacity: visible ? 1 : 0,
+            transform: visible ? 'translateY(0)' : 'translateY(40px)',
+            transition: 'all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)',
+          }}
+        >
+          {/* Main card - Glassmorphism */}
+          <div className="relative grid md:grid-cols-2 gap-8 items-center">
+            {/* Left side - Text & Stats */}
+            <div className="space-y-8">
+              {/* Quote highlight */}
+              <div className="space-y-6">
+                <div className="flex gap-1">
+                  {[...Array(featuredTestimonial.rating)].map((_, i) => (
+                    <Star key={i} size={18} className="fill-yellow-400 text-yellow-400" />
+                  ))}
+                </div>
+                <p className="text-2xl md:text-3xl font-bold text-gray-900 leading-snug">
+                  "{featuredTestimonial.text}"
+                </p>
+              </div>
+
+              {/* Student info */}
+              <div className="flex flex-col">
+                <p className="text-xl font-bold text-gray-900">{featuredTestimonial.name}</p>
+                <p className="text-base text-yellow-600 font-semibold">{featuredTestimonial.role}</p>
+                <p className="text-sm text-gray-500 mt-1">{featuredTestimonial.university}</p>
+              </div>
+            </div>
+
+            {/* Right side - Student Image (Protagonist) */}
+            <div className="relative h-[350px] md:h-[450px] flex items-center justify-center">
+              {/* Glasmorphism background container - Moderno */}
+              <div className="absolute inset-0 rounded-2xl md:rounded-3xl bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-xl border border-white/30 shadow-lg" />
+
+              {/* Glow effect */}
+              <div className="absolute -inset-6 bg-gradient-to-br from-yellow-300/12 to-orange-300/8 blur-3xl rounded-full" />
+
+              {/* Student PNG */}
+              <div className="relative z-10 h-full w-full flex items-center justify-center overflow-hidden rounded-2xl md:rounded-3xl">
+                <img
+                  src={featuredTestimonial.image}
+                  alt={featuredTestimonial.name}
+                  className="h-full w-auto object-contain hover:scale-105 transition-transform duration-500"
+                  style={{
+                    filter: 'drop-shadow(0 10px 20px rgba(0, 0, 0, 0.1))',
+                  }}
+                />
+              </div>
+
+              {/* Floating badge - Modern */}
+              <div
+                className="absolute bottom-4 left-4 z-20 bg-white/75 backdrop-blur-md rounded-xl p-3 shadow-md border border-white/60"
+                style={{
+                  animation: 'float 3s ease-in-out infinite',
+                  animationDelay: '0.5s',
+                }}
+              >
+                <div className="flex items-center gap-2">
+                  <div className="flex gap-0.5">
+                    {[...Array(5)].map((_, i) => (
+                      <Star key={i} size={12} className="fill-yellow-400 text-yellow-400" />
+                    ))}
+                  </div>
+                  <span className="text-xs font-bold text-gray-900">4.9</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* FLOATING TESTIMONIAL BUBBLES */}
+        <div className="grid md:grid-cols-3 gap-6 mb-20">
+          {floatingTestimonials.map((testimonial, index) => (
             <div
               key={index}
-              className="relative group p-8 rounded-2xl border border-gray-200 bg-white/50 backdrop-blur-md shadow-lg hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 overflow-hidden"
+              className="group relative p-6 rounded-3xl bg-white/60 backdrop-blur-md border border-white/40 shadow-lg hover:shadow-2xl hover:bg-white/80 transition-all duration-500 overflow-hidden"
               style={{
                 opacity: visible ? 1 : 0,
                 transform: visible ? 'translateY(0)' : 'translateY(30px)',
-                transition: `opacity 0.6s ease-out ${index * 0.15}s, transform 0.6s ease-out ${index * 0.15}s`,
+                transition: `all 0.6s ease-out ${0.2 + index * 0.15}s`,
               }}
             >
-              {/* Quote icon */}
-              <div className="absolute top-6 right-6 text-yellow-400/20">
-                <Quote size={48} />
-              </div>
+              {/* Glow on hover */}
+              <div className="absolute inset-0 bg-gradient-to-br from-yellow-300/10 to-transparent opacity-0 group-hover:opacity-100 transition duration-500 rounded-3xl" />
 
-              {/* Rating */}
-              <div className="flex gap-1 mb-4">
-                {[...Array(testimonial.rating)].map((_, i) => (
-                  <Star key={i} size={16} className="fill-yellow-400 text-yellow-400" />
-                ))}
-              </div>
-
-              {/* Testimonial text */}
-              <p className="text-gray-700 leading-relaxed mb-6">
-                "{testimonial.text}"
-              </p>
-
-              {/* Student info */}
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-500 flex items-center justify-center text-white font-bold text-lg shadow-md">
-                  {testimonial.name.charAt(0)}
-                </div>
-                <div className="flex-1">
-                  <p className="font-semibold text-gray-900">{testimonial.name}</p>
-                  <p className="text-sm text-gray-600">{testimonial.role}</p>
-                  <p className="text-xs text-gray-500">{testimonial.university}</p>
+              {/* Content */}
+              <div className="relative z-10 space-y-4">
+                <p className="text-gray-700 font-medium italic">"{testimonial.text}"</p>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-yellow-400 to-orange-400 flex items-center justify-center text-white font-bold text-sm">
+                    {testimonial.initial}
+                  </div>
+                  <p className="text-sm font-semibold text-gray-900">{testimonial.author}</p>
                 </div>
               </div>
-
-              {/* Hover glow */}
-              <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/5 to-orange-400/5 opacity-0 group-hover:opacity-100 transition duration-500" />
             </div>
           ))}
         </div>
 
-        {/* Stats */}
-        <div className="mt-16 grid grid-cols-2 md:grid-cols-4 gap-6">
+        {/* STATISTICS */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
             { value: '5,000+', label: 'Usuarios activos' },
             { value: '15+', label: 'Universidades' },
-            { value: '50K+', label: 'Pedidos' },
-            { value: '4.9/5', label: 'Rating' },
+            { value: '150K+', label: 'Pedidos completados' },
+            { value: '4.9/5', label: 'Satisfacción' },
           ].map((stat, index) => (
             <div
               key={index}
-              className="text-center p-6 rounded-xl bg-white/70 backdrop-blur-md border border-gray-200 hover:shadow-lg transition-all duration-300"
+              className="p-6 rounded-2xl bg-white/70 backdrop-blur-md border border-white/40 text-center hover:bg-white/90 hover:shadow-lg transition-all duration-300"
               style={{
                 opacity: visible ? 1 : 0,
-                transform: visible ? 'translateY(0)' : 'translateY(20px)',
-                transition: `opacity 0.6s ease-out ${0.3 + index * 0.1}s, transform 0.6s ease-out ${0.3 + index * 0.1}s`,
+                transform: visible ? 'scale(1)' : 'scale(0.9)',
+                transition: `all 0.6s ease-out ${0.4 + index * 0.1}s`,
               }}
             >
-              <p className="text-3xl font-bold text-gray-900">{stat.value}</p>
-              <p className="text-sm text-gray-600 mt-1">{stat.label}</p>
+              <p className="text-3xl md:text-4xl font-black bg-gradient-to-r from-yellow-500 to-orange-500 bg-clip-text text-transparent">
+                {stat.value}
+              </p>
+              <p className="text-sm text-gray-600 mt-2">{stat.label}</p>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Accessibility: prefers-reduced-motion */}
+      {/* Animations */}
       <style>{`
+        @keyframes float {
+          0%, 100% {
+            transform: translateY(0px);
+          }
+          50% {
+            transform: translateY(-15px);
+          }
+        }
+
+        @keyframes slideInScale {
+          0% {
+            opacity: 0;
+            transform: scale(0.95) translateY(20px);
+          }
+          100% {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+          }
+        }
+
         @media (prefers-reduced-motion: reduce) {
           *,
           *::before,
