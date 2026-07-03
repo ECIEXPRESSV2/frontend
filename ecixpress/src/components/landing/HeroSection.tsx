@@ -20,19 +20,19 @@ const HeroSection: React.FC<HeroProps> = ({ onGetStartedClick, onSignInClick }) 
           <div className="space-y-8 animate-fade-in-left">
             {/* Badge */}
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-yellow-100 border border-yellow-300 animate-bounce-slow">
-              <div className="w-2 h-2 rounded-full bg-yellow-600 animate-pulse" />
-              <span className="text-sm font-semibold text-a11y-yellow-darker">Pide. Llega. Recoge.</span>
+              <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+              <span className="font-body text-sm font-semibold text-a11y-yellow-darker">Pide. Llega. Recoge.</span>
             </div>
 
             {/* Main Heading */}
             <div className="space-y-5">
-              <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-gray-900 leading-tight animate-slide-up">
+              <h1 className="font-display text-4xl md:text-6xl lg:text-7xl font-semibold text-gray-900 leading-tight animate-slide-up">
                 Compra en el campus{' '}
-                <span className="bg-gradient-to-r from-yellow-400 to-yellow-600 bg-clip-text text-transparent animate-gradient-shift">
+                <span className="bg-gradient-to-r from-primary to-amber-600 bg-clip-text text-transparent animate-gradient-shift">
                   sin hacer filas
                 </span>
               </h1>
-              <p className="text-xl text-gray-600 leading-relaxed max-w-xl animate-slide-up-delay-1">
+              <p className="font-body text-xl text-gray-600 leading-relaxed max-w-xl animate-slide-up-delay-1">
                 Pide comida, papelería y mucho más. Recoge sin esperas. Paga en línea o en sitio.
                 La forma inteligente de comprar en la universidad.
               </p>
@@ -42,14 +42,14 @@ const HeroSection: React.FC<HeroProps> = ({ onGetStartedClick, onSignInClick }) 
             <div className="flex flex-col sm:flex-row gap-4 pt-4 animate-slide-up-delay-2">
               <button
                 onClick={onGetStartedClick}
-                className="px-8 py-4 rounded-xl font-semibold text-gray-900 bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 shadow-lg hover:shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2 group hover:shadow-yellow-500/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-500 focus-visible:ring-offset-2"
+                className="px-8 py-4 rounded-xl font-body font-semibold text-gray-900 bg-gradient-to-r from-primary to-amber-500 hover:from-amber-500 hover:to-amber-600 shadow-lg hover:shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2 group hover:shadow-amber-500/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
               >
-                Comenzar ahora
+                Crear cuenta gratis
                 <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
               </button>
               <button
                 onClick={onSignInClick}
-                className="px-8 py-4 rounded-xl font-semibold text-gray-900 bg-gray-100 hover:bg-gray-200 transition-all hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-500 focus-visible:ring-offset-2"
+                className="px-8 py-4 rounded-xl font-body font-semibold text-gray-700 bg-transparent border-2 border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
               >
                 Iniciar sesión
               </button>
@@ -125,16 +125,3 @@ const HeroSection: React.FC<HeroProps> = ({ onGetStartedClick, onSignInClick }) 
 };
 
 export default HeroSection;
-
-{/* Accessibility: prefers-reduced-motion */}
-<style>{`
-  @media (prefers-reduced-motion: reduce) {
-    *,
-    *::before,
-    *::after {
-      animation-duration: 0.01ms !important;
-      animation-iteration-count: 1 !important;
-      transition-duration: 0.01ms !important;
-    }
-  }
-`}</style>

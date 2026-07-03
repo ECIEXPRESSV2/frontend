@@ -28,8 +28,6 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigateToLogin, onNavigate
   }, [navigate, onNavigateToSignUp]);
 
   const handleGetStartedClick = useCallback(() => {
-    console.log('Get started clicked');
-    // Scroll to signup section or redirect
     handleSignUpClick();
   }, [handleSignUpClick]);
 

@@ -13,7 +13,8 @@ interface ShowcaseItem {
   description: string;
   accentFrom: string;
   accentTo: string;
-  image: string;
+  /** Real campus photo. When omitted, the card renders as a clean brand-gradient panel instead of a stock photo. */
+  image?: string;
 }
 
 // ─── Mock data — swap with backend/CMS props ────────────────────────────────
@@ -22,17 +23,16 @@ const SHOWCASE_ITEMS: ShowcaseItem[] = [
     icon: PlusCircle,
     title: 'Recarga tu saldo',
     description: 'Añade dinero a tu wallet desde tarjeta, efectivo o transferencia',
-    accentFrom: '#FBBF24',
+    accentFrom: '#E7A93F',
     accentTo: '#F97316',
-    image: 'https://images.unsplash.com/photo-1771587529573-7f514f51f2a4?w=900&q=85',
   },
   {
     icon: CreditCard,
     title: 'Paga en cafeterías',
     description: 'Usa tu wallet en todas las cafeterías del campus',
-    accentFrom: '#22D3EE',
+    accentFrom: '#57B7CF',
     accentTo: '#3B82F6',
-    image: 'https://plus.unsplash.com/premium_photo-1661757317932-b7c322e41630?w=900&q=85',
+    image: '/FOTOCAFETERIA.JPG',
   },
   {
     icon: Zap,
@@ -40,15 +40,14 @@ const SHOWCASE_ITEMS: ShowcaseItem[] = [
     description: 'Paga en segundos, recoge tu pedido y sigue con tu día',
     accentFrom: '#34D399',
     accentTo: '#059669',
-    image: 'https://plus.unsplash.com/premium_photo-1743893719437-e6fc670a6c54?w=900&q=85',
+    image: '/FOTOQRIA.png',
   },
   {
     icon: Shield,
     title: '100% Segura',
     description: 'Tu saldo protegido con encriptación de nivel bancario',
-    accentFrom: '#A855F7',
-    accentTo: '#EC4899',
-    image: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=900&q=85',
+    accentFrom: '#334155',
+    accentTo: '#0F172A',
   },
 ];
 
@@ -75,8 +74,8 @@ const EyebrowBadge: React.FC<{ children: React.ReactNode }> = ({ children }) => 
            boxShadow: 'inset 0 1px 0 rgba(251,191,36,0.2), 0 1px 16px rgba(251,191,36,0.1)',
          }}
     >
-      <Sparkles className="w-3.5 h-3.5 text-yellow-600" />
-      <span className="text-yellow-700 text-sm font-medium tracking-wide">{children}</span>
+      <Sparkles className="w-3.5 h-3.5 text-a11y-yellow-dark" />
+      <span className="font-body text-a11y-yellow-darker text-sm font-medium tracking-wide">{children}</span>
     </div>
 );
 
@@ -93,10 +92,10 @@ const GlassOverlay: React.FC<{
       <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-white/20 backdrop-blur-md border border-white/30 group-hover:scale-110 transition">
         <Icon className="w-5 h-5" />
       </div>
-      <h3 className="font-bold text-lg">
+      <h3 className="font-display font-semibold text-lg">
         {title}
       </h3>
-      <p className="text-sm text-white/80">
+      <p className="font-body text-sm text-white/80">
         {description}
       </p>
     </div>
@@ -120,7 +119,7 @@ const WalletShowcaseSection: React.FC = () => {
   return (
       <section
           ref={sectionRef}
-          className="relative py-32 px-6 overflow-hidden bg-gradient-to-b from-white via-gray-50 to-white"
+          className="relative py-20 md:py-28 px-6 overflow-hidden bg-gradient-to-b from-white via-gray-50 to-white"
       >
         {/* ── Background layer ─────────────────────────────────────── */}
         {/* Ambient orbs — GPU-friendly, no JS */}
@@ -154,7 +153,7 @@ const WalletShowcaseSection: React.FC = () => {
               top: '45%', left: '45%',
               width: 700, height: 700,
               borderRadius: '50%',
-              background: 'radial-gradient(circle, rgba(168,85,247,0.06) 0%, transparent 65%)',
+              background: 'radial-gradient(circle, rgba(52,211,153,0.06) 0%, transparent 65%)',
               filter: 'blur(100px)',
               transform: 'translate(-50%, -50%)',
             }}
@@ -172,33 +171,13 @@ const WalletShowcaseSection: React.FC = () => {
               }}
           >
             <EyebrowBadge>Nueva generación</EyebrowBadge>
-            <h2
-                className="text-gray-900 leading-tight mb-5"
-                style={{
-                  fontSize: 'clamp(2.5rem, 6vw, 4rem)',
-                  fontWeight: 800,
-                  letterSpacing: '-0.04em',
-                  lineHeight: 1.08,
-                }}
-            >
+            <h2 className="font-display text-4xl md:text-5xl font-semibold text-gray-900 leading-tight mb-5">
               Tu Wallet{' '}
-              <span
-                  style={{
-                    backgroundImage: 'linear-gradient(90deg, #FBBF24, #FB923C, #FBBF24)',
-                    backgroundSize: '200% auto',
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent',
-                    backgroundClip: 'text',
-                    animation: 'gradientShift 4s linear infinite',
-                  }}
-              >
-              Digital
-            </span>
+              <span className="bg-gradient-to-r from-primary to-amber-600 bg-clip-text text-transparent animate-gradient-shift">
+                Digital
+              </span>
             </h2>
-            <p
-                className="text-gray-600 max-w-2xl mx-auto leading-relaxed"
-                style={{ fontSize: 'clamp(1rem, 2vw, 1.2rem)' }}
-            >
+            <p className="font-body text-lg md:text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed">
               Recarga saldo, paga en cafeterías y recoge tu pedido sin filas.
               Tu wallet universitaria en una sola app.
             </p>
@@ -320,15 +299,15 @@ const WalletShowcaseSection: React.FC = () => {
               }}
           >
             <button
-                onClick={() => navigate('/signin')}
-                className="inline-flex items-center gap-3 px-8 py-4 rounded-xl font-semibold text-gray-900 bg-gradient-to-r from-yellow-400 to-yellow-500 shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-500 focus-visible:ring-offset-2"
+                onClick={() => navigate('/signup')}
+                className="inline-flex items-center gap-3 px-8 py-4 rounded-xl font-body font-semibold text-gray-900 bg-gradient-to-r from-primary to-amber-500 shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
             >
-              <span className="text-base font-bold tracking-tight">
-                Comenzar a usar tu wallet
+              <span className="text-base font-semibold tracking-tight">
+                Crear cuenta gratis
               </span>
               <ArrowRight size={20} />
             </button>
-            <p className="text-gray-500 text-xs tracking-wide">
+            <p className="font-body text-gray-500 text-xs tracking-wide">
               Sin comisiones · Activación inmediata · Cancela cuando quieras
             </p>
           </div>
@@ -345,13 +324,6 @@ const WalletShowcaseSection: React.FC = () => {
         @keyframes orbFloat {
           0%, 100% { transform: translateY(0px) scale(1); }
           50%       { transform: translateY(-24px) scale(1.04); }
-        }
-        @keyframes gradientShift {
-          0%   { background-position: 0% center; }
-          100% { background-position: 200% center; }
-        }
-        @media (prefers-reduced-motion: reduce) {
-          * { animation: none !important; transition-duration: 0.01ms !important; }
         }
       `}</style>
       </section>
@@ -380,16 +352,25 @@ const ImageCard: React.FC<{
           onMouseEnter={() => setHovered(true)}
           onMouseLeave={() => setHovered(false)}
       >
-        {/* Image */}
-        <img
-            src={item.image}
-            alt={`${item.title}: ${item.description}`}
-            className="absolute inset-0 w-full h-full object-cover scale-110 group-hover:scale-125 transition duration-700"
-            loading="lazy"
-        />
-
-        {/* Overlay for contrast */}
-        <div className="absolute inset-0 bg-black/40 group-hover:bg-black/30 transition" />
+        {/* Image or, when none is provided, a clean brand-gradient panel */}
+        {item.image ? (
+          <>
+            <img
+                src={item.image}
+                alt={`${item.title}: ${item.description}`}
+                className="absolute inset-0 w-full h-full object-cover scale-110 group-hover:scale-125 transition duration-700"
+                loading="lazy"
+            />
+            <div className="absolute inset-0 bg-black/40 group-hover:bg-black/30 transition" />
+          </>
+        ) : (
+          <div
+              className="absolute inset-0 transition duration-700 group-hover:scale-105"
+              style={{
+                background: `linear-gradient(135deg, ${item.accentFrom} 0%, ${item.accentTo} 100%)`,
+              }}
+          />
+        )}
 
         {/* Content */}
         <GlassOverlay

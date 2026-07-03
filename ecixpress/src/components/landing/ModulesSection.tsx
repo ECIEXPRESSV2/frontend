@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   ShoppingCart,
   Wallet,
@@ -9,63 +10,65 @@ import {
 } from 'lucide-react';
 
 const ModulesSection: React.FC = () => {
+  const navigate = useNavigate();
+
   const modules = [
     {
       icon: ShoppingCart,
       title: 'Módulo de Pedidos',
       description: 'Explora catálogo completo, crea tu carrito, programa hora de recogida y confirma.',
       features: ['Catálogo dinámico', 'Horarios personalizados', 'Preferencias guardadas'],
-      color: 'from-yellow-400 to-yellow-600',
+      color: 'from-primary to-amber-600',
     },
     {
       icon: Wallet,
       title: 'Pagos y Monedero',
       description: 'Sistema seguro de pagos: tarjeta crédito, débito, wallet universitario o efectivo.',
       features: ['Múltiples métodos', 'Transacciones seguras', 'Historial detallado'],
-      color: 'from-cyan-400 to-blue-600',
+      color: 'from-secondary to-blue-600',
     },
     {
       icon: QrCode,
       title: 'QR y Entrega',
       description: 'Código QR único para cada pedido. Validación instantánea sin filas.',
       features: ['Generación automática', 'Escáner rápido', 'Seguimiento en vivo'],
-      color: 'from-green-400 to-teal-600',
+      color: 'from-emerald-400 to-emerald-600',
     },
     {
       icon: BarChart3,
       title: 'Inventario y Reportes',
       description: 'Dashboard para vendedores: control de stock, ventas, análisis de datos.',
       features: ['Stock en tiempo real', 'Reportes avanzados', 'Predicción de demanda'],
-      color: 'from-purple-400 to-pink-600',
+      color: 'from-slate-600 to-slate-800',
     },
     {
       icon: Bell,
       title: 'Notificaciones en Tiempo Real',
       description: 'Alertas instantáneas sobre cambios en pedidos, promociones y estado de entrega.',
       features: ['Push notifications', 'SMS', 'Email personalizados'],
-      color: 'from-orange-400 to-red-600',
+      color: 'from-amber-500 to-orange-600',
     },
     {
       icon: Settings,
       title: 'Panel Administrativo',
       description: 'Control total de la plataforma: usuarios, vendedores, transacciones y soporte.',
       features: ['Gestión de usuarios', 'Control financiero', 'Reportería avanzada'],
-      color: 'from-indigo-400 to-purple-600',
+      color: 'from-slate-600 to-slate-800',
     },
   ];
 
   return (
     <section
       id="modules"
-      className="py-16 md:py-24 px-6 bg-white"
+      className="py-20 md:py-28 px-6 bg-white scroll-mt-28"
     >
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="text-center space-y-4 mb-16 animate-fade-in-up">
-          <h2 className="text-4xl md:text-5xl font-bold text-gray-900">
+          <h2 className="font-display text-4xl md:text-5xl font-semibold text-gray-900">
             Módulos del sistema
           </h2>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+          <p className="font-body text-lg text-gray-600 max-w-2xl mx-auto">
             Una plataforma completa diseñada para cada actor del ecosistema
           </p>
         </div>
@@ -77,11 +80,8 @@ const ModulesSection: React.FC = () => {
             return (
               <div
                 key={index}
-                className="group relative p-8 rounded-2xl border border-gray-200 bg-white hover:border-yellow-200 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 animate-fade-in-up focus-within:ring-2 focus-within:ring-yellow-500 focus-within:ring-offset-2"
+                className="group relative p-8 rounded-2xl border border-gray-200 bg-white hover:border-yellow-200 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 animate-fade-in-up"
                 style={{ animationDelay: `${index * 0.1}s`, opacity: 0 }}
-                tabIndex={0}
-                role="button"
-                aria-label={`${module.title}: ${module.description}`}
               >
                 {/* Gradient background on hover */}
                 <div className={`absolute inset-0 bg-gradient-to-br ${module.color} opacity-0 group-hover:opacity-5 transition-opacity duration-300`} />
@@ -94,12 +94,12 @@ const ModulesSection: React.FC = () => {
                   </div>
 
                   {/* Title */}
-                  <h3 className="text-xl font-bold text-gray-900 mb-3 group-hover:text-yellow-600 transition-colors">
+                  <h3 className="font-display text-xl font-semibold text-gray-900 mb-3 group-hover:text-a11y-yellow-dark transition-colors">
                     {module.title}
                   </h3>
 
                   {/* Description */}
-                  <p className="text-gray-600 text-sm leading-relaxed mb-6">
+                  <p className="font-body text-gray-600 text-sm leading-relaxed mb-6">
                     {module.description}
                   </p>
 
@@ -107,8 +107,8 @@ const ModulesSection: React.FC = () => {
                   <div className="space-y-2 pt-6 border-t border-gray-200">
                     {module.features.map((feature, i) => (
                       <div key={i} className="flex items-start gap-2">
-                        <div className="w-1.5 h-1.5 rounded-full bg-gradient-to-r from-yellow-400 to-yellow-600 mt-1.5 flex-shrink-0" />
-                        <span className="text-sm text-gray-700">{feature}</span>
+                        <div className="w-1.5 h-1.5 rounded-full bg-gradient-to-r from-primary to-amber-600 mt-1.5 flex-shrink-0" />
+                        <span className="font-body text-sm text-gray-700">{feature}</span>
                       </div>
                     ))}
                   </div>
@@ -120,10 +120,13 @@ const ModulesSection: React.FC = () => {
 
         {/* Bottom CTA */}
         <div className="mt-16 text-center space-y-4 animate-fade-in-up" style={{ animationDelay: '0.6s', opacity: 0 }}>
-          <p className="text-lg text-gray-600">
+          <p className="font-body text-lg text-gray-600">
             ¿Listo para transformar la forma en que compras en tu campus?
           </p>
-          <button className="px-8 py-4 rounded-xl font-semibold text-gray-900 bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all inline-block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-500 focus-visible:ring-offset-2">
+          <button
+            onClick={() => navigate('/signup')}
+            className="px-8 py-4 rounded-xl font-body font-semibold text-gray-900 bg-gradient-to-r from-primary to-amber-500 hover:from-amber-500 hover:to-amber-600 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all inline-block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+          >
             Crear cuenta gratis
           </button>
         </div>
@@ -133,4 +136,3 @@ const ModulesSection: React.FC = () => {
 };
 
 export default ModulesSection;
-

@@ -83,7 +83,7 @@ const FAQSection: React.FC = () => {
   const allQuestions = faqData.flatMap((item) => item.questions);
 
   return (
-    <section className="relative py-24 px-6 overflow-hidden bg-gradient-to-br from-white via-gray-50 to-yellow-50">
+    <section className="relative py-20 md:py-28 px-6 overflow-hidden bg-gradient-to-br from-white via-gray-50 to-yellow-50">
       {/* Decorative glow */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[900px] bg-yellow-200/15 blur-[120px] rounded-full pointer-events-none" />
 
@@ -110,12 +110,12 @@ const FAQSection: React.FC = () => {
         {/* Header */}
         <div className="text-center mb-16 space-y-4">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-yellow-100 border border-yellow-300">
-            <HelpCircle size={16} className="text-yellow-600" />
-            <span className="text-sm font-semibold text-a11y-yellow-darker">
+            <HelpCircle size={16} className="text-a11y-yellow-dark" />
+            <span className="font-body text-sm font-semibold text-a11y-yellow-darker">
               Preguntas Frecuentes
             </span>
           </div>
-          <h2 className="text-4xl md:text-5xl font-bold text-gray-900 leading-tight flex flex-col md:flex-row items-center justify-center gap-3">
+          <h2 className="font-display text-4xl md:text-5xl font-semibold text-gray-900 leading-tight flex flex-col md:flex-row items-center justify-center gap-3">
             <span>Todo lo que necesitas saber sobre</span>
             <img
               src="/logotipoEcixpress.svg"
@@ -123,7 +123,7 @@ const FAQSection: React.FC = () => {
               className="h-8 md:h-9 w-auto self-center"
             />
           </h2>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+          <p className="font-body text-lg text-gray-600 max-w-2xl mx-auto">
             Encuentra respuestas a las preguntas más comunes sobre nuestra plataforma.
           </p>
         </div>
@@ -140,10 +140,10 @@ const FAQSection: React.FC = () => {
                 className="w-full px-6 py-5 flex items-center justify-between text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-500 focus-visible:ring-offset-2"
                 aria-expanded={openIndex === index}
               >
-                <span className="font-semibold text-gray-900 pr-4">{item.question}</span>
+                <span className="font-body font-semibold text-gray-900 pr-4">{item.question}</span>
                 <ChevronDown
                   size={20}
-                  className={`text-yellow-500 transition-transform duration-300 flex-shrink-0 ${
+                  className={`text-primary transition-transform duration-300 flex-shrink-0 ${
                     openIndex === index ? 'rotate-180' : ''
                   }`}
                 />
@@ -154,7 +154,7 @@ const FAQSection: React.FC = () => {
                   openIndex === index ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
                 }`}
               >
-                <div className="px-6 pb-5 pt-0 text-gray-600 leading-relaxed">
+                <div className="font-body px-6 pb-5 pt-0 text-gray-600 leading-relaxed">
                   {item.answer}
                 </div>
               </div>
@@ -168,33 +168,20 @@ const FAQSection: React.FC = () => {
         {/* Contact CTA */}
         <div className="mt-12 text-center p-8 rounded-2xl bg-gradient-to-r from-yellow-100 to-orange-100 border border-yellow-200">
           <div className="flex items-center justify-center gap-3 mb-3">
-            <Mail size={20} className="text-yellow-600" />
-            <p className="font-semibold text-gray-900">¿Tienes más preguntas?</p>
+            <Mail size={20} className="text-a11y-yellow-dark" />
+            <p className="font-body font-semibold text-gray-900">¿Tienes más preguntas?</p>
           </div>
-          <p className="text-gray-600">
+          <p className="font-body text-gray-600">
             Contáctanos en{' '}
             <a
               href="mailto:support@ecixpress.com"
-              className="text-yellow-600 hover:text-yellow-700 font-medium underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-500 focus-visible:ring-offset-2 rounded"
+              className="text-a11y-yellow-dark hover:text-a11y-yellow-darker font-medium underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded"
             >
               support@ecixpress.com
             </a>
           </p>
         </div>
       </div>
-
-      {/* Accessibility: prefers-reduced-motion */}
-      <style>{`
-        @media (prefers-reduced-motion: reduce) {
-          *,
-          *::before,
-          *::after {
-            animation-duration: 0.01ms !important;
-            animation-iteration-count: 1 !important;
-            transition-duration: 0.01ms !important;
-          }
-        }
-      `}</style>
     </section>
   );
 };

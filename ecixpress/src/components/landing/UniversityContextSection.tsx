@@ -27,28 +27,28 @@ const UniversityContextSection: React.FC = () => {
       icon: Users,
       title: 'Para todos',
       description: 'Un solo ecosistema para toda la comunidad.',
-      gradient: 'from-yellow-400 to-yellow-600',
+      gradient: 'from-primary to-amber-600',
       image: '/FOTOELIZASEBASSOFI.JPG',
     },
     {
       icon: BookOpen,
       title: 'Entre clases',
       description: 'Pide rápido sin interrumpir tu día.',
-      gradient: 'from-blue-400 to-indigo-600',
+      gradient: 'from-secondary to-blue-600',
       image: '/FOTOESCUELA.jpg',
     },
     {
       icon: Utensils,
       title: 'Todo en una app',
       description: 'Comida, cafeterías y más.',
-      gradient: 'from-orange-400 to-red-500',
+      gradient: 'from-amber-500 to-orange-600',
       image: '/FOTOOSWALDO.JPG',
     },
     {
       icon: TrendingUp,
       title: 'Crece contigo',
       description: 'Más opciones cada semana.',
-      gradient: 'from-green-400 to-emerald-600',
+      gradient: 'from-emerald-400 to-emerald-600',
       image: '/FOTOCAFETERIA.JPG',
     },
   ];
@@ -56,7 +56,7 @@ const UniversityContextSection: React.FC = () => {
   return (
       <section
           ref={sectionRef}
-          className="relative py-24 px-6 bg-gradient-to-b from-white via-gray-50 to-white overflow-hidden"
+          className="relative py-20 md:py-28 px-6 bg-gradient-to-b from-white via-gray-50 to-white overflow-hidden"
       >
         {/* glow fondo */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[900px] bg-yellow-300/10 blur-[120px] rounded-full" />
@@ -100,22 +100,22 @@ const UniversityContextSection: React.FC = () => {
 
             {/* LEFT */}
             <div className="space-y-6">
-              <h2 className="text-4xl md:text-5xl font-bold text-gray-900 leading-tight">
+              <h2 className="font-display text-4xl md:text-5xl font-semibold text-gray-900 leading-tight">
                 Hecho para la vida{' '}
-                <span className="bg-gradient-to-r from-yellow-400 to-yellow-600 bg-clip-text text-transparent">
+                <span className="bg-gradient-to-r from-primary to-amber-600 bg-clip-text text-transparent">
                 en campus
               </span>
               </h2>
 
-              <p className="text-lg text-gray-600">
+              <p className="font-body text-lg text-gray-600">
                 Diseñado para eliminar filas, optimizar tu tiempo y mejorar tu día.
               </p>
 
               <ul className="space-y-4">
                 {['Pide desde clase', 'Recoge en minutos', 'Paga como quieras', 'Sin fricción'].map((item, i) => (
                     <li key={i} className="flex items-center gap-3 group">
-                      <div className="w-2.5 h-2.5 rounded-full bg-yellow-400 group-hover:scale-150 transition" />
-                      <span className="text-gray-800 group-hover:text-yellow-600 transition">
+                      <div className="w-2.5 h-2.5 rounded-full bg-primary group-hover:scale-150 transition" />
+                      <span className="font-body text-gray-800 group-hover:text-a11y-yellow-dark transition">
                     {item}
                   </span>
                     </li>
@@ -149,12 +149,9 @@ const UniversityContextSection: React.FC = () => {
               return (
                   <div
                       key={index}
-                      className={`group relative rounded-2xl overflow-hidden transition-all duration-700 ease-out focus-within:ring-2 focus-within:ring-yellow-500 focus-within:ring-offset-2
+                      className={`group relative rounded-2xl overflow-hidden transition-all duration-700 ease-out
                 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-16'}`}
                       style={{ transitionDelay: `${index * 120}ms` }}
-                      tabIndex={0}
-                      role="button"
-                      aria-label={`${stat.title}: ${stat.description}`}
                   >
 
                     <img
@@ -169,24 +166,24 @@ const UniversityContextSection: React.FC = () => {
                     {/*  contenido */}
                     <div className="relative z-10 p-6 space-y-4 text-white">
 
-                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center 
+                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center
                   bg-white/20 backdrop-blur-md border border-white/30
                   group-hover:scale-110 transition`}>
                         <Icon className="w-5 h-5" />
                       </div>
 
-                      <h3 className="font-bold text-lg">
+                      <h3 className="font-display font-semibold text-lg">
                         {stat.title}
                       </h3>
 
-                      <p className="text-sm text-white/80">
+                      <p className="font-body text-sm text-white/80">
                         {stat.description}
                       </p>
 
                     </div>
 
                     {/* glow hover */}
-                    <div className={`absolute inset-0 opacity-0 group-hover:opacity-30 transition duration-700 
+                    <div className={`absolute inset-0 opacity-0 group-hover:opacity-30 transition duration-700
                 bg-gradient-to-br ${stat.gradient}`} />
 
                   </div>
@@ -201,16 +198,3 @@ const UniversityContextSection: React.FC = () => {
 };
 
 export default UniversityContextSection;
-
-{/* Accessibility: prefers-reduced-motion */}
-<style>{`
-  @media (prefers-reduced-motion: reduce) {
-    *,
-    *::before,
-    *::after {
-      animation-duration: 0.01ms !important;
-      animation-iteration-count: 1 !important;
-      transition-duration: 0.01ms !important;
-    }
-  }
-`}</style>

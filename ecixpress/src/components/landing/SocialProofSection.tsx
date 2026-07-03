@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Star, Quote } from 'lucide-react';
+import { Star } from 'lucide-react';
 import FloatingShape from './FloatingShapes';
 
 const SocialProofSection: React.FC = () => {
@@ -82,15 +82,15 @@ const SocialProofSection: React.FC = () => {
         {/* Header */}
         <div className="text-center mb-16 space-y-4">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-yellow-100/80 border border-yellow-300/60 backdrop-blur-sm">
-            <div className="w-2 h-2 rounded-full bg-yellow-600 animate-pulse" />
-            <span className="text-sm font-semibold text-yellow-900">
+            <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+            <span className="font-body text-sm font-semibold text-a11y-yellow-darker">
               Lo que dicen los estudiantes
             </span>
           </div>
-          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 leading-tight">
-            Confían en nosotros más de <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-500 to-orange-500">5,000 estudiantes</span>
+          <h2 className="font-display text-4xl md:text-5xl font-semibold text-gray-900 leading-tight">
+            Confían en nosotros más de <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-amber-600">5,000 estudiantes</span>
           </h2>
-          <p className="text-base text-gray-600 max-w-2xl mx-auto">
+          <p className="font-body text-base text-gray-600 max-w-2xl mx-auto">
             Descubre cómo ECIXPRESS simplifica la vida diaria en el campus.
           </p>
         </div>
@@ -115,16 +115,16 @@ const SocialProofSection: React.FC = () => {
                     <Star key={i} size={18} className="fill-yellow-400 text-yellow-400" />
                   ))}
                 </div>
-                <p className="text-2xl md:text-3xl font-bold text-gray-900 leading-snug">
+                <p className="font-body text-2xl md:text-3xl font-bold text-gray-900 leading-snug">
                   "{featuredTestimonial.text}"
                 </p>
               </div>
 
               {/* Student info */}
               <div className="flex flex-col">
-                <p className="text-xl font-bold text-gray-900">{featuredTestimonial.name}</p>
-                <p className="text-base text-yellow-600 font-semibold">{featuredTestimonial.role}</p>
-                <p className="text-sm text-gray-500 mt-1">{featuredTestimonial.university}</p>
+                <p className="font-display text-xl font-semibold text-gray-900">{featuredTestimonial.name}</p>
+                <p className="font-body text-base text-a11y-yellow-dark font-semibold">{featuredTestimonial.role}</p>
+                <p className="font-body text-sm text-gray-500 mt-1">{featuredTestimonial.university}</p>
               </div>
             </div>
 
@@ -186,12 +186,12 @@ const SocialProofSection: React.FC = () => {
 
               {/* Content */}
               <div className="relative z-10 space-y-4">
-                <p className="text-gray-700 font-medium italic">"{testimonial.text}"</p>
+                <p className="font-body text-gray-700 font-medium italic">"{testimonial.text}"</p>
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-yellow-400 to-orange-400 flex items-center justify-center text-white font-bold text-sm">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-amber-600 flex items-center justify-center text-white font-display font-semibold text-sm">
                     {testimonial.initial}
                   </div>
-                  <p className="text-sm font-semibold text-gray-900">{testimonial.author}</p>
+                  <p className="font-body text-sm font-semibold text-gray-900">{testimonial.author}</p>
                 </div>
               </div>
             </div>
@@ -215,10 +215,10 @@ const SocialProofSection: React.FC = () => {
                 transition: `all 0.6s ease-out ${0.4 + index * 0.1}s`,
               }}
             >
-              <p className="text-3xl md:text-4xl font-black bg-gradient-to-r from-yellow-500 to-orange-500 bg-clip-text text-transparent">
+              <p className="font-display text-3xl md:text-4xl font-semibold bg-gradient-to-r from-primary to-amber-600 bg-clip-text text-transparent">
                 {stat.value}
               </p>
-              <p className="text-sm text-gray-600 mt-2">{stat.label}</p>
+              <p className="font-body text-sm text-gray-600 mt-2">{stat.label}</p>
             </div>
           ))}
         </div>
@@ -243,16 +243,6 @@ const SocialProofSection: React.FC = () => {
           100% {
             opacity: 1;
             transform: scale(1) translateY(0);
-          }
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-          *,
-          *::before,
-          *::after {
-            animation-duration: 0.01ms !important;
-            animation-iteration-count: 1 !important;
-            transition-duration: 0.01ms !important;
           }
         }
       `}</style>
