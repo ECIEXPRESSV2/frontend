@@ -39,7 +39,7 @@ const SocialProofSection: React.FC = () => {
       initial: 'C',
     },
     {
-      text: 'He ahorrado 30 min de tiempo en filas cada semana. ¡Eso es increíble!',
+      text: 'Antes hacía fila 30 minutos todos los días. Ahora pido desde el salón y listo.',
       author: 'Sofía L.',
       initial: 'S',
     },

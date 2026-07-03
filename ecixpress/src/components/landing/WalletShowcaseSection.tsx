@@ -36,8 +36,8 @@ const SHOWCASE_ITEMS: ShowcaseItem[] = [
   },
   {
     icon: Zap,
-    title: 'Sin filas',
-    description: 'Paga en segundos, recoge tu pedido y sigue con tu día',
+    title: 'Paga y listo',
+    description: 'Confirma tu compra desde el celular en segundos',
     accentFrom: '#34D399',
     accentTo: '#059669',
     image: '/FOTOQRIA.png',
@@ -303,7 +303,7 @@ const WalletShowcaseSection: React.FC = () => {
                 className="inline-flex items-center gap-3 px-8 py-4 rounded-xl font-body font-semibold text-gray-900 bg-gradient-to-r from-primary to-amber-500 shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
             >
               <span className="text-base font-semibold tracking-tight">
-                Crear cuenta gratis
+                Activar mi wallet
               </span>
               <ArrowRight size={20} />
             </button>

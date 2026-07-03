@@ -31,7 +31,7 @@ const FAQSection: React.FC = () => {
         },
         {
           question: '¿En qué universidades está disponible?',
-          answer: 'Actualmente estamos en 15+ universidades. Consulta con tu administración local para confirmar disponibilidad en tu campus. Estamos expandiéndonos constantemente.',
+          answer: 'Estamos presentes en varios campus universitarios y seguimos sumando más cada semestre. Escríbenos para confirmar si tu universidad ya está disponible.',
         },
       ],
     },
@@ -40,7 +40,7 @@ const FAQSection: React.FC = () => {
       questions: [
         {
           question: '¿Cómo funciona el sistema de QR?',
-          answer: 'Después de pagar, recibes un código QR único en la app. Preséntalo en el establecimiento y recoge tu pedido sin esperas. Es rápido, seguro y sin contacto.',
+          answer: 'Tu QR es único por pedido y se genera automáticamente al confirmar el pago. Si tienes problemas para escanearlo, el establecimiento puede validarlo manualmente con tu número de orden.',
         },
         {
           question: '¿Puedo pagar en el sitio o debo pagar en línea?',
@@ -57,7 +57,7 @@ const FAQSection: React.FC = () => {
       questions: [
         {
           question: '¿Es seguro pagar en la app?',
-          answer: 'Sí, usamos encriptación SSL de nivel bancario para proteger tus datos y transacciones. Tu seguridad es nuestra prioridad absoluta.',
+          answer: 'Sí. Nunca almacenamos los datos completos de tu tarjeta y cada transacción pasa por un proveedor de pagos certificado.',
         },
         {
           question: '¿Qué datos personales recolectan?',
@@ -70,7 +70,7 @@ const FAQSection: React.FC = () => {
       questions: [
         {
           question: '¿Soy dueño de un negocio en el campus, ¿cómo me uno?',
-          answer: 'Contáctanos en partners@ecixpress.com para información sobre cómo integrar tu negocio. Ofrecemos planes flexibles y soporte completo para establecimientos.',
+          answer: 'Contáctanos en partners@ecixpress.com. Integramos tu negocio con un dashboard propio para controlar stock, ventas y reportes, además de soporte completo durante la puesta en marcha.',
         },
         {
           question: '¿Hay costos para los establecimientos?',

@@ -36,9 +36,6 @@ const Navbar: React.FC<NavbarProps> = ({ onLoginClick, onSignUpClick }) => {
             <a href="#how-it-works" className={NAV_LINK_CLASS}>
               Cómo funciona
             </a>
-            <a href="#modules" className={NAV_LINK_CLASS}>
-              Módulos
-            </a>
           </div>
 
           {/* Auth Buttons */}
@@ -82,12 +79,6 @@ const Navbar: React.FC<NavbarProps> = ({ onLoginClick, onSignUpClick }) => {
               className="block font-body text-sm font-medium text-gray-700 hover:text-primary transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-sm"
             >
               Cómo funciona
-            </a>
-            <a
-              href="#modules"
-              className="block font-body text-sm font-medium text-gray-700 hover:text-primary transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-sm"
-            >
-              Módulos
             </a>
             <div className="space-y-2 pt-3">
               <button

@@ -29,14 +29,14 @@ const CTAFinal: React.FC<CTAFinalProps> = ({ onSignUpClick }) => {
           {/* Heading */}
           <div className="space-y-4">
             <h2 className="font-display text-4xl md:text-6xl font-semibold text-gray-900 leading-tight">
-              La forma inteligente de{' '}
+              Únete a la nueva forma de{' '}
               <span className="bg-gradient-to-r from-primary to-amber-600 bg-clip-text text-transparent">
-              comprar en campus
+              comprar en tu universidad
             </span>
             </h2>
 
             <p className="font-body text-lg md:text-xl text-gray-600 max-w-2xl mx-auto">
-              Ahorra tiempo, evita filas y mejora tu experiencia diaria.
+              Menos esperas, más tiempo para lo que importa.
             </p>
           </div>
 
@@ -74,7 +74,7 @@ const CTAFinal: React.FC<CTAFinalProps> = ({ onSignUpClick }) => {
             {[
               { value: '0%', label: 'Comisión por transacción' },
               { value: '24/7', label: 'Soporte disponible' },
-              { value: 'SSL', label: 'Datos protegidos' },
+              { value: '< 2 min', label: 'Tiempo promedio de recogida' },
             ].map((item, index) => (
                 <div
                     key={index}
@@ -144,7 +144,6 @@ const Footer: React.FC<FooterProps> = () => {
             <ul className="space-y-2 text-sm text-gray-400">
               <li><a href="#features" className="hover:text-white transition hover:translate-x-1 inline-block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded">Características</a></li>
               <li><a href="#how-it-works" className="hover:text-white transition hover:translate-x-1 inline-block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded">Cómo funciona</a></li>
-              <li><a href="#modules" className="hover:text-white transition hover:translate-x-1 inline-block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded">Módulos</a></li>
               <li><a href="#" className="hover:text-white transition hover:translate-x-1 inline-block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded">Precios</a></li>
             </ul>
           </div>

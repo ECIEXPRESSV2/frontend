@@ -9,17 +9,19 @@ import {
 } from 'lucide-react';
 
 const FeaturesSection: React.FC = () => {
+  const dailyChecklist = ['Pide desde clase', 'Recoge en minutos', 'Paga como quieras', 'Todo desde el celular'];
+
   const features = [
     {
       icon: Clock,
       title: 'Ahorra tiempo',
-      description: 'Olvídate de filas. Pide en segundos desde tu celular.',
+      description: 'Pide en segundos desde tu celular, sin perder tiempo.',
       gradient: 'from-primary to-amber-600',
     },
     {
       icon: QrCode,
-      title: 'Recoge sin filas',
-      description: 'Usa tu QR y recoge sin esperar.',
+      title: 'Cero esperas',
+      description: 'Tu pedido te espera a ti, no al revés.',
       gradient: 'from-emerald-400 to-emerald-600',
     },
     {
@@ -70,6 +72,34 @@ const FeaturesSection: React.FC = () => {
             <p className="font-body text-lg text-gray-600 max-w-2xl mx-auto">
               Diseñado para hacer tu experiencia en campus más rápida y eficiente
             </p>
+          </div>
+
+          {/* CHECKLIST + FOTO DE CAMPUS */}
+          <div className="grid md:grid-cols-2 gap-16 items-center mb-20">
+            <div className="space-y-6">
+              <span className="font-body text-sm font-semibold uppercase tracking-wide text-a11y-yellow-dark">
+                Tu día en el campus
+              </span>
+              <ul className="space-y-4">
+                {dailyChecklist.map((item, i) => (
+                  <li key={i} className="flex items-center gap-3 group">
+                    <div className="w-2.5 h-2.5 rounded-full bg-primary group-hover:scale-150 transition" />
+                    <span className="font-body text-gray-800 group-hover:text-a11y-yellow-dark transition">
+                      {item}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="relative hidden md:flex justify-center">
+              <div className="absolute w-[380px] h-[380px] bg-yellow-300/20 blur-[80px] rounded-full" />
+              <img
+                src="/EDIFICIO-E-ESCUELA.JPG"
+                alt="Edificio de la escuela universitaria mostrando el campus donde opera ECIXPRESS"
+                className="relative w-[300px] h-[300px] object-cover rounded-2xl shadow-xl hover:scale-105 transition duration-500"
+              />
+            </div>
           </div>
 
           {/* GRID */}

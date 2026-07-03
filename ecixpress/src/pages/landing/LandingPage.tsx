@@ -6,8 +6,6 @@ import SocialProofSection from '../../components/landing/SocialProofSection';
 import FeaturesSection from '../../components/landing/FeaturesSection';
 import HowItWorksSection from '../../components/landing/HowItWorksSection';
 import WalletShowcaseSection from '../../components/landing/WalletShowcaseSection';
-import UniversityContextSection from '../../components/landing/UniversityContextSection';
-import ModulesSection from '../../components/landing/ModulesSection';
 import FAQSection from '../../components/landing/FAQSection';
 import { CTAFinal, Footer } from '../../components/landing/CTASection';
 
@@ -55,12 +53,6 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigateToLogin, onNavigate
 
         {/* Wallet Showcase */}
         <WalletShowcaseSection />
-
-        {/* University Context */}
-        <UniversityContextSection />
-
-        {/* Modules */}
-        <ModulesSection />
 
         {/* FAQ Section */}
         <FAQSection />
