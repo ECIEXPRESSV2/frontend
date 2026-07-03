@@ -13,6 +13,7 @@ import AccountSectionHeader from '../AccountSectionHeader';
 import WalletPremiumCard from '../../../../components/wallet/WalletPremiumCard';
 import { PaymentMethodIcon, getMethodMeta } from '../../../../components/wallet/paymentMethods';
 import { useWallet } from '../../../../context/WalletContext';
+import { useRefreshOnScrollTop } from '../../../../hooks/useRefreshOnScrollTop';
 import {
   buildWalletHistory,
   formatCOP,
@@ -92,6 +93,8 @@ const PagosSection: React.FC = () => {
     void loadMovements();
   }, [loadMovements]);
 
+  useRefreshOnScrollTop(loadMovements, { disabled: loading });
+
   const defaultMethodMeta = defaultMethod ? getMethodMeta(defaultMethod) : null;
   const latestMovements = movements.slice(0, 6);
   const completedPayments = movements.filter((movement) => movement.kind === 'payment' && movement.status === 'completed');
@@ -116,20 +119,20 @@ const PagosSection: React.FC = () => {
         </button>
       </AccountSectionHeader>
 
-      <section className="grid grid-cols-1 gap-4 lg:grid-cols-[auto_1fr]">
-        <WalletPremiumCard />
+      <section className="grid grid-cols-1 items-stretch gap-5 lg:grid-cols-[minmax(320px,420px)_1fr]">
+        <WalletPremiumCard className="mx-auto h-full lg:mx-0" />
         <div className="grid gap-3 sm:grid-cols-3">
-          <div className="rounded-3xl border border-white/70 bg-white/82 p-5 shadow-lg shadow-gray-200/60 backdrop-blur-xl">
+          <div className="flex min-h-[112px] flex-col justify-center rounded-3xl border border-white/70 bg-white/82 p-5 shadow-lg shadow-gray-200/60 backdrop-blur-xl">
             <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Saldo disponible</p>
-            <p className="mt-2 text-2xl font-black text-gray-950">{walletLoading ? 'Cargando...' : balanceLabel}</p>
+            <p className="mt-2 text-2xl font-black leading-none text-gray-950">{walletLoading ? 'Cargando...' : balanceLabel}</p>
           </div>
-          <div className="rounded-3xl border border-white/70 bg-white/82 p-5 shadow-lg shadow-gray-200/60 backdrop-blur-xl">
+          <div className="flex min-h-[112px] flex-col justify-center rounded-3xl border border-white/70 bg-white/82 p-5 shadow-lg shadow-gray-200/60 backdrop-blur-xl">
             <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Pagos completados</p>
-            <p className="mt-2 text-2xl font-black text-gray-950">{completedPayments.length}</p>
+            <p className="mt-2 text-2xl font-black leading-none text-gray-950">{completedPayments.length}</p>
           </div>
-          <div className="rounded-3xl border border-white/70 bg-white/82 p-5 shadow-lg shadow-gray-200/60 backdrop-blur-xl">
+          <div className="flex min-h-[112px] flex-col justify-center rounded-3xl border border-white/70 bg-white/82 p-5 shadow-lg shadow-gray-200/60 backdrop-blur-xl">
             <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Total pagado</p>
-            <p className="mt-2 text-2xl font-black text-gray-950">{formatCOP(totalPaid)}</p>
+            <p className="mt-2 text-2xl font-black leading-none text-gray-950">{formatCOP(totalPaid)}</p>
           </div>
         </div>
       </section>

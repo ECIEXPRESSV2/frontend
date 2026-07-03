@@ -36,6 +36,7 @@ import {
 import { getUsers, type UserItem } from '../../services/userService';
 import { deletePageCache, getPageCache, pageCacheKeys, setPageCache } from '../../services/pageCache';
 import { getStoreLogoUrl, fileToDataUrl, compressImageToWebp } from '../../services/storeAssets';
+import { useRefreshOnScrollTop } from '../../hooks/useRefreshOnScrollTop';
 
 type TabType = 'schedules' | 'staff' | 'menu';
 type StatusAction = { store: Store; nextStatus: Store['status'] } | null;
@@ -418,6 +419,8 @@ const StoresPage: React.FC = () => {
     await loadStores();
     setRefreshing(false);
   };
+
+  useRefreshOnScrollTop(handleRefresh, { disabled: loading || refreshing });
 
   const openStoreProfile = (store: Store) => {
     navigate(`/admin/stores/${encodeURIComponent(store.id)}`);
@@ -1486,7 +1489,8 @@ const StoresPage: React.FC = () => {
 
       {statusAction && (
         <div className="fixed inset-0 z-[80] flex items-center justify-center bg-gray-950/45 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-lg rounded-2xl border border-white/80 bg-white p-6 shadow-2xl shadow-gray-900/20">
+          <div className="relative w-full max-w-lg overflow-hidden rounded-2xl border border-white/80 bg-white p-6 shadow-2xl shadow-gray-900/20" role="dialog" aria-modal="true" data-modal-root="true">
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-[#F4B942]" />
             {(() => {
               const copy = getConfirmationCopy(statusAction.store, statusAction.nextStatus);
               const danger = copy.tone === 'danger';
@@ -1540,7 +1544,7 @@ const StoresPage: React.FC = () => {
       {/* Edit store modal */}
       {editingStore && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-gray-950/45 p-4 backdrop-blur-sm">
-          <div className="flex max-h-[92vh] w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-white/80 bg-white shadow-2xl shadow-gray-900/20">
+          <div className="flex max-h-[92vh] w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-white/80 bg-white shadow-2xl shadow-gray-900/20" role="dialog" aria-modal="true" data-modal-root="true">
           <div className="h-1 flex-shrink-0 bg-[#F4B942]" />
           <div className="overflow-y-auto p-6">
             <div className="mb-5 flex items-start justify-between gap-4">
@@ -1611,7 +1615,8 @@ const StoresPage: React.FC = () => {
       {/* Create modal */}
       {showCreate && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-gray-950/45 p-4 backdrop-blur-sm">
-          <div className="max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-2xl border border-white/80 bg-white p-6 shadow-2xl shadow-gray-900/20">
+          <div className="relative max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-2xl border border-white/80 bg-white p-6 shadow-2xl shadow-gray-900/20" role="dialog" aria-modal="true" data-modal-root="true">
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-[#F4B942]" />
             <div className="mb-5 flex items-start justify-between gap-4">
               <div>
                 <p className="text-xs font-bold uppercase tracking-wide text-amber-600">Nuevo punto de venta</p>

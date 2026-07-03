@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import React, { useCallback, useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { MapPin, Clock, Tag, Search, Store as StoreIcon, Heart } from 'lucide-react';
 import { toast } from 'react-toastify';
@@ -6,6 +6,7 @@ import Sidebar from '../../components/home/Sidebar';
 import StoreCatalogCart from '../../components/store/StoreCatalogCart';
 import { useAuth } from '../../context/AuthContext';
 import { useFavorites } from '../../hooks/useFavorites';
+import { useRefreshOnScrollTop } from '../../hooks/useRefreshOnScrollTop';
 import { getStoreById, getStoreSchedules, getDayName, type Store, type StoreSchedule } from '../../services/storeService';
 import { getStoreBannerUrl, getStoreLogoUrl } from '../../services/storeAssets';
 
@@ -60,25 +61,29 @@ const StoreDetail: React.FC<StoreDetailProps> = ({ storeId: storeIdProp, onBack 
   }, []);
   const storeId = routeStoreId ?? (storeIdProp !== undefined ? String(storeIdProp) : undefined);
 
-  useEffect(() => {
+  const loadStore = useCallback(async ({ showLoading = false } = {}) => {
     if (!storeId) return;
-    const load = async () => {
-      try {
-        const token = await getToken().catch(() => null);
-        const [storeData, schedulesData] = await Promise.all([
-          getStoreById(storeId, token),
-          getStoreSchedules(storeId, token).catch(() => []),
-        ]);
-        setStore(storeData);
-        setSchedules(schedulesData);
-      } catch {
-        toast.error('No se pudo cargar la tienda');
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
-  }, [storeId]);
+    if (showLoading) setLoading(true);
+    try {
+      const token = await getToken().catch(() => null);
+      const [storeData, schedulesData] = await Promise.all([
+        getStoreById(storeId, token),
+        getStoreSchedules(storeId, token).catch(() => []),
+      ]);
+      setStore(storeData);
+      setSchedules(schedulesData);
+    } catch {
+      toast.error('No se pudo cargar la tienda');
+    } finally {
+      setLoading(false);
+    }
+  }, [getToken, storeId]);
+
+  useEffect(() => {
+    void loadStore({ showLoading: true });
+  }, [loadStore]);
+
+  useRefreshOnScrollTop(loadStore, { disabled: loading || !storeId });
 
   if (loading) {
     return (
@@ -236,7 +241,7 @@ const StoreDetail: React.FC<StoreDetailProps> = ({ storeId: storeIdProp, onBack 
                   <Clock size={16} />
                 </span>
                 <h2 className="font-bold text-gray-900">Horarios de Atención</h2>
-                <span className="ml-auto text-xs text-gray-400 group-open:rotate-180 transition-transform">▾</span>
+                <span className="ml-auto text-xs text-gray-400 group-open:rotate-180 transition-transform">?</span>
               </summary>
               <div className="px-6 pb-5">
                 {schedules.length === 0 ? (
@@ -296,3 +301,5 @@ const StoreDetail: React.FC<StoreDetailProps> = ({ storeId: storeIdProp, onBack 
 };
 
 export default StoreDetail;
+
+

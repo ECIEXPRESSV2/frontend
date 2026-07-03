@@ -31,7 +31,8 @@ const NonRefundableModal: React.FC<Props> = ({ open, onAccept }) => {
   return (
     // z mayor que el ModalShell (z-[100]) para quedar por encima. El backdrop NO cierra.
     <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-3xl bg-white shadow-2xl border-2 border-red-500 overflow-hidden animate-[fadeIn_.15s_ease-out]">
+      <div className="w-full max-w-md rounded-3xl bg-white shadow-2xl border-2 border-red-500 overflow-hidden animate-[fadeIn_.15s_ease-out]" role="dialog" aria-modal="true" data-modal-root="true">
+        <div className="h-1 bg-[#F4B942]" />
         <div className="bg-red-600 px-6 py-5 flex items-center gap-3">
           <div className="w-11 h-11 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
             <AlertTriangle className="text-white" size={24} />

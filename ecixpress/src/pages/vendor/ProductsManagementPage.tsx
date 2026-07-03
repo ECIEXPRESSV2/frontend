@@ -23,6 +23,7 @@ import FormInput from '../../components/ui/FormInput';
 import CategoryManager from '../../components/vendor/CategoryManager';
 import InventoryHistoryModal from '../../components/vendor/InventoryHistoryModal';
 import { useAuth } from '../../context/AuthContext';
+import { useRefreshOnScrollTop } from '../../hooks/useRefreshOnScrollTop';
 import { getStoreById, type Store } from '../../services/storeService';
 import {
   productsApi,
@@ -133,6 +134,8 @@ const ProductsManagementPage: React.FC = () => {
   };
 
   useEffect(() => { void load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [storeId]);
+
+  useRefreshOnScrollTop(load, { disabled: loading || !storeId });
 
   const openCreate = () => {
     if (categories.length === 0) {

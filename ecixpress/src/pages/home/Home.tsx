@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { MessageCircle, PackageCheck, Store as StoreIcon, Heart, Search } from 'lucide-react';
@@ -16,6 +16,7 @@ import { statusLabel, statusTone } from '../../lib/orders-ui';
 import { getAvailableStores, type Store } from '../../services/storeService';
 import { getStoreLogoUrl } from '../../services/storeAssets';
 import { useFavorites } from '../../hooks/useFavorites';
+import { useRefreshOnScrollTop } from '../../hooks/useRefreshOnScrollTop';
 
 const FALLBACK_PRODUCTS = [
   { id: 1, title: 'Cappuccino Italiano', description: 'Café espresso con leche espumada', imageUrl: 'https://images.unsplash.com/photo-1572442388796-11668a67e53d?w=400&auto=format&fit=crop', price: 4.50, rating: 4.8, estimatedTime: '5 min' },
@@ -51,38 +52,43 @@ const Home: React.FC<HomeProps> = ({ onUserClick, onCartClick, onOrdersClick, on
 
   const categories = ['Cafetería', 'Papelería'];
 
-  useEffect(() => {
-    const loadStores = async () => {
-      try {
-        const token = await getToken().catch(() => null);
-        const data = await getAvailableStores(token);
-        setStores(data);
-      } catch {
-        toast.error('No se pudieron cargar las tiendas');
-      } finally {
-        setLoadingStores(false);
-      }
-    };
-    void loadStores();
+  const loadStores = useCallback(async ({ showLoading = false } = {}) => {
+    if (showLoading) setLoadingStores(true);
+    try {
+      const token = await getToken().catch(() => null);
+      const data = await getAvailableStores(token);
+      setStores(data);
+    } catch {
+      toast.error('No se pudieron cargar las tiendas');
+    } finally {
+      setLoadingStores(false);
+    }
   }, [getToken]);
 
-  useEffect(() => {
+  const loadOrders = useCallback(async () => {
     if (!userProfile?.id) return;
-    let active = true;
-    const loadOrders = async () => {
-      setLoadingOrders(true);
-      try {
-        const data = await ordersApi.getOrders({ customerId: userProfile.id });
-        if (active) setOrders(data);
-      } catch {
-        if (active) setOrders([]);
-      } finally {
-        if (active) setLoadingOrders(false);
-      }
-    };
-    void loadOrders();
-    return () => { active = false; };
+    setLoadingOrders(true);
+    try {
+      const data = await ordersApi.getOrders({ customerId: userProfile.id });
+      setOrders(data);
+    } catch {
+      setOrders([]);
+    } finally {
+      setLoadingOrders(false);
+    }
   }, [ordersApi, userProfile?.id]);
+
+  useEffect(() => {
+    void loadStores({ showLoading: true });
+  }, [loadStores]);
+
+  useEffect(() => {
+    void loadOrders();
+  }, [loadOrders]);
+
+  useRefreshOnScrollTop(async () => {
+    await Promise.allSettled([loadStores(), loadOrders()]);
+  }, { disabled: loadingStores || loadingOrders });
 
   // Pertenencia a la categoría activa: Cafetería agrupa cafeterías y restaurantes; Papelería, papelerías.
   const inCategory = (s: Store) => {

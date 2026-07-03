@@ -13,12 +13,12 @@ import {
   Grid2X2,
   List,
   Mail,
-  MoreHorizontal,
   Phone,
   RefreshCw,
   Search,
   Shield,
   Store,
+  Trash2,
   UserCheck,
   UserMinus,
   X,
@@ -30,6 +30,7 @@ import { assignRole, bulkAssignRole, bulkUpdateStatus, getUsers, revokeRole, upd
 import { getRoles, type Role } from '../../services/roleService';
 import { getPageCache, pageCacheKeys, setPageCache } from '../../services/pageCache';
 import { getStoresByUser, type Store as StoreData } from '../../services/storeService';
+import { useRefreshOnScrollTop } from '../../hooks/useRefreshOnScrollTop';
 
 type UsersCache = {
   users: UserItem[];
@@ -92,8 +93,8 @@ const STATUS_META: Record<string, {
     summaryClass: 'bg-red-50 text-red-700 border-red-100',
   },
   INACTIVE: {
-    label: 'Inactiva',
-    icon: Clock,
+    label: 'Eliminada',
+    icon: Trash2,
     badgeClass: 'bg-gray-100 text-gray-700 border-gray-200',
     summaryClass: 'bg-gray-50 text-gray-700 border-gray-200',
   },
@@ -219,8 +220,6 @@ const UsersPage: React.FC = () => {
   const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
   const [statusUpdating, setStatusUpdating] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('table');
-  const [openMenuUserId, setOpenMenuUserId] = useState<string | null>(null);
-  const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
   const [filterRole, setFilterRole] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [openFilterMenu, setOpenFilterMenu] = useState<'role' | 'status' | 'sort' | null>(null);
@@ -393,6 +392,8 @@ const UsersPage: React.FC = () => {
     load({ showLoading: false, silent: true });
   };
 
+  useRefreshOnScrollTop(() => load({ showLoading: false, silent: true }), { disabled: loading || refreshing });
+
   const goToPage = (p: number) => {
     setPage(p);
     setSelectedUserIds(new Set());
@@ -405,7 +406,7 @@ const UsersPage: React.FC = () => {
       setBulkActionLoading(true);
       const token = await getToken();
       await bulkUpdateStatus(Array.from(selectedUserIds), status, token);
-      const label = status === 'ACTIVE' ? 'reactivadas' : status === 'INACTIVE' ? 'marcadas inactivas' : 'suspendidas';
+      const label = status === 'ACTIVE' ? 'reactivadas' : status === 'INACTIVE' ? 'eliminadas' : 'suspendidas';
       toast.success(`${selectedUserIds.size} cuenta${selectedUserIds.size !== 1 ? 's' : ''} ${label}.`);
       clearSelection();
       await load({ silent: true });
@@ -471,8 +472,8 @@ const UsersPage: React.FC = () => {
       setConfirmAction({
         user,
         status,
-        title: `¿Suspender la cuenta de ${name}?`,
-        description: 'La persona no podrá ingresar ni realizar operaciones hasta que un administrador reactive su cuenta.',
+        title: `Suspender la cuenta de ${name}`,
+        description: 'La persona no podra ingresar ni realizar operaciones hasta que un administrador reactive su cuenta.',
         confirmLabel: 'Suspender cuenta',
         tone: 'danger',
       });
@@ -483,8 +484,8 @@ const UsersPage: React.FC = () => {
       setConfirmAction({
         user,
         status,
-        title: `¿Reactivar la cuenta de ${name}?`,
-        description: 'La persona recuperará el acceso a ECIxpress con los roles que tiene asignados actualmente.',
+        title: `Reactivar la cuenta de ${name}`,
+        description: 'La persona recuperara el acceso a ECIxpress con los roles que tiene asignados actualmente.',
         confirmLabel: 'Reactivar cuenta',
         tone: 'success',
       });
@@ -494,20 +495,20 @@ const UsersPage: React.FC = () => {
     setConfirmAction({
       user,
       status,
-      title: `¿Marcar como inactiva la cuenta de ${name}?`,
-      description: 'La cuenta quedará sin acceso hasta que se active nuevamente.',
-      confirmLabel: 'Marcar inactiva',
-      tone: 'neutral',
+      title: `Eliminar la cuenta de ${name}`,
+      description: 'La cuenta quedara dada de baja y sin acceso hasta que un administrador la reactive.',
+      confirmLabel: 'Eliminar cuenta',
+      tone: 'danger',
     });
   };
 
-  const handleConfirmStatusChange = async () => {
+  const handleConfirmStatusChange = async (reason?: string) => {
     if (!confirmAction) return;
 
     try {
       setStatusUpdating(true);
       const token = await getToken();
-      await updateUserStatus(confirmAction.user.id, confirmAction.status, token);
+      await updateUserStatus(confirmAction.user.id, confirmAction.status, token, reason);
       toast.success('Estado de cuenta actualizado.');
       setConfirmAction(null);
       await load({ searchValue: appliedSearch, silent: true });
@@ -542,84 +543,10 @@ const UsersPage: React.FC = () => {
     );
   };
 
-  const closeMenu = () => { setOpenMenuUserId(null); setMenuPos(null); };
-
-  const renderActionsMenu = (user: UserItem) => {
-    const isOpen = openMenuUserId === user.id;
-    const status = String(user.status).toUpperCase();
-
-    const menuContent = isOpen && menuPos ? createPortal(
-      <div
-        style={{ position: 'fixed', top: menuPos.top, right: menuPos.right, zIndex: 9999 }}
-        className="w-56 overflow-hidden rounded-2xl border border-white/70 bg-white/90 p-1.5 shadow-xl shadow-gray-200/70 backdrop-blur-xl"
-        onClick={e => e.stopPropagation()}
-      >
-        <button
-          type="button"
-          onClick={() => { setSelectedUser(user); closeMenu(); }}
-          className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-medium text-gray-700 hover:bg-gray-50"
-        >
-          <Shield size={16} aria-hidden="true" />
-          Editar roles
-        </button>
-        {status === 'SUSPENDED' || status === 'INACTIVE' ? (
-          <button
-            type="button"
-            onClick={() => { closeMenu(); openStatusConfirmation(user, 'ACTIVE'); }}
-            className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-medium text-emerald-700 hover:bg-emerald-50"
-          >
-            <UserCheck size={16} aria-hidden="true" />
-            Reactivar cuenta
-          </button>
-        ) : (
-          <>
-            <button
-              type="button"
-              onClick={() => { closeMenu(); openStatusConfirmation(user, 'INACTIVE'); }}
-              className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-medium text-gray-700 hover:bg-gray-50"
-            >
-              <Clock size={16} aria-hidden="true" />
-              Marcar inactiva
-            </button>
-            <button
-              type="button"
-              onClick={() => { closeMenu(); openStatusConfirmation(user, 'SUSPENDED'); }}
-              className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-medium text-red-700 hover:bg-red-50"
-            >
-              <UserMinus size={16} aria-hidden="true" />
-              Suspender cuenta
-            </button>
-          </>
-        )}
-      </div>,
-      document.body,
-    ) : null;
-
-    return (
-      <div onClick={e => e.stopPropagation()}>
-        <button
-          type="button"
-          onClick={e => {
-            if (isOpen) { closeMenu(); return; }
-            const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect();
-            setMenuPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
-            setOpenMenuUserId(user.id);
-          }}
-          className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-yellow-300"
-          aria-label={`Abrir acciones para ${user.fullName}`}
-        >
-          <MoreHorizontal size={18} aria-hidden="true" />
-        </button>
-        {menuContent}
-      </div>
-    );
-  };
-
   return (
     <div
       className="min-h-screen bg-gradient-to-b from-white via-gray-50 to-white text-gray-900"
       onClick={() => {
-        if (openMenuUserId) closeMenu();
         if (openFilterMenu) setOpenFilterMenu(null);
         if (openBulkRoleMenu) closeBulkRoleMenu();
       }}
@@ -658,7 +585,7 @@ const UsersPage: React.FC = () => {
 
           <section className="sticky top-20 z-30 relative rounded-3xl border border-white/70 bg-white/88 p-4 shadow-lg shadow-gray-200/60 backdrop-blur-xl md:p-5">
             <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white to-transparent" />
-            <div className="grid gap-3 lg:grid-cols-[1fr_auto_auto] lg:items-center">
+            <div className="grid gap-3 lg:grid-cols-[1fr_auto] lg:items-center">
               <label className="relative block">
                 <span className="sr-only">Buscar por nombre o correo electrónico</span>
                 <input
@@ -721,17 +648,6 @@ const UsersPage: React.FC = () => {
                   <Grid2X2 size={20} strokeWidth={2.4} aria-hidden="true" />
                 </button>
               </div>
-              <button
-                type="button"
-                onClick={handleRefresh}
-                disabled={refreshing}
-                title={refreshing ? 'Actualizando...' : 'Actualizar datos'}
-                aria-label="Actualizar datos"
-                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-amber-200 bg-amber-50/80 px-4 text-sm font-bold text-amber-800 shadow-sm backdrop-blur transition hover:border-amber-300 hover:bg-amber-100 focus:outline-none focus:ring-2 focus:ring-yellow-300 disabled:cursor-wait disabled:opacity-60"
-              >
-                <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} aria-hidden="true" />
-                Actualizar
-              </button>
             </div>
 
             <div className="relative z-[200] mt-3 flex flex-wrap items-center gap-2">
@@ -751,7 +667,7 @@ const UsersPage: React.FC = () => {
                 value={filterStatus}
                 options={[
                   { value: 'ACTIVE', label: 'Activa' },
-                  { value: 'INACTIVE', label: 'Inactiva' },
+                  { value: 'INACTIVE', label: 'Eliminada' },
                   { value: 'SUSPENDED', label: 'Suspendida' },
                   { value: 'PENDING_VERIFICATION', label: 'Pendiente' },
                 ]}
@@ -896,24 +812,6 @@ const UsersPage: React.FC = () => {
                   </button>
                   <button
                     type="button"
-                    onClick={() => handleBulkStatus('INACTIVE')}
-                    disabled={bulkActionLoading}
-                    className="inline-flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white/80 px-3 py-1.5 text-xs font-semibold text-gray-600 transition hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-300 disabled:cursor-wait disabled:opacity-50"
-                  >
-                    <Clock size={13} aria-hidden="true" />
-                    Inactivar
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleBulkStatus('SUSPENDED')}
-                    disabled={bulkActionLoading}
-                    className="inline-flex items-center gap-1.5 rounded-xl border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700 transition hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-300 disabled:cursor-wait disabled:opacity-50"
-                  >
-                    <UserMinus size={13} aria-hidden="true" />
-                    Suspender
-                  </button>
-                  <button
-                    type="button"
                     onClick={clearSelection}
                     className="inline-flex items-center gap-1 rounded-xl px-2 py-1.5 text-xs font-semibold text-gray-500 transition hover:text-red-600 focus:outline-none"
                   >
@@ -994,14 +892,15 @@ const UsersPage: React.FC = () => {
                       <th scope="col" className="px-5 py-4">Usuario</th>
                       <th scope="col" className="px-5 py-4">Roles</th>
                       <th scope="col" className="px-5 py-4">Estado</th>
-                      <th scope="col" className="px-5 py-4 text-right">Acciones</th>
+                      <th scope="col" className="px-5 py-4 text-right">Detalle</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
                     {filteredUsers.map(user => (
                       <tr
                         key={user.id}
-                        className={`transition hover:bg-yellow-50/50 ${selectedUserIds.has(user.id) ? 'bg-yellow-50/60' : ''}`}
+                        onClick={() => setSelectedUser(user)}
+                        className={`cursor-pointer transition hover:bg-yellow-50/50 ${selectedUserIds.has(user.id) ? 'bg-yellow-50/60' : ''}`}
                       >
                         <td className="w-12 px-4 py-4" onClick={event => event.stopPropagation()}>
                           <input
@@ -1018,7 +917,7 @@ const UsersPage: React.FC = () => {
                             <div className="min-w-0">
                               <button
                                 type="button"
-                                onClick={() => setSelectedUser(user)}
+                                onClick={event => { event.stopPropagation(); setSelectedUser(user); }}
                                 className="block max-w-[320px] truncate text-left font-bold text-gray-950 hover:text-amber-700 focus:outline-none focus:ring-2 focus:ring-yellow-300"
                                 title={user.fullName}
                               >
@@ -1038,13 +937,12 @@ const UsersPage: React.FC = () => {
                           <div className="flex items-center justify-end gap-2">
                             <button
                               type="button"
-                              onClick={() => setSelectedUser(user)}
+                              onClick={event => { event.stopPropagation(); setSelectedUser(user); }}
                               className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-600 transition hover:border-yellow-300 hover:bg-yellow-50 hover:text-amber-700 focus:outline-none focus:ring-2 focus:ring-yellow-300"
                             >
                               <Eye size={13} aria-hidden="true" />
                               Ver detalles
                             </button>
-                            {renderActionsMenu(user)}
                           </div>
                         </td>
                       </tr>
@@ -1076,10 +974,11 @@ const UsersPage: React.FC = () => {
                 {filteredUsers.map(user => (
                   <article
                     key={user.id}
+                    onClick={() => setSelectedUser(user)}
                     className={`relative rounded-2xl border p-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${
                       selectedUserIds.has(user.id)
-                        ? 'border-yellow-300 bg-yellow-50/50'
-                        : 'border-gray-100 bg-white hover:border-gray-200'
+                        ? 'cursor-pointer border-yellow-300 bg-yellow-50/50'
+                        : 'cursor-pointer border-gray-100 bg-white hover:border-gray-200'
                     }`}
                   >
                     {/* Fila superior: checkbox + avatar + info + menú */}
@@ -1111,7 +1010,6 @@ const UsersPage: React.FC = () => {
                           </div>
                         )}
                       </div>
-                      {renderActionsMenu(user)}
                     </div>
 
                     {/* Footer: estado + ver detalles sutil */}
@@ -1119,7 +1017,7 @@ const UsersPage: React.FC = () => {
                       <StatusBadge status={user.status} />
                       <button
                         type="button"
-                        onClick={() => setSelectedUser(user)}
+                        onClick={event => { event.stopPropagation(); setSelectedUser(user); }}
                         className="inline-flex items-center gap-1.5 rounded text-xs font-semibold text-gray-400 transition hover:text-amber-700 focus:outline-none focus:ring-2 focus:ring-yellow-300"
                       >
                         <Eye size={13} aria-hidden="true" />
@@ -1407,10 +1305,11 @@ const UserDetailDrawer: React.FC<UserDetailDrawerProps> = ({
   const roleNames = getRoleNames(user);
   const status = String(user.status).toUpperCase();
   const isSuspended = status === 'SUSPENDED';
+  const isInactive = status === 'INACTIVE';
   const [openRoleSelect, setOpenRoleSelect] = useState(false);
 
   return (
-    <div className="fixed inset-0 z-[70]">
+    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
       <button
         type="button"
         className="absolute inset-0 bg-gray-950/40 backdrop-blur-sm"
@@ -1419,7 +1318,10 @@ const UserDetailDrawer: React.FC<UserDetailDrawerProps> = ({
       />
 
       <aside
-        className="absolute right-0 top-0 flex h-full w-full max-w-md flex-col overflow-y-auto rounded-l-[28px] bg-white shadow-2xl shadow-gray-900/20"
+        className="relative flex max-h-[min(92vh,820px)] w-full max-w-2xl flex-col overflow-hidden rounded-[28px] bg-white shadow-2xl shadow-gray-900/20"
+        role="dialog"
+        aria-modal="true"
+        data-modal-root="true"
         aria-label="Detalle del usuario"
         onClick={() => { if (openRoleSelect) setOpenRoleSelect(false); }}
       >
@@ -1439,7 +1341,8 @@ const UserDetailDrawer: React.FC<UserDetailDrawerProps> = ({
           </div>
         </div>
 
-        <div className="flex flex-col divide-y divide-gray-100">
+        <div className="flex-1 overflow-y-auto">
+          <div className="flex flex-col divide-y divide-gray-100">
           {/* Perfil */}
           <div className="flex items-center gap-4 px-5 py-5">
             <Avatar user={user} size="lg" />
@@ -1546,11 +1449,23 @@ const UserDetailDrawer: React.FC<UserDetailDrawerProps> = ({
           <div className="px-5 py-4">
             <h3 className="text-sm font-bold text-gray-950">Estado de la cuenta</h3>
             <p className="mb-4 mt-1 text-sm text-gray-500">
-              {isSuspended
-                ? 'La cuenta está suspendida. El usuario no puede acceder a ECIxpress hasta que se reactive.'
-                : 'Suspender la cuenta impedirá el acceso del usuario hasta que un administrador la reactive.'}
+              {isInactive
+                ? 'La cuenta fue eliminada y no se puede reactivar desde la plataforma.'
+                : isSuspended
+                  ? 'La cuenta esta suspendida. Puedes reactivarla desde este panel.'
+                  : 'Desde aqui puedes eliminar o suspender la cuenta. Ambas acciones requieren una razon antes de aplicarse.'}
             </p>
-            {isSuspended ? (
+            {isInactive ? (
+              <div className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3">
+                <div className="flex items-center gap-2 text-sm font-bold text-gray-700">
+                  <Trash2 size={16} aria-hidden="true" />
+                  Cuenta eliminada
+                </div>
+                <p className="mt-1 text-xs leading-5 text-gray-500">
+                  Esta accion es irreversible. Para recuperar acceso se debe crear una cuenta nueva.
+                </p>
+              </div>
+            ) : isSuspended ? (
               <button
                 type="button"
                 onClick={() => onStatusAction(user, 'ACTIVE')}
@@ -1560,18 +1475,29 @@ const UserDetailDrawer: React.FC<UserDetailDrawerProps> = ({
                 Reactivar cuenta
               </button>
             ) : (
-              <button
-                type="button"
-                onClick={() => onStatusAction(user, 'SUSPENDED')}
-                className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-300"
-              >
-                <UserMinus size={16} aria-hidden="true" />
-                Suspender cuenta
-              </button>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={() => onStatusAction(user, 'INACTIVE')}
+                  className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-bold text-gray-700 transition hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-300"
+                >
+                  <Trash2 size={16} aria-hidden="true" />
+                  Eliminar cuenta
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onStatusAction(user, 'SUSPENDED')}
+                  className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-300"
+                >
+                  <UserMinus size={16} aria-hidden="true" />
+                  Suspender cuenta
+                </button>
+              </div>
             )}
             <p className="mt-2.5 text-xs text-gray-400">
-              Las acciones de estado requieren confirmación antes de aplicarse.
+              Las acciones de estado requieren confirmacion antes de aplicarse.
             </p>
+          </div>
           </div>
         </div>
       </aside>
@@ -1583,8 +1509,11 @@ const ConfirmStatusDialog: React.FC<{
   action: Exclude<ConfirmAction, null>;
   loading: boolean;
   onCancel: () => void;
-  onConfirm: () => void;
+  onConfirm: (reason?: string) => void;
 }> = ({ action, loading, onCancel, onConfirm }) => {
+  const [reason, setReason] = useState('');
+  const requiresReason = action.status === 'INACTIVE' || action.status === 'SUSPENDED';
+  const canConfirm = !requiresReason || reason.trim().length > 0;
   const buttonClass = action.tone === 'danger'
     ? 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-300'
     : action.tone === 'success'
@@ -1610,6 +1539,23 @@ const ConfirmStatusDialog: React.FC<{
           <p className="text-sm font-bold text-gray-950">{action.user.fullName || 'Usuario sin nombre'}</p>
           <p className="mt-1 text-sm text-gray-500">{action.user.email}</p>
         </div>
+        {requiresReason && (
+          <label className="mt-5 block">
+            <span className="text-xs font-bold uppercase tracking-wide text-gray-500">
+              Justificacion <span className="text-red-500">*</span>
+            </span>
+            <textarea
+              value={reason}
+              onChange={event => setReason(event.target.value)}
+              rows={4}
+              className="mt-2 w-full resize-none rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-yellow-400 focus:ring-4 focus:ring-yellow-100"
+              placeholder={action.status === 'SUSPENDED' ? 'Explica por que se suspende la cuenta...' : 'Explica por que se elimina la cuenta...'}
+            />
+            <span className="mt-1.5 block text-xs text-gray-400">
+              Debes escribir una razon antes de confirmar esta accion.
+            </span>
+          </label>
+        )}
         <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
           <button
             type="button"
@@ -1621,9 +1567,9 @@ const ConfirmStatusDialog: React.FC<{
           </button>
           <button
             type="button"
-            onClick={onConfirm}
-            disabled={loading}
-            className={`inline-flex min-h-11 items-center justify-center rounded-xl px-5 py-2 text-sm font-bold transition focus:outline-none focus:ring-2 disabled:cursor-wait disabled:opacity-70 ${buttonClass}`}
+            onClick={() => onConfirm(requiresReason ? reason.trim() : undefined)}
+            disabled={loading || !canConfirm}
+            className={`inline-flex min-h-11 items-center justify-center rounded-xl px-5 py-2 text-sm font-bold transition focus:outline-none focus:ring-2 disabled:cursor-not-allowed disabled:opacity-70 ${buttonClass}`}
           >
             {loading ? 'Aplicando...' : action.confirmLabel}
           </button>

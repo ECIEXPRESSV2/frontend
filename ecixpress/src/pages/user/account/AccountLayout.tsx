@@ -1,10 +1,19 @@
 import React, { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from '../../../components/home/Sidebar';
+import { useAuth } from '../../../context/AuthContext';
+import { useWallet } from '../../../context/WalletContext';
+import { useRefreshOnScrollTop } from '../../../hooks/useRefreshOnScrollTop';
 import AccountNav from './AccountNav';
 
 const AccountLayout: React.FC = () => {
   const [sidebarExpanded, setSidebarExpanded] = useState(false);
+  const { refreshProfile } = useAuth();
+  const { refresh: refreshWallet } = useWallet();
+
+  useRefreshOnScrollTop(async () => {
+    await Promise.allSettled([refreshProfile(), refreshWallet()]);
+  });
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-white via-gray-50 to-white text-gray-900">

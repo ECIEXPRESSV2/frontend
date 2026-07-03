@@ -66,8 +66,12 @@ const ModalShell: React.FC<ModalShellProps> = ({
     >
       <div
         className={`mx-auto w-full ${maxWidth} max-h-[min(90vh,900px)] flex flex-col overflow-hidden rounded-[32px] bg-white shadow-2xl border border-white/60`}
+        role="dialog"
+        aria-modal="true"
+        data-modal-root="true"
         onClick={(e) => e.stopPropagation()}
       >
+        <div className="h-1 shrink-0 bg-[#F4B942]" />
         {header ? (
           <div className="relative shrink-0">
             {header}

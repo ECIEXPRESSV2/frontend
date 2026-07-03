@@ -21,6 +21,7 @@ import QrScannerModal from '../../components/fulfillment/QrScannerModal';
 import FormInput from '../../components/ui/FormInput';
 import { useAuth } from '../../context/AuthContext';
 import { useFulfillmentApi } from '../../hooks/useFulfillmentApi';
+import { useRefreshOnScrollTop } from '../../hooks/useRefreshOnScrollTop';
 import {
   FulfillmentApiError,
   type DeliveryFailureReason,
@@ -187,6 +188,8 @@ const DeliveriesPage: React.FC<DeliveriesPageProps> = ({ onBack }) => {
     if (profileStore && !storeId) setStoreId(profileStore);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userProfile]);
+
+  useRefreshOnScrollTop(() => loadHistory(page), { disabled: historyLoading || !storeId.trim() });
 
   const totalPages = history ? Math.max(1, Math.ceil(history.total / history.limit)) : 1;
 

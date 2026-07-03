@@ -233,7 +233,7 @@ const ResumenSection: React.FC = () => {
         </div>
       </header>
 
-      <section className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(360px,0.9fr)]">
+      <section className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(340px,420px)]">
         <div className="rounded-3xl border border-white/70 bg-white/82 p-5 shadow-lg shadow-gray-200/60 backdrop-blur-xl md:p-6">
           <div className="mb-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
@@ -304,13 +304,13 @@ const ResumenSection: React.FC = () => {
           <InfoRow icon={Calendar} label="Miembro desde">{memberSinceFull}</InfoRow>
         </div>
 
-        <div className="grid gap-4 lg:grid-cols-[auto_1fr] xl:grid-cols-1">
-          <WalletPremiumCard />
-          <div className="flex flex-col justify-center gap-4 rounded-3xl border border-white/70 bg-white/82 p-5 shadow-lg shadow-gray-200/60 backdrop-blur-xl">
+        <div className="grid content-start gap-4 lg:grid-cols-[minmax(300px,420px)_1fr] xl:grid-cols-1">
+          <WalletPremiumCard className="mx-auto lg:mx-0" />
+          <div className="flex min-h-[178px] flex-col justify-center gap-4 rounded-3xl border border-white/70 bg-white/82 p-5 shadow-lg shadow-gray-200/60 backdrop-blur-xl">
             <div>
               <p className="text-sm font-bold text-gray-900">Billetera ECIxpress</p>
               <p className="mt-1 text-xs text-gray-500">Saldo y pagos disponibles para tus compras en campus.</p>
-              <p className="mt-3 text-2xl font-black text-gray-950">{walletLoading ? 'Cargando...' : balanceLabel}</p>
+              <p className="mt-3 text-2xl font-black leading-none text-gray-950">{walletLoading ? 'Cargando...' : balanceLabel}</p>
             </div>
             <div className="flex flex-wrap gap-2">
               <button
