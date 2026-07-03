@@ -102,44 +102,66 @@ const FeaturesSection: React.FC = () => {
             </div>
           </div>
 
-          {/* GRID */}
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {/* BENTO GRID — tamaños variables en vez de cards uniformes */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 lg:auto-rows-[190px] gap-6">
 
             {features.map((feature, index) => {
               const Icon = feature.icon;
+              const isFeatured = index === 0;
+              const isStrip = index === features.length - 1;
+              const spanClass = isFeatured
+                  ? 'lg:col-span-2 lg:row-span-2'
+                  : isStrip
+                      ? 'lg:col-span-4'
+                      : '';
 
               return (
                   <div
                       key={index}
-                      className="group relative p-8 rounded-2xl border border-gray-200
-                bg-white
-                hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 overflow-hidden"
+                      className={`group relative rounded-2xl border border-gray-200
+                bg-white overflow-hidden
+                hover:shadow-2xl hover:-translate-y-1 transition-all duration-500
+                ${spanClass}
+                ${isStrip ? 'p-6 flex items-center gap-5' : 'p-8'}`}
                   >
 
                     {/* glow hover */}
                     <div className={`absolute inset-0 opacity-0 group-hover:opacity-100 transition duration-500
                   bg-gradient-to-br ${feature.gradient} blur-2xl`} />
 
-                    {/* contenido */}
-                    <div className="relative z-10 space-y-4">
-
-                      {/* ICONO */}
-                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center
-                    bg-gradient-to-r ${feature.gradient} shadow-md
-                    group-hover:scale-110 transition`}>
-                        <Icon className="text-white w-6 h-6" />
+                    {isStrip ? (
+                      <div className="relative z-10 flex items-center gap-5 w-full">
+                        <div className={`w-14 h-14 shrink-0 rounded-xl flex items-center justify-center
+                          bg-gradient-to-r ${feature.gradient} shadow-md
+                          group-hover:scale-110 transition`}>
+                          <Icon className="text-white w-7 h-7" />
+                        </div>
+                        <div>
+                          <h3 className="font-display text-lg font-semibold text-gray-900 group-hover:text-gray-800 transition">
+                            {feature.title}
+                          </h3>
+                          <p className="font-body text-gray-600 text-sm leading-relaxed">
+                            {feature.description}
+                          </p>
+                        </div>
                       </div>
+                    ) : (
+                      <div className={`relative z-10 space-y-4 h-full flex flex-col ${isFeatured ? 'justify-center' : ''}`}>
+                        <div className={`${isFeatured ? 'w-16 h-16' : 'w-12 h-12'} rounded-xl flex items-center justify-center
+                      bg-gradient-to-r ${feature.gradient} shadow-md
+                      group-hover:scale-110 transition`}>
+                          <Icon className={`text-white ${isFeatured ? 'w-8 h-8' : 'w-6 h-6'}`} />
+                        </div>
 
-                      {/* TEXTO */}
-                      <h3 className="font-display text-xl font-semibold text-gray-900 group-hover:text-gray-800 transition">
-                        {feature.title}
-                      </h3>
+                        <h3 className={`font-display font-semibold text-gray-900 group-hover:text-gray-800 transition ${isFeatured ? 'text-2xl' : 'text-xl'}`}>
+                          {feature.title}
+                        </h3>
 
-                      <p className="font-body text-gray-600 text-sm leading-relaxed">
-                        {feature.description}
-                      </p>
-
-                    </div>
+                        <p className={`font-body text-gray-600 leading-relaxed ${isFeatured ? 'text-base max-w-xs' : 'text-sm'}`}>
+                          {feature.description}
+                        </p>
+                      </div>
+                    )}
 
                   </div>
               );

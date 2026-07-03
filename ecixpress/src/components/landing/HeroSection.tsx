@@ -1,6 +1,5 @@
 import React from 'react';
 import { ArrowRight } from 'lucide-react';
-import FloatingShape from './FloatingShapes';
 
 interface HeroProps {
   onGetStartedClick?: () => void;
@@ -19,8 +18,8 @@ const HeroSection: React.FC<HeroProps> = ({ onGetStartedClick, onSignInClick }) 
           {/* Left Content */}
           <div className="space-y-8 animate-fade-in-left">
             {/* Badge */}
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-yellow-100 border border-yellow-300 animate-bounce-slow">
-              <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-yellow-100 border border-yellow-300">
+              <div className="w-2 h-2 rounded-full bg-primary" />
               <span className="font-body text-sm font-semibold text-a11y-yellow-darker">Pide. Llega. Recoge.</span>
             </div>
 
@@ -42,7 +41,7 @@ const HeroSection: React.FC<HeroProps> = ({ onGetStartedClick, onSignInClick }) 
             <div className="flex flex-col sm:flex-row gap-4 pt-4 animate-slide-up-delay-2">
               <button
                 onClick={onGetStartedClick}
-                className="px-8 py-4 rounded-xl font-body font-semibold text-gray-900 bg-gradient-to-r from-primary to-amber-500 hover:from-amber-500 hover:to-amber-600 shadow-lg hover:shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2 group hover:shadow-amber-500/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                className="px-8 py-4 rounded-xl font-body font-semibold text-gray-900 bg-gradient-to-r from-primary to-amber-500 hover:from-amber-500 hover:to-amber-600 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300 flex items-center justify-center gap-2 group hover:shadow-amber-500/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
               >
                 Crear cuenta gratis
                 <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
@@ -61,60 +60,28 @@ const HeroSection: React.FC<HeroProps> = ({ onGetStartedClick, onSignInClick }) 
 
           {/* Right Visual - iPhone Mockup */}
           <div className="relative h-full min-h-[650px] hidden md:flex items-center justify-center">
-            {/* Decorative circles */}
-            <div className="absolute top-0 right-0 w-72 h-72 bg-yellow-100 rounded-full opacity-30 blur-3xl animate-float" />
-            <div className="absolute bottom-0 left-0 w-72 h-72 bg-blue-100 rounded-full opacity-20 blur-3xl animate-float-delay" />
+            {/* Un solo glow ambiental, sin shapes compitiendo con el producto */}
+            <div className="absolute w-[520px] h-[520px] bg-yellow-300/25 blur-[100px] rounded-full pointer-events-none" />
 
-            {/* Floating shapes - reduced for better hierarchy */}
-            <FloatingShape
-                type="circle"
-                size={80}
-                color="rgba(251, 191, 36, 0.35)"
-                blur={20}
-                position="top-right"
-                animation="pulse"
-                animationDuration="3s"
-            />
-            <FloatingShape
-                type="diamond"
-                size={50}
-                color="rgba(251, 146, 60, 0.3)"
-                position="bottom-left"
-                animation="spin"
-                animationDuration="15s"
-            />
-            <FloatingShape
-                type="circle"
-                size={40}
-                color="rgba(251, 191, 36, 0.28)"
-                blur={12}
-                position="center-right"
-                animation="pulse"
-                animationDuration="4s"
-                animationDelay="0.5s"
-            />
-
-            {/* iPhone Mockup */}
+            {/* iPhone Mockup — protagonista único del hero */}
             <div className="relative z-10 animate-fade-in-up">
-              <div className="relative w-full h-[600px] mx-auto [perspective:1200px]">
-                {/* Phone image without frame */}
-
+              <div className="relative w-full h-[620px] mx-auto [perspective:1200px]">
                 <img
-
                     src="/iPhone 17 Pro.png"
                     alt="Mockup de iPhone mostrando la aplicación ECIXPRESS con código QR para recoger pedidos sin filas en el campus"
                     className="
-                    absolute right-[-550px] top-[50%] -translate-y-1/2
-                    w-[900px]
+                    absolute right-[-500px] top-[50%] -translate-y-1/2
+                    w-[940px]
                     max-w-none
                     object-contain
-                    drop-shadow-[0_40px_100px_rgba(0,0,0,0.2)]
-                    rotate-[12deg]
-                    hover:scale-105 hover:rotate-[8deg] transition-transform duration-500
+                    drop-shadow-[0_50px_80px_rgba(0,0,0,0.28)]
+                    rotate-[6deg]
+                    hover:scale-[1.03] hover:rotate-[3deg] transition-transform duration-500
 
                   "
                 />
-                <div className="absolute inset-0 bg-yellow-300 opacity-10 blur-3xl scale-110 -z-10" />
+                {/* Sombra de apoyo — ancla el producto al suelo visual */}
+                <div className="absolute bottom-[6%] right-[8%] w-[280px] h-[40px] bg-black/20 blur-2xl rounded-full -z-10" />
               </div>
             </div>
           </div>

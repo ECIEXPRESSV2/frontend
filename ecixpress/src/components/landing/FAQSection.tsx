@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { ChevronDown, HelpCircle, Mail } from 'lucide-react';
-import FloatingShape from './FloatingShapes';
 
 interface FAQItem {
   category: string;
@@ -84,27 +83,8 @@ const FAQSection: React.FC = () => {
 
   return (
     <section className="relative py-20 md:py-28 px-6 overflow-hidden bg-gradient-to-br from-white via-gray-50 to-yellow-50">
-      {/* Decorative glow */}
+      {/* Un solo glow decorativo */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[900px] bg-yellow-200/15 blur-[120px] rounded-full pointer-events-none" />
-
-      {/* Floating shapes */}
-      <FloatingShape
-        type="circle"
-        size={50}
-        color="rgba(251, 191, 36, 0.2)"
-        blur={12}
-        position="top-left"
-        animation="pulse"
-        animationDuration="5s"
-      />
-      <FloatingShape
-        type="diamond"
-        size={35}
-        color="rgba(34, 211, 238, 0.15)"
-        position="bottom-right"
-        animation="spin"
-        animationDuration="20s"
-      />
 
       <div className="relative max-w-4xl mx-auto">
         {/* Header */}

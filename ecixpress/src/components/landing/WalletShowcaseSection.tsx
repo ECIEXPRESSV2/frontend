@@ -3,51 +3,41 @@ import { useNavigate } from 'react-router-dom';
 import {
   CreditCard, PlusCircle, Shield, Zap, Sparkles, ArrowRight,
 } from 'lucide-react';
-import FloatingShape from './FloatingShapes';
 import CreditCardUI from '../ui/CreditCard';
 
 // ─── Types ─────────────────────────────────────────────────────────────────
-interface ShowcaseItem {
+interface ChipItem {
   icon: React.ElementType;
   title: string;
   description: string;
-  accentFrom: string;
-  accentTo: string;
-  /** Real campus photo. When omitted, the card renders as a clean brand-gradient panel instead of a stock photo. */
-  image?: string;
+  gradient: string;
 }
 
 // ─── Mock data — swap with backend/CMS props ────────────────────────────────
-const SHOWCASE_ITEMS: ShowcaseItem[] = [
+const CHIP_ITEMS: ChipItem[] = [
   {
     icon: PlusCircle,
     title: 'Recarga tu saldo',
-    description: 'Añade dinero a tu wallet desde tarjeta, efectivo o transferencia',
-    accentFrom: '#E7A93F',
-    accentTo: '#F97316',
+    description: 'Tarjeta, efectivo o transferencia',
+    gradient: 'from-amber-400 to-orange-500',
   },
   {
     icon: CreditCard,
     title: 'Paga en cafeterías',
-    description: 'Usa tu wallet en todas las cafeterías del campus',
-    accentFrom: '#57B7CF',
-    accentTo: '#3B82F6',
-    image: '/FOTOCAFETERIA.JPG',
+    description: 'En todo el campus',
+    gradient: 'from-secondary to-blue-600',
   },
   {
     icon: Zap,
     title: 'Paga y listo',
-    description: 'Confirma tu compra desde el celular en segundos',
-    accentFrom: '#34D399',
-    accentTo: '#059669',
-    image: '/FOTOQRIA.png',
+    description: 'Confirma en segundos',
+    gradient: 'from-emerald-400 to-emerald-600',
   },
   {
     icon: Shield,
     title: '100% Segura',
-    description: 'Tu saldo protegido con encriptación de nivel bancario',
-    accentFrom: '#334155',
-    accentTo: '#0F172A',
+    description: 'Encriptación nivel bancario',
+    gradient: 'from-slate-600 to-slate-800',
   },
 ];
 
@@ -61,7 +51,6 @@ const CARD_DATA = {
 
 /** Spring easing — matches natural physics without Framer Motion */
 const SPRING = 'cubic-bezier(0.22, 1, 0.36, 1)';
-
 
 // ─── Sub-components ─────────────────────────────────────────────────────────
 
@@ -79,27 +68,21 @@ const EyebrowBadge: React.FC<{ children: React.ReactNode }> = ({ children }) => 
     </div>
 );
 
-/** Glass overlay card used inside image cards */
-const GlassOverlay: React.FC<{
-  icon: React.ElementType;
-  title: string;
-  description: string;
-  accentFrom: string;
-  accentTo: string;
-  large?: boolean;
-}> = ({ icon: Icon, title, description }) => (
-    <div className="relative z-10 p-6 space-y-4 text-white">
-      <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-white/20 backdrop-blur-md border border-white/30 group-hover:scale-110 transition">
-        <Icon className="w-5 h-5" />
+/** Compact feature chip — reemplaza las cards fotográficas grandes que competían con la tarjeta */
+const FeatureChip: React.FC<{ item: ChipItem }> = ({ item }) => {
+  const Icon = item.icon;
+  return (
+    <div className="group flex items-center gap-3 p-4 rounded-xl border border-gray-200 bg-white hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300">
+      <div className={`w-10 h-10 shrink-0 rounded-lg flex items-center justify-center bg-gradient-to-r ${item.gradient} group-hover:scale-110 transition`}>
+        <Icon className="w-5 h-5 text-white" />
       </div>
-      <h3 className="font-display font-semibold text-lg">
-        {title}
-      </h3>
-      <p className="font-body text-sm text-white/80">
-        {description}
-      </p>
+      <div className="min-w-0">
+        <p className="font-body font-semibold text-sm text-gray-900 truncate">{item.title}</p>
+        <p className="font-body text-xs text-gray-500 truncate">{item.description}</p>
+      </div>
     </div>
-);
+  );
+};
 
 // ─── Main component ─────────────────────────────────────────────────────────
 const WalletShowcaseSection: React.FC = () => {
@@ -121,49 +104,24 @@ const WalletShowcaseSection: React.FC = () => {
           ref={sectionRef}
           className="relative py-20 md:py-28 px-6 overflow-hidden bg-gradient-to-b from-white via-gray-50 to-white"
       >
-        {/* ── Background layer ─────────────────────────────────────── */}
-        {/* Ambient orbs — GPU-friendly, no JS */}
+        {/* Un solo glow ambiental, centrado detrás de la tarjeta */}
         <div
             className="absolute pointer-events-none"
             style={{
-              top: '10%', left: '15%',
-              width: 600, height: 600,
-              borderRadius: '50%',
-              background: 'radial-gradient(circle, rgba(251,191,36,0.15) 0%, transparent 65%)',
-              filter: 'blur(80px)',
-              animation: 'orbFloat 14s ease-in-out infinite',
-              willChange: 'transform',
-            }}
-        />
-        <div
-            className="absolute pointer-events-none"
-            style={{
-              bottom: '15%', right: '10%',
-              width: 500, height: 500,
-              borderRadius: '50%',
-              background: 'radial-gradient(circle, rgba(34,211,238,0.1) 0%, transparent 65%)',
-              filter: 'blur(80px)',
-              animation: 'orbFloat 18s ease-in-out infinite reverse',
-              willChange: 'transform',
-            }}
-        />
-        <div
-            className="absolute pointer-events-none"
-            style={{
-              top: '45%', left: '45%',
+              top: '20%', left: '50%',
               width: 700, height: 700,
               borderRadius: '50%',
-              background: 'radial-gradient(circle, rgba(52,211,153,0.06) 0%, transparent 65%)',
-              filter: 'blur(100px)',
-              transform: 'translate(-50%, -50%)',
+              background: 'radial-gradient(circle, rgba(251,191,36,0.16) 0%, transparent 65%)',
+              filter: 'blur(90px)',
+              transform: 'translate(-50%, -20%)',
             }}
         />
 
-        <div className="relative max-w-7xl mx-auto">
+        <div className="relative max-w-5xl mx-auto">
 
           {/* ── Header ───────────────────────────────────────────────── */}
           <div
-              className="text-center mb-20"
+              className="text-center mb-12"
               style={{
                 opacity: visible ? 1 : 0,
                 transform: visible ? 'translateY(0)' : 'translateY(32px)',
@@ -183,110 +141,33 @@ const WalletShowcaseSection: React.FC = () => {
             </p>
           </div>
 
-          {/* ── Grid ─────────────────────────────────────────────────── */}
-          <div className="space-y-5">
-
-            {/* Featured card — full width */}
-            <div
-                style={{
-                  opacity: visible ? 1 : 0,
-                  transform: visible ? 'translateY(0)' : 'translateY(40px)',
-                  transition: `opacity 0.8s ${SPRING} 80ms, transform 0.8s ${SPRING} 80ms`,
-                }}
-            >
-              <ImageCard item={SHOWCASE_ITEMS[0]} height={300} />
-            </div>
-
-            {/* Medium row */}
-            <div className="grid md:grid-cols-2 gap-5">
-              {SHOWCASE_ITEMS.slice(1, 3).map((item, i) => (
-                  <div
-                      key={item.title}
-                      style={{
-                        opacity: visible ? 1 : 0,
-                        transform: visible ? 'translateY(0)' : 'translateY(40px)',
-                        transition: `opacity 0.8s ${SPRING} ${160 + i * 80}ms, transform 0.8s ${SPRING} ${160 + i * 80}ms`,
-                      }}
-                  >
-                    <ImageCard item={item} height={200} />
-                  </div>
-              ))}
-            </div>
-
-            {/* Security card */}
-            <div
-                style={{
-                  opacity: visible ? 1 : 0,
-                  transform: visible ? 'translateY(0)' : 'translateY(40px)',
-                  transition: `opacity 0.8s ${SPRING} 320ms, transform 0.8s ${SPRING} 320ms`,
-                }}
-            >
-              <ImageCard item={SHOWCASE_ITEMS[3]} height={180} />
-            </div>
-          </div>
-
-          {/* ── Credit Card Section ─────────────────────────────────────── */}
+          {/* ── Credit Card — protagonista visual de la sección ─────────── */}
           <div
-              className="py-16 flex justify-center relative"
+              className="py-8 flex justify-center relative"
               style={{
                 opacity: visible ? 1 : 0,
                 transform: visible ? 'translateY(0)' : 'translateY(40px)',
-                transition: `opacity 0.8s ${SPRING} 400ms, transform 0.8s ${SPRING} 400ms`,
+                transition: `opacity 0.8s ${SPRING} 120ms, transform 0.8s ${SPRING} 120ms`,
               }}
           >
-            {/* Modern floating elements */}
-            <div className="absolute inset-0 pointer-events-none overflow-hidden">
-              <FloatingShape
-                  type="circle"
-                  size={80}
-                  color="rgba(251, 191, 36, 0.2)"
-                  blur={20}
-                  position="top-left"
-                  animation="pulse"
-                  animationDuration="3s"
-              />
-              <FloatingShape
-                  type="circle"
-                  size={64}
-                  color="rgba(249, 115, 22, 0.2)"
-                  blur={20}
-                  position="bottom-right"
-                  animation="pulse"
-                  animationDuration="4s"
-                  animationDelay="1s"
-              />
-              <FloatingShape
-                  type="circle"
-                  size={48}
-                  color="rgba(34, 211, 238, 0.2)"
-                  blur={20}
-                  position="center-left"
-                  animation="pulse"
-                  animationDuration="5s"
-                  animationDelay="2s"
-              />
-              <FloatingShape
-                  type="diamond"
-                  size={32}
-                  color="rgba(251, 191, 36, 0.3)"
-                  position="top-right"
-                  animation="spin"
-                  animationDuration="10s"
-              />
-              <FloatingShape
-                  type="diamond"
-                  size={24}
-                  color="rgba(249, 115, 22, 0.3)"
-                  position="bottom-left"
-                  animation="spin"
-                  animationDuration="8s"
-              />
-            </div>
-
             <CreditCardUI
               balance={CARD_DATA.balance}
               logoSrc={CARD_DATA.logoSrc}
             />
+          </div>
+
+          {/* ── Chips de apoyo — compactos, sin competir con la tarjeta ──── */}
+          <div
+              className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-8"
+              style={{
+                opacity: visible ? 1 : 0,
+                transform: visible ? 'translateY(0)' : 'translateY(24px)',
+                transition: `opacity 0.8s ${SPRING} 280ms, transform 0.8s ${SPRING} 280ms`,
+              }}
+          >
+            {CHIP_ITEMS.map((item) => (
+              <FeatureChip key={item.title} item={item} />
+            ))}
           </div>
 
           {/* ── CTA ──────────────────────────────────────────────────── */}
@@ -295,7 +176,7 @@ const WalletShowcaseSection: React.FC = () => {
               style={{
                 opacity: visible ? 1 : 0,
                 transform: visible ? 'translateY(0)' : 'translateY(20px)',
-                transition: `opacity 0.8s ${SPRING} 600ms, transform 0.8s ${SPRING} 600ms`,
+                transition: `opacity 0.8s ${SPRING} 400ms, transform 0.8s ${SPRING} 400ms`,
               }}
           >
             <button
@@ -312,76 +193,7 @@ const WalletShowcaseSection: React.FC = () => {
             </p>
           </div>
         </div>
-
-        {/* ── Keyframes ────────────────────────────────────────────────── */}
-        <style>{`
-        @keyframes cardSweep {
-          0%   { transform: translateX(-100%) skewX(-8deg); opacity: 0; }
-          20%  { opacity: 1; }
-          80%  { opacity: 1; }
-          100% { transform: translateX(350%) skewX(-8deg); opacity: 0; }
-        }
-        @keyframes orbFloat {
-          0%, 100% { transform: translateY(0px) scale(1); }
-          50%       { transform: translateY(-24px) scale(1.04); }
-        }
-      `}</style>
       </section>
-  );
-};
-
-// ─── ImageCard ──────────────────────────────────────────────────────────────
-const ImageCard: React.FC<{
-  item: ShowcaseItem;
-  large?: boolean;
-  height?: number;
-}> = ({ item, large, height }) => {
-  const [hovered, setHovered] = useState(false);
-
-  return (
-      <div
-          className="relative rounded-3xl overflow-hidden group cursor-pointer"
-          style={{
-            height: large ? 'clamp(320px, 35vw, 440px)' : height ?? 280,
-            boxShadow: hovered
-                ? `0 24px 64px rgba(0,0,0,0.55), 0 2px 0 rgba(255,255,255,0.06) inset`
-                : `0 8px 32px rgba(0,0,0,0.4), 0 2px 0 rgba(255,255,255,0.04) inset`,
-            border: '1px solid rgba(255,255,255,0.07)',
-            transition: `box-shadow 0.4s ${SPRING}`,
-          }}
-          onMouseEnter={() => setHovered(true)}
-          onMouseLeave={() => setHovered(false)}
-      >
-        {/* Image or, when none is provided, a clean brand-gradient panel */}
-        {item.image ? (
-          <>
-            <img
-                src={item.image}
-                alt={`${item.title}: ${item.description}`}
-                className="absolute inset-0 w-full h-full object-cover scale-110 group-hover:scale-125 transition duration-700"
-                loading="lazy"
-            />
-            <div className="absolute inset-0 bg-black/40 group-hover:bg-black/30 transition" />
-          </>
-        ) : (
-          <div
-              className="absolute inset-0 transition duration-700 group-hover:scale-105"
-              style={{
-                background: `linear-gradient(135deg, ${item.accentFrom} 0%, ${item.accentTo} 100%)`,
-              }}
-          />
-        )}
-
-        {/* Content */}
-        <GlassOverlay
-            icon={item.icon}
-            title={item.title}
-            description={item.description}
-            accentFrom={item.accentFrom}
-            accentTo={item.accentTo}
-            large={large}
-        />
-      </div>
   );
 };
 

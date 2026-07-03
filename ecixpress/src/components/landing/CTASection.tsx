@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowRight, Mail, MapPin, Phone } from 'lucide-react';
+import { ArrowRight, Lock, Mail, MapPin, Phone } from 'lucide-react';
 
 interface CTAFinalProps {
   onSignUpClick?: () => void;
@@ -68,8 +68,14 @@ const CTAFinal: React.FC<CTAFinalProps> = ({ onSignUpClick }) => {
 
           </div>
 
-          {/* ✅ Métricas rediseñadas */}
-          <div className="pt-10 grid md:grid-cols-3 gap-6">
+          {/* Micro-señal de confianza, junto a la decisión de conversión */}
+          <div className="flex items-center justify-center gap-2 text-gray-500">
+            <Lock size={14} />
+            <span className="font-body text-xs tracking-wide">Pago seguro</span>
+          </div>
+
+          {/* Trust strip — franja de contraste única, cerca del CTA */}
+          <div className="pt-6 rounded-2xl bg-gray-950 grid grid-cols-3 divide-x divide-white/10 overflow-hidden">
 
             {[
               { value: '0%', label: 'Comisión por transacción' },
@@ -78,13 +84,12 @@ const CTAFinal: React.FC<CTAFinalProps> = ({ onSignUpClick }) => {
             ].map((item, index) => (
                 <div
                     key={index}
-                    className="p-6 rounded-xl bg-white/70 backdrop-blur-md border border-gray-200
-              hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
+                    className="p-6 text-center hover:bg-white/5 transition-colors duration-300"
                 >
-                  <p className="font-display text-3xl font-semibold text-gray-900">
+                  <p className="font-display text-2xl md:text-3xl font-semibold text-white">
                     {item.value}
                   </p>
-                  <p className="font-body text-sm text-gray-600">{item.label}</p>
+                  <p className="font-body text-xs md:text-sm text-gray-400 mt-1">{item.label}</p>
                 </div>
             ))}
 

@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Star } from 'lucide-react';
-import FloatingShape from './FloatingShapes';
 
 const SocialProofSection: React.FC = () => {
   const sectionRef = useRef<HTMLDivElement | null>(null);
@@ -55,28 +54,8 @@ const SocialProofSection: React.FC = () => {
       ref={sectionRef}
       className="relative py-32 px-6 overflow-hidden bg-gradient-to-b from-white via-gray-50 to-white"
     >
-      {/* Decorative glow - Background */}
-      <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-yellow-300/15 blur-[100px] rounded-full pointer-events-none" />
-      <div className="absolute bottom-0 left-1/4 w-[500px] h-[500px] bg-cyan-300/10 blur-[100px] rounded-full pointer-events-none" />
-
-      {/* Floating shapes */}
-      <FloatingShape
-        type="circle"
-        size={50}
-        color="rgba(251, 191, 36, 0.2)"
-        blur={12}
-        position="top-left"
-        animation="pulse"
-        animationDuration="5s"
-      />
-      <FloatingShape
-        type="diamond"
-        size={35}
-        color="rgba(34, 211, 238, 0.15)"
-        position="bottom-right"
-        animation="spin"
-        animationDuration="20s"
-      />
+      {/* Un solo glow decorativo */}
+      <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-yellow-300/15 blur-[120px] rounded-full pointer-events-none" />
 
       <div className="relative max-w-7xl mx-auto">
         {/* Header */}
