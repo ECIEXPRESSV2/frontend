@@ -10,7 +10,7 @@
     },
     "campus": {
       "type": "geojson",
-      "data": "/campus.geojson",
+      "data": "/campus-map.geojson",
       "promoteId": "name"
     }
   },

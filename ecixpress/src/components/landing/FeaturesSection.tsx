@@ -72,7 +72,7 @@ const FeaturesSection: React.FC = () => {
             <h2 className="font-display text-4xl md:text-5xl font-semibold text-gray-900 flex items-center justify-center gap-3">
               ¿Por qué{' '}
               <img
-                src="/logotipoEcixpress.svg"
+                src="/ecixpress-logo.svg"
                 alt="ECIXPRESS"
                 className="h-8 md:h-9 w-auto self-center"
  />
@@ -119,7 +119,7 @@ const FeaturesSection: React.FC = () => {
             >
               <div className="absolute w-[380px] h-[380px] bg-yellow-300/20 blur-[80px] rounded-full" />
               <img
-                src="/EDIFICIO-E-ESCUELA.JPG"
+                src="/campus-building.jpg"
                 alt="Edificio de la escuela universitaria mostrando el campus donde opera ECIXPRESS"
                 className="relative w-[300px] h-[300px] object-cover rounded-2xl shadow-xl hover:scale-105 transition duration-500"
               />

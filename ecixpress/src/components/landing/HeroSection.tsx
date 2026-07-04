@@ -166,7 +166,7 @@ const HeroSection: React.FC<HeroProps> = ({ onGetStartedClick, onSignInClick }) 
                 <div className="relative w-full h-[620px] mx-auto [perspective:1200px]">
                   <img
                       ref={phoneImgRef}
-                      src="/iPhone 17 Pro.png"
+                      src="/iphone-mockup.png"
                       alt="Mockup de iPhone mostrando la aplicación ECIXPRESS con código QR para recoger pedidos sin filas en el campus"
                       style={{ transform: 'rotate(6deg) scale(1)' }}
                       className="

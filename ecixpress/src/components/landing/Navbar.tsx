@@ -22,7 +22,7 @@ const Navbar: React.FC<NavbarProps> = ({ onLoginClick, onSignUpClick }) => {
           {/* Logo */}
           <div className="flex items-center gap-2 transition">
             <img
-              src="/logotipoEcixpress.svg"
+              src="/ecixpress-logo.svg"
               alt="Ecixpress"
               className="h-9 md:h-10 hover:scale-105 transition"
             />

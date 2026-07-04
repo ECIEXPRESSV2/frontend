@@ -89,7 +89,7 @@ const CampusMapSection: React.FC = () => {
 
       map = new maplibregl.Map({
         container: containerRef.current,
-        style: '/campus-style.json',
+        style: '/campus-map-style.json',
         center: [-74.043725, 4.782866],
         zoom: 16.7,
         pitch: 60,
@@ -120,7 +120,7 @@ const CampusMapSection: React.FC = () => {
       };
 
       currentMap.on('load', () => {
-        fetch('/campus.geojson')
+        fetch('/campus-map.geojson')
           .then((r) => r.json())
           .then((campus: CampusGeoJson) => {
             if (disposed) return;

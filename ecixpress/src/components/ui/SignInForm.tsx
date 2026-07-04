@@ -84,7 +84,7 @@ const SignInForm: React.FC<SignInProps> = ({ onSignUpClick, onLoginSuccess }) =>
     return (
       <AuthLayout carouselPosition="left">
         <div className="text-center space-y-1">
-          <img src="/logotipoEcixpress.svg" className="h-9 mx-auto mb-2" alt="EciXpress" />
+          <img src="/ecixpress-logo.svg" className="h-9 mx-auto mb-2" alt="EciXpress" />
           <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Recuperar contraseña</h1>
           <p className="text-sm text-gray-500">Te enviaremos un enlace a tu correo</p>
         </div>
@@ -146,7 +146,7 @@ const SignInForm: React.FC<SignInProps> = ({ onSignUpClick, onLoginSuccess }) =>
     <AuthLayout carouselPosition="left">
       {/* Header */}
       <div className="text-center space-y-1">
-        <img src="/logotipoEcixpress.svg" className="h-8 mx-auto mb-4" alt="EciXpress" />
+        <img src="/ecixpress-logo.svg" className="h-8 mx-auto mb-4" alt="EciXpress" />
         <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Bienvenido</h1>
         <p className="text-sm text-gray-500">Inicia sesión en tu cuenta</p>
       </div>

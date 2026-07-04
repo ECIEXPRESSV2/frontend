@@ -39,19 +39,19 @@ const SocialProofSection: React.FC = () => {
         'Con ECIXPRESS ahorro 30 minutos de filas cada día. Puedo concentrarme en mis proyectos y pasar más tiempo con mis amigos.',
       name: 'Elizabeth Rodríguez',
       designation: 'Estudiante de Ingeniería de Sistemas · Escuela Colombiana de Ingeniería Julio Garavito',
-      src: '/FOTOELIZAFINAL.png',
+      src: '/testimonial-elizabeth.png',
     },
     {
       quote: 'La app es tan fácil de usar que incluso mi abuela pudo hacer un pedido.',
       name: 'Marlio Jose Charry',
       designation: 'Estudiante de Ingeniería de Sistemas · Escuela Colombiana de Ingeniería Julio Garavito',
-      src: '/FOTOSINFONDOMAR.png',
+      src: '/testimonial-marlio.png',
     },
     {
       quote: 'Antes hacía fila 30 minutos todos los días. Ahora pido desde el salón y listo.',
       name: 'Sebastián Ortega',
       designation: 'Estudiante de Ingeniería de Sistemas · Escuela Colombiana de Ingeniería Julio Garavito',
-      src: '/FOTOSINFONDOSEBASTIAN.png',
+      src: '/testimonial-sebastian.png',
     },
   ];
 

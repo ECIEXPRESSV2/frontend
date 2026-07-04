@@ -98,7 +98,7 @@ const FAQSection: React.FC = () => {
           <h2 className="font-display text-4xl md:text-5xl font-semibold text-gray-900 leading-tight flex flex-col md:flex-row items-center justify-center gap-3">
             <span>Todo lo que necesitas saber sobre</span>
             <img
-              src="/logotipoEcixpress.svg"
+              src="/ecixpress-logo.svg"
               alt="ECIXPRESS"
               className="h-8 md:h-9 w-auto self-center"
             />

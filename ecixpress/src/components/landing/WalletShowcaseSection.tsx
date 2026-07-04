@@ -44,7 +44,7 @@ const CHIP_ITEMS: ChipItem[] = [
 // ─── Mock card data — swap with userData from backend ──────────────────────
 const CARD_DATA = {
   balance: '$125,000',
-  logoSrc: '/eciexpress.svg',
+  logoSrc: '/ecixpress-mark.svg',
 };
 
 // ─── Helpers ────────────────────────────────────────────────────────────────

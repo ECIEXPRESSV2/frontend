@@ -25,7 +25,7 @@ const WalletPremiumCard: React.FC<WalletPremiumCardProps> = ({ className = '' })
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-white/70">Tarjeta virtual</p>
-            <img src="/eciexpress.svg" alt="ECIxpress" className="mt-2 h-7 brightness-0 invert" />
+            <img src="/ecixpress-mark.svg" alt="ECIxpress" className="mt-2 h-7 brightness-0 invert" />
           </div>
           <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/15 backdrop-blur-sm">
             <Nfc size={26} className="opacity-90" aria-hidden="true" />

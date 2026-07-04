@@ -13,11 +13,11 @@ const IMAGES = [
   "https://images.unsplash.com/photo-1586075010923-2dd4570fb338?w=400&q=80",
   "https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=400&q=80",
   // Real university images from public folder
-  "/EDIFICIO-E-ESCUELA.JPG",
-  "/FOTOCAFETERIA.JPG",
-  "/FOTOELIZASEBASSOFI.JPG",
-  "/FOTOESCUELA.jpg",
-  "/FOTOOSWALDO.JPG",
+  "/campus-building.jpg",
+  "/campus-cafeteria.jpg",
+  "/campus-students-group.jpg",
+  "/campus-sign-night.jpg",
+  "/campus-community-oswaldo.jpg",
 ];
 
 const splitIntoRows = (items: string[], rows: number): string[][] =>

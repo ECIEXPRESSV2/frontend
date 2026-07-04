@@ -116,7 +116,7 @@ const Footer: React.FC<FooterProps> = () => {
           <div className="space-y-4">
             <div>
               <img
-                src="/logotipoEcixpress.svg"
+                src="/ecixpress-logo.svg"
                 alt="Ecixpress"
                 className="h-8 w-auto brightness-0 invert hover:scale-[1.02]"
               />

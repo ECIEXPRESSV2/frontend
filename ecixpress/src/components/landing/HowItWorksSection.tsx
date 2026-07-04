@@ -28,7 +28,7 @@ const HowItWorksSection: React.FC = () => {
       title: 'Selecciona productos',
       description: 'Explora el menú disponible y elige fácilmente.',
       gradient: 'from-primary to-amber-600',
-      image: '/UPIMG.JPG',
+      image: '/food-court-counter.jpg',
     },
     {
       icon: CreditCard,
@@ -36,7 +36,7 @@ const HowItWorksSection: React.FC = () => {
       title: 'Paga o reserva',
       description: 'Elige tu método de pago preferido.',
       gradient: 'from-secondary to-blue-600',
-      image: '/EDIFICIO-E-ESCUELA.JPG',
+      image: '/campus-building.jpg',
     },
     {
       icon: QrCode,
@@ -44,7 +44,7 @@ const HowItWorksSection: React.FC = () => {
       title: 'Recibe tu QR',
       description: 'Obtén tu código único al instante.',
       gradient: 'from-secondary to-blue-600',
-      image: '/QRIMG2.jpg',
+      image: '/qr-code-pickup.jpg',
     },
     {
       icon: CheckCircle,
@@ -52,7 +52,7 @@ const HowItWorksSection: React.FC = () => {
       title: 'Recoge sin filas',
       description: 'Presenta tu QR y recibe tu pedido.',
       gradient: 'from-emerald-400 to-emerald-600',
-      image: '/FILAIMG.JPG',
+      image: '/campus-queue.jpg',
     },
   ];
 
