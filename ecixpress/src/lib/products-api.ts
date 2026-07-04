@@ -166,7 +166,7 @@ export const productsApi = {
    */
   getAll: (storeId: string, params: ProductListFilters = {}, token?: string | null) =>
     catalogFetch<Product[]>(
-      `/products${buildQuery({ storeId, ...params })}`,
+      `/${buildQuery({ storeId, ...params }).replace(/^\?/, '')}`,
       token,
     ),
 
@@ -176,12 +176,12 @@ export const productsApi = {
     token?: string | null,
   ) =>
     catalogFetch<PaginatedResult<Product>>(
-      `/products/store/${storeId}${buildQuery({ ...params })}`,
+      `/store/${storeId}${buildQuery({ ...params })}`,
       token,
     ),
 
   getLowStock: (storeId: string, token?: string | null) =>
-    catalogFetch<Product[]>(`/products/store/${storeId}/low-stock`, token),
+    catalogFetch<Product[]>(`/store/${storeId}/low-stock`, token),
 
   getByCategoryPaginated: (
     storeId: string,
@@ -190,17 +190,17 @@ export const productsApi = {
     token?: string | null,
   ) =>
     catalogFetch<PaginatedResult<Product>>(
-      `/products/store/${storeId}/category/${categoryId}${buildQuery({ ...params })}`,
+      `/store/${storeId}/category/${categoryId}${buildQuery({ ...params })}`,
       token,
     ),
 
   getById: (id: string, token?: string | null) =>
-    catalogFetch<Product>(`/products/${id}`, token),
+    catalogFetch<Product>(`/${id}`, token),
 
-  getModel3dUrl: (id: string) => `${PRODUCTS_API_BASE_URL}/products/${id}/model3d`,
+  getModel3dUrl: (id: string) => `${PRODUCTS_API_BASE_URL}/${id}/model3d`,
 
   create: (input: CreateProductInput, token?: string | null) =>
-    catalogFetch<Product>('/products', token, { method: 'POST', body: JSON.stringify(input) }),
+    catalogFetch<Product>('/', token, { method: 'POST', body: JSON.stringify(input) }),
 
   createWithAssets: (input: CreateProductInput, files: ProductAssetFiles, token?: string | null) => {
     const formData = new FormData();
@@ -210,26 +210,26 @@ export const productsApi = {
     formData.append('front', files.front);
     formData.append('left', files.left);
     formData.append('back', files.back);
-    return catalogFetch<Product>('/products/with-assets', token, { method: 'POST', body: formData });
+    return catalogFetch<Product>('/with-assets', token, { method: 'POST', body: formData });
   },
 
   update: (id: string, input: Partial<CreateProductInput>, token?: string | null) =>
-    catalogFetch<Product>(`/products/${id}`, token, { method: 'PATCH', body: JSON.stringify(input) }),
+    catalogFetch<Product>(`/${id}`, token, { method: 'PATCH', body: JSON.stringify(input) }),
 
   activate: (id: string, token?: string | null) =>
-    catalogFetch<Product>(`/products/${id}/activate`, token, { method: 'PATCH' }),
+    catalogFetch<Product>(`/${id}/activate`, token, { method: 'PATCH' }),
 
   deactivate: (id: string, token?: string | null) =>
-    catalogFetch<Product>(`/products/${id}/deactivate`, token, { method: 'PATCH' }),
+    catalogFetch<Product>(`/${id}/deactivate`, token, { method: 'PATCH' }),
 
   adjustStock: (id: string, payload: AdjustStockInput, token?: string | null) =>
-    catalogFetch<Product>(`/products/${id}/stock`, token, {
+    catalogFetch<Product>(`/${id}/stock`, token, {
       method: 'PATCH',
       body: JSON.stringify(payload),
     }),
 
   remove: (id: string, token?: string | null) =>
-    catalogFetch<void>(`/products/${id}`, token, { method: 'DELETE' }),
+    catalogFetch<void>(`/${id}`, token, { method: 'DELETE' }),
 
   // ─── Alias retrocompatibles (call sites previos a la división de módulos) ──
   getCategories: (storeId: string, token?: string | null) => categoriesApi.getAll(storeId, token),
