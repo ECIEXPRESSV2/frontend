@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Search, Plus, Minus, ShoppingCart, Loader2, ImageOff, X, Tag, Check } from 'lucide-react';
+import { Search, Plus, Minus, ShoppingCart, Loader2, ImageOff, X, Tag, Check, Box, ExternalLink } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -7,6 +7,7 @@ import { useOrdersApi } from '../../hooks/useOrdersApi';
 import { productsApi, priceToCents, type Product, type ProductCategory } from '../../lib/products-api';
 import type { OrderResponse } from '../../lib/orders-api';
 import { formatCOP } from '../../lib/format';
+import Product3DViewerModal from './Product3DViewerModal';
 
 interface StoreCatalogCartProps {
   storeId: string;
@@ -146,6 +147,9 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName,
   // Producto cuyo recuadro está "rechazando" un intento de pedir más de lo disponible: se le
   // aplica la clase de sacudida + borde rojo por un instante (feedback en el sitio, sin toasts).
   const [rejectedProductId, setRejectedProductId] = useState<string | null>(null);
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [viewerSrc, setViewerSrc] = useState<string | null>(null);
+  const [viewerTitle, setViewerTitle] = useState('');
   const rejectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [mobileCartOpen, setMobileCartOpen] = useState(false);
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
@@ -732,6 +736,7 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName,
   );
 
   return (
+    <>
     <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
       {/* Catálogo: más angosto, una sola columna de productos */}
       <div className="lg:col-span-2 space-y-4">
@@ -899,9 +904,9 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName,
                   <div className={`flex flex-1 flex-col ${outOfStock ? 'opacity-40 grayscale' : ''}`}>
                     {/* Imagen con badges superpuestos */}
                     <div className="relative h-32 bg-gradient-to-br from-yellow-50 to-yellow-100">
-                      {product.imageUrl ? (
+                      {product.frontImageUrl ?? product.imageUrl ? (
                         <img
-                          src={product.imageUrl}
+                          src={product.frontImageUrl ?? product.imageUrl ?? ''}
                           alt={product.name}
                           className="w-full h-full object-cover"
                           onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
@@ -915,6 +920,22 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName,
                         <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-white/90 backdrop-blur-sm text-[11px] font-semibold text-gray-700 shadow-sm">
                           {product.category.name}
                         </span>
+                      )}
+                      {product.model3dUrl && product.modelGenerationStatus === 'READY' && (
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setViewerTitle(product.name);
+                            setViewerSrc(productsApi.getModel3dUrl(product.id));
+                            setViewerOpen(true);
+                          }}
+                          className="absolute bottom-2 left-2 z-10 inline-flex items-center gap-1.5 rounded-full bg-gray-900/90 px-2.5 py-1 text-[11px] font-semibold text-white shadow-sm transition hover:bg-gray-800"
+                        >
+                          <Box size={12} />
+                          Ver 3D
+                          <ExternalLink size={10} />
+                        </button>
                       )}
                       {/* Botón flotante de añadir, anclado al borde inferior de la imagen */}
                       {qty === 0 && (
@@ -1000,7 +1021,15 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName,
         </div>
       )}
 
+      <Product3DViewerModal
+        open={viewerOpen}
+        title={viewerTitle}
+        src={viewerSrc}
+        onClose={() => setViewerOpen(false)}
+      />
+
     </div>
+    </>
   );
 };
 

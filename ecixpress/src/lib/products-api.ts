@@ -36,6 +36,13 @@ export interface Product {
   /** Precio unitario en PESOS COP (string decimal, p. ej. "3500.00"). */
   price: string;
   imageUrl?: string | null;
+  frontImageUrl?: string | null;
+  leftImageUrl?: string | null;
+  backImageUrl?: string | null;
+  model3dUrl?: string | null;
+  modelGenerationStatus?: 'PENDING' | 'PROCESSING' | 'READY' | 'FAILED';
+  modelGenerationProgress?: number | null;
+  modelGenerationError?: string | null;
   sku?: string | null;
   stock: number;
   reservedStock: number;
@@ -54,7 +61,7 @@ export interface PaginatedResult<T> {
 
 /** Pesos (string del catálogo) → centavos COP enteros. */
 export const priceToCents = (price: string | number): number =>
-  Math.round(parseFloat(String(price)) * 100);
+  Math.round(Number(String(price)) * 100);
 
 /** Genera un slug URL-friendly a partir de un nombre (único por tienda). */
 export const slugify = (text: string): string =>
@@ -90,6 +97,12 @@ export interface CreateProductInput {
   minStock?: number;
   sortOrder?: number;
   isActive?: boolean;
+}
+
+export interface ProductAssetFiles {
+  front: File;
+  left: File;
+  back: File;
 }
 
 export type StockOperation = 'set' | 'add' | 'subtract';
@@ -153,22 +166,18 @@ export const productsApi = {
    */
   getAll: (storeId: string, params: ProductListFilters = {}, token?: string | null) =>
     catalogFetch<Product[]>(
-      `/products${buildQuery({ storeId, ...params })}`,
+      `${buildQuery({ storeId, ...params })}`,  // SIN /products; sin "/" para no generar "/?"
       token,
     ),
-
-  getByStorePaginated: (
-    storeId: string,
-    params: PaginationFilters = {},
-    token?: string | null,
-  ) =>
+    
+  getByStorePaginated: (storeId: string, params: PaginationFilters = {}, token?: string | null) =>
     catalogFetch<PaginatedResult<Product>>(
-      `/products/store/${storeId}${buildQuery({ ...params })}`,
+      `/store/${storeId}${buildQuery({ ...params })}`,  // SIN /products
       token,
     ),
 
   getLowStock: (storeId: string, token?: string | null) =>
-    catalogFetch<Product[]>(`/products/store/${storeId}/low-stock`, token),
+  catalogFetch<Product[]>(`/store/${storeId}/low-stock`, token),  // SIN /products
 
   getByCategoryPaginated: (
     storeId: string,
@@ -177,33 +186,46 @@ export const productsApi = {
     token?: string | null,
   ) =>
     catalogFetch<PaginatedResult<Product>>(
-      `/products/store/${storeId}/category/${categoryId}${buildQuery({ ...params })}`,
+      `/store/${storeId}/category/${categoryId}${buildQuery({ ...params })}`,
       token,
     ),
 
   getById: (id: string, token?: string | null) =>
-    catalogFetch<Product>(`/products/${id}`, token),
+    catalogFetch<Product>(`/${id}`, token),
+
+  getModel3dUrl: (id: string) => `${PRODUCTS_API_BASE_URL}/${id}/model3d`,  
 
   create: (input: CreateProductInput, token?: string | null) =>
-    catalogFetch<Product>('/products', token, { method: 'POST', body: JSON.stringify(input) }),
+    catalogFetch<Product>('/', token, { method: 'POST', body: JSON.stringify(input) }),
+
+  createWithAssets: (input: CreateProductInput, files: ProductAssetFiles, token?: string | null) => {
+    const formData = new FormData();
+    for (const [key, value] of Object.entries(input)) {
+      if (value !== undefined && value !== null) formData.append(key, String(value));
+    }
+    formData.append('front', files.front);
+    formData.append('left', files.left);
+    formData.append('back', files.back);
+    return catalogFetch<Product>('/with-assets', token, { method: 'POST', body: formData });
+  },
 
   update: (id: string, input: Partial<CreateProductInput>, token?: string | null) =>
-    catalogFetch<Product>(`/products/${id}`, token, { method: 'PATCH', body: JSON.stringify(input) }),
+    catalogFetch<Product>(`/${id}`, token, { method: 'PATCH', body: JSON.stringify(input) }),
 
   activate: (id: string, token?: string | null) =>
-    catalogFetch<Product>(`/products/${id}/activate`, token, { method: 'PATCH' }),
+    catalogFetch<Product>(`/${id}/activate`, token, { method: 'PATCH' }),
 
   deactivate: (id: string, token?: string | null) =>
-    catalogFetch<Product>(`/products/${id}/deactivate`, token, { method: 'PATCH' }),
+    catalogFetch<Product>(`/${id}/deactivate`, token, { method: 'PATCH' }),
 
   adjustStock: (id: string, payload: AdjustStockInput, token?: string | null) =>
-    catalogFetch<Product>(`/products/${id}/stock`, token, {
+    catalogFetch<Product>(`/${id}/stock`, token, {
       method: 'PATCH',
       body: JSON.stringify(payload),
     }),
 
   remove: (id: string, token?: string | null) =>
-    catalogFetch<void>(`/products/${id}`, token, { method: 'DELETE' }),
+    catalogFetch<void>(`/${id}`, token, { method: 'DELETE' }),
 
   // ─── Alias retrocompatibles (call sites previos a la división de módulos) ──
   getCategories: (storeId: string, token?: string | null) => categoriesApi.getAll(storeId, token),
@@ -218,6 +240,10 @@ export const productsApi = {
   /** Alias retrocompatible de `create` (nombre previo). */
   createProduct: (input: CreateProductInput, token?: string | null) =>
     productsApi.create(input, token),
+
+  /** Alta con 3 imágenes obligatorias y generación 3D en segundo plano. */
+  createProductWithAssets: (input: CreateProductInput, files: ProductAssetFiles, token?: string | null) =>
+    productsApi.createWithAssets(input, files, token),
 
   /** Alias retrocompatible de `update` (nombre previo). */
   updateProduct: (id: string, input: Partial<CreateProductInput>, token?: string | null) =>
