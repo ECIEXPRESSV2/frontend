@@ -29,6 +29,7 @@ import CategoryManager from '../../components/vendor/CategoryManager';
 import InventoryHistoryModal from '../../components/vendor/InventoryHistoryModal';
 import Product3DViewerModal from '../../components/store/Product3DViewerModal';
 import { useAuth } from '../../context/AuthContext';
+import { useRefreshOnScrollTop } from '../../hooks/useRefreshOnScrollTop';
 import { getStoreById, type Store } from '../../services/storeService';
 import {
   productsApi,
@@ -198,21 +199,7 @@ const ProductsManagementPage: React.FC = () => {
 
   useEffect(() => { void load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [storeId]);
 
-  useEffect(() => {
-    const refreshOnFocus = () => {
-      void load();
-    };
-    const refreshOnVisible = () => {
-      if (!document.hidden) void load();
-    };
-    window.addEventListener('focus', refreshOnFocus);
-    document.addEventListener('visibilitychange', refreshOnVisible);
-    return () => {
-      window.removeEventListener('focus', refreshOnFocus);
-      document.removeEventListener('visibilitychange', refreshOnVisible);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [storeId]);
+  useRefreshOnScrollTop(load, { disabled: loading || !storeId });
 
   const openCreate = () => {
     if (categories.length === 0) {

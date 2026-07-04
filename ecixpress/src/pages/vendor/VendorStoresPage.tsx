@@ -5,6 +5,7 @@ import { MapPin, Clock, RefreshCw, Tag, Package } from 'lucide-react';
 import Sidebar from '../../components/home/Sidebar';
 import { CardSkeleton } from '../../components/common/LoadingSkeleton';
 import { useAuth } from '../../context/AuthContext';
+import { useRefreshOnScrollTop } from '../../hooks/useRefreshOnScrollTop';
 import { getMyStores, getDayName, type Store, type StoreSchedule } from '../../services/storeService';
 
 const isWithinSchedule = (schedules: StoreSchedule[]): boolean => {
@@ -41,6 +42,8 @@ const VendorStoresPage: React.FC = () => {
   };
 
   useEffect(() => { load(); }, []);
+
+  useRefreshOnScrollTop(load, { disabled: loading });
 
   const typeLabel = (type: string) =>
     type === 'CAFETERIA' ? 'Cafetería' : type === 'PAPELERIA' ? 'Papelería' : 'Restaurante';

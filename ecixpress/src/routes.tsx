@@ -7,8 +7,7 @@ import StoreDetail from './pages/store/StoreDetail';
 import CartPage from './pages/cart/CartPage';
 import AccountLayout from './pages/user/account/AccountLayout';
 import ResumenSection from './pages/user/account/sections/ResumenSection';
-import InformacionSection from './pages/user/account/sections/InformacionSection';
-import BilleteraSection from './pages/user/account/sections/BilleteraSection';
+import PagosSection from './pages/user/account/sections/PagosSection';
 import SeguridadSection from './pages/user/account/sections/SeguridadSection';
 import PlaceholderSection from './pages/user/account/sections/PlaceholderSection';
 import ProtectedRoute from './components/common/ProtectedRoute';
@@ -46,9 +45,9 @@ const AppRoutes: React.FC = () => {
       <Route path="/profile" element={<ProtectedRoute><AccountLayout /></ProtectedRoute>}>
         <Route index element={<Navigate to="/profile/resumen" replace />} />
         <Route path="resumen" element={<ResumenSection />} />
-        <Route path="informacion" element={<InformacionSection />} />
-        <Route path="billetera" element={<BilleteraSection />} />
-        <Route path="pagos" element={<Navigate to="/profile/billetera" replace />} />
+        <Route path="informacion" element={<Navigate to="/profile/resumen" replace />} />
+        <Route path="billetera" element={<Navigate to="/profile/pagos" replace />} />
+        <Route path="pagos" element={<PagosSection />} />
         <Route path="pedidos" element={<Navigate to="/orders" replace />} />
         <Route path="notificaciones" element={<Navigate to="/profile/resumen" replace />} />
         <Route path="seguridad" element={<SeguridadSection />} />
