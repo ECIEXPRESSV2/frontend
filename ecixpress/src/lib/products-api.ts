@@ -166,7 +166,7 @@ export const productsApi = {
    */
   getAll: (storeId: string, params: ProductListFilters = {}, token?: string | null) =>
     catalogFetch<Product[]>(
-      `/${buildQuery({ storeId, ...params }).replace(/^\?/, '')}`,
+      `/${buildQuery({ storeId, ...params })}`,
       token,
     ),
 
