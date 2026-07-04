@@ -927,7 +927,7 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName,
                           onClick={(event) => {
                             event.stopPropagation();
                             setViewerTitle(product.name);
-                            setViewerSrc(product.model3dUrl ?? null);
+                            setViewerSrc(productsApi.getModel3dUrl(product.id));
                             setViewerOpen(true);
                           }}
                           className="absolute bottom-2 left-2 z-10 inline-flex items-center gap-1.5 rounded-full bg-gray-900/90 px-2.5 py-1 text-[11px] font-semibold text-white shadow-sm transition hover:bg-gray-800"
