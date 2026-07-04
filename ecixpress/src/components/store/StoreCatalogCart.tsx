@@ -7,6 +7,7 @@ import { useOrdersApi } from '../../hooks/useOrdersApi';
 import { productsApi, priceToCents, type Product, type ProductCategory } from '../../lib/products-api';
 import type { OrderResponse } from '../../lib/orders-api';
 import { formatCOP } from '../../lib/format';
+import Product3DViewerModal from './Product3DViewerModal';
 
 interface StoreCatalogCartProps {
   storeId: string;
@@ -146,6 +147,9 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName,
   // Producto cuyo recuadro está "rechazando" un intento de pedir más de lo disponible: se le
   // aplica la clase de sacudida + borde rojo por un instante (feedback en el sitio, sin toasts).
   const [rejectedProductId, setRejectedProductId] = useState<string | null>(null);
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [viewerSrc, setViewerSrc] = useState<string | null>(null);
+  const [viewerTitle, setViewerTitle] = useState('');
   const rejectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [mobileCartOpen, setMobileCartOpen] = useState(false);
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
@@ -732,6 +736,7 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName,
   );
 
   return (
+    <>
     <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
       {/* Catálogo: más angosto, una sola columna de productos */}
       <div className="lg:col-span-2 space-y-4">
@@ -917,17 +922,20 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName,
                         </span>
                       )}
                       {product.model3dUrl && product.modelGenerationStatus === 'READY' && (
-                        <a
-                          href={product.model3dUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          onClick={(event) => event.stopPropagation()}
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setViewerTitle(product.name);
+                            setViewerSrc(product.model3dUrl ?? null);
+                            setViewerOpen(true);
+                          }}
                           className="absolute bottom-2 left-2 z-10 inline-flex items-center gap-1.5 rounded-full bg-gray-900/90 px-2.5 py-1 text-[11px] font-semibold text-white shadow-sm transition hover:bg-gray-800"
                         >
                           <Box size={12} />
                           Ver 3D
                           <ExternalLink size={10} />
-                        </a>
+                        </button>
                       )}
                       {/* Botón flotante de añadir, anclado al borde inferior de la imagen */}
                       {qty === 0 && (
@@ -1013,7 +1021,15 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName,
         </div>
       )}
 
+      <Product3DViewerModal
+        open={viewerOpen}
+        title={viewerTitle}
+        src={viewerSrc}
+        onClose={() => setViewerOpen(false)}
+      />
+
     </div>
+    </>
   );
 };
 
