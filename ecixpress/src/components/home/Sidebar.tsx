@@ -3,8 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { User, Plus, Grid, Clipboard, MessageCircle, LogOut, Wallet, Shield, Store, PackageCheck } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useWallet } from '../../context/WalletContext';
-import { useNotifications } from '../../context/NotificationsContext';
-import { ordersApi } from '../../lib/orders-api';
 import NotificationBell from '../notifications/NotificationBell';
 import CartDraftsBell from '../orders/CartDraftsBell';
 
@@ -41,9 +39,8 @@ const Sidebar: React.FC<SidebarProps> = ({
   onMessagesClick,
 }) => {
   const navigate = useNavigate();
-  const { userProfile, getToken, signOut, isAdmin, isVendor } = useAuth();
+  const { userProfile, signOut, isAdmin, isVendor } = useAuth();
   const { balanceLabel, loading: walletLoading } = useWallet();
-  const { unreadCount: notifUnread } = useNotifications();
   const firstName = (userProfile?.fullName || userProfile?.email || 'Usuario').trim().split(/\s+/)[0] || 'Usuario';
   const [internalExpanded, setInternalExpanded] = useState(defaultExpanded);
   const [mapOpen, setMapOpen] = useState(false);
@@ -70,15 +67,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   // Con el scroll arriba del todo la cápsula aparece desplegada (como si el mouse estuviera
   // encima); al bajar se retrae y solo se abre con hover.
   const [topbarAtTop, setTopbarAtTop] = useState(true);
-  // Hay carritos pendientes (pedidos DRAFT): se muestra el atajo de carrito y la cápsula
-  // reserva un poco más de ancho para ese ícono extra.
-  const [hasDraftCarts, setHasDraftCarts] = useState(false);
-  // ¿Hay conversaciones con mensajes sin leer para este usuario?
-  const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
   const isTopbarOpen = topbarAtTop || topbarExpanded || topbarNotifOpen || userMenuOpen;
-
-  // Marca "algo pendiente" en el avatar: carritos sin pagar, notificaciones o mensajes sin leer.
-  const hasPending = hasDraftCarts || notifUnread > 0 || hasUnreadMessages;
 
   useEffect(() => {
     const handleScroll = () => {
@@ -96,40 +85,6 @@ const Sidebar: React.FC<SidebarProps> = ({
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
-
-  const refreshUnreadMessages = async () => {
-    const uid = userProfile?.id;
-    if (!uid) return;
-    try {
-      const token = await getToken().catch(() => null);
-      const convs = await ordersApi.getConversations(token, { customerId: uid });
-      setHasUnreadMessages(convs.some((c) => c.participants.some((p) => p.userId === uid && p.unreadCount > 0)));
-    } catch {
-      /* sin conexión: no marcamos pendientes de mensajes */
-    }
-  };
-
-  // Mensajes sin leer del usuario (para el puntito del avatar). Se refresca al montar y al
-  // volver el foco a la pestaña; no es en vivo, basta para señalar que hay algo pendiente.
-  useEffect(() => {
-    const uid = userProfile?.id;
-    if (!uid) return;
-    let active = true;
-    (async () => {
-      try {
-        const token = await getToken().catch(() => null);
-        const convs = await ordersApi.getConversations(token, { customerId: uid });
-        const unread = convs.some((c) => c.participants.some((p) => p.userId === uid && p.unreadCount > 0));
-        if (active) setHasUnreadMessages(unread);
-      } catch {
-        /* sin conexión: no marcamos pendientes de mensajes */
-      }
-    })();
-    const onFocus = () => void refreshUnreadMessages();
-    window.addEventListener('focus', onFocus);
-    return () => { active = false; window.removeEventListener('focus', onFocus); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userProfile?.id]);
 
   const menuItems = [
     { id: 'home', icon: Grid, label: 'Inicio', path: '/home' },
@@ -207,7 +162,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           </button>
 
           {/* Atajo de carritos pendientes (solo aparece si hay algún pedido en carrito) */}
-          <CartDraftsBell onOpenChange={setTopbarNotifOpen} onHasDraftsChange={setHasDraftCarts} />
+          <CartDraftsBell onOpenChange={setTopbarNotifOpen} />
 
           {/* Campana */}
           <NotificationBell variant="topbar" onOpenChange={setTopbarNotifOpen} />
@@ -218,8 +173,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             </>
           )}
 
-          {/* Avatar de usuario. Los indicadores van FUERA del botón (que recorta con
-              overflow-hidden) y algo hacia adentro para que no se corten. */}
+          {/* Avatar de usuario */}
           <div className="relative inline-flex flex-shrink-0">
             <button
               type="button"
@@ -236,12 +190,6 @@ const Sidebar: React.FC<SidebarProps> = ({
                 <span>{(userProfile?.fullName || userProfile?.email || 'E').trim()[0]?.toUpperCase()}</span>
               )}
             </button>
-            {/* En línea (verde) */}
-            <span className="pointer-events-none absolute bottom-0.5 right-0.5 h-3 w-3 rounded-full border-2 border-white bg-emerald-400" aria-hidden="true" />
-            {/* Algo pendiente (rojo): carrito sin pagar, notificaciones o mensajes sin leer */}
-            {hasPending && (
-              <span className="pointer-events-none absolute top-0.5 right-0.5 h-3 w-3 rounded-full border-2 border-white bg-red-500" aria-hidden="true" />
-            )}
           </div>
         </div>
 

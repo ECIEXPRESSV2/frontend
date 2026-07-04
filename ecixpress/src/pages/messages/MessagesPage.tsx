@@ -38,11 +38,9 @@ const formatChatTime = (value?: string) => {
 
 /**
  * Avatar circular con iniciales y degradado, consistente con administración de usuarios.
- * `online` pinta una bolita verde/roja indicando si hay conexión para chatear.
  */
-const ChatAvatar: React.FC<{ name?: string; size?: 'md' | 'lg'; online?: boolean }> = ({ name, size = 'md', online }) => {
+const ChatAvatar: React.FC<{ name?: string; size?: 'md' | 'lg' }> = ({ name, size = 'md' }) => {
   const sizeClass = size === 'lg' ? 'h-12 w-12 text-base' : 'h-11 w-11 text-sm';
-  const dotClass = size === 'lg' ? 'h-3.5 w-3.5' : 'h-3 w-3';
   return (
     <div className="relative flex-shrink-0">
       <div
@@ -50,14 +48,6 @@ const ChatAvatar: React.FC<{ name?: string; size?: 'md' | 'lg'; online?: boolean
       >
         {getInitials(name)}
       </div>
-      {online !== undefined && (
-        <span
-          className={`absolute -bottom-0.5 -right-0.5 ${dotClass} rounded-full border-2 border-white shadow-sm transition-colors duration-500 ${
-            online ? 'bg-emerald-500' : 'bg-rose-500'
-          }`}
-          title={online ? 'En línea' : 'Desconectado'}
-        />
-      )}
     </div>
   );
 };
@@ -80,7 +70,6 @@ const MessagesPage: React.FC<MessagesPageProps> = ({ onBack }) => {
   const [view, setView] = useState<'active' | 'archived'>('active');
   const [messages, setMessages] = useState<MessageResponse[]>([]);
   const [draft, setDraft] = useState('');
-  const [connected, setConnected] = useState(false);
   const [otherTyping, setOtherTyping] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -182,10 +171,8 @@ const MessagesPage: React.FC<MessagesPageProps> = ({ onBack }) => {
       socket = io(ORDERS_WS_URL, { path: '/orders/socket.io', transports: ['websocket'], auth: { token }, query: { token } });
       socketRef.current = socket;
       socket.on('connect', () => {
-        setConnected(true);
         if (selectedIdRef.current) socket?.emit('conversation:joined', { conversationId: selectedIdRef.current, role: chatRole });
       });
-      socket.on('disconnect', () => setConnected(false));
       socket.on('message:new', (msg: MessageResponse) => {
         if (msg.conversationId !== selectedIdRef.current) return;
         upsertMessage(msg);
@@ -317,7 +304,7 @@ const MessagesPage: React.FC<MessagesPageProps> = ({ onBack }) => {
                             : 'bg-white/0 border-transparent hover:bg-white/60 hover:border-white/60 hover:shadow-sm'
                         }`}
                       >
-                        <ChatAvatar name={conversationName(c)} online={connected} />
+                        <ChatAvatar name={conversationName(c)} />
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center justify-between gap-2">
                             <p className="font-semibold text-gray-900 text-sm truncate">{conversationName(c)}</p>
@@ -355,18 +342,11 @@ const MessagesPage: React.FC<MessagesPageProps> = ({ onBack }) => {
                 {selected ? (
                   <>
                     <div className="px-5 py-4 border-b border-white/50 bg-white/30 backdrop-blur-xl flex items-center gap-3">
-                      <ChatAvatar name={conversationName(selected)} size="lg" online={connected} />
+                      <ChatAvatar name={conversationName(selected)} size="lg" />
                       <div className="min-w-0 flex-1">
                         <p className="font-bold text-gray-900 truncate">{conversationName(selected)}</p>
-                        <p className="text-xs">
-                          {otherTyping ? (
-                            <span className="text-emerald-600">escribiendo…</span>
-                          ) : (
-                            <span className={`inline-flex items-center gap-1.5 transition-colors duration-500 ${connected ? 'text-emerald-600' : 'text-rose-500'}`}>
-                              <span className={`h-1.5 w-1.5 rounded-full transition-colors duration-500 ${connected ? 'bg-emerald-500' : 'bg-rose-500'}`} />
-                              {connected ? 'En línea' : 'Desconectado'}
-                            </span>
-                          )}
+                        <p className="text-xs text-emerald-600 min-h-[1rem]">
+                          {otherTyping ? 'escribiendo…' : ''}
                         </p>
                       </div>
                       <button
