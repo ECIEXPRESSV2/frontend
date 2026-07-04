@@ -52,12 +52,40 @@ const StoreDetail: React.FC<StoreDetailProps> = ({ storeId: storeIdProp, onBack 
   // La barra de búsqueda se expande hacia los lados al enfocarla.
   const [searchFocused, setSearchFocused] = useState(false);
   // Al bajar, el banner se "recoge" hacia arriba y se oscurece (queda fijo como barra compacta).
+  // Colapsar reduce el alto scrollable de la página; en pantallas/contenidos cortos eso realimenta
+  // el scroll y hace que el banner parpadee (sube/baja solo). Se refuerza con:
+  //   1) rAF para no saturar el handler;
+  //   2) histéresis: colapsa al pasar COLLAPSE_AT y solo se expande al bajar de EXPAND_AT
+  //      (zona muerta que evita el flip-flop cerca del umbral);
+  //   3) un guard que NO permite colapsar si la página, ya expandida, no tiene suficiente scroll
+  //      como para sostener el estado colapsado (raíz del bug: si no hay mucho que scrollear).
   const [scrolled, setScrolled] = useState(false);
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 60);
+    const COLLAPSE_AT = 96;
+    const EXPAND_AT = 24;
+    const HERO_DELTA = 260; // cuánto se encoge el banner aprox. (h-80/[22rem] → h-20)
+    const MIN_EXPANDED_SCROLL = HERO_DELTA + COLLAPSE_AT + 48; // margen para no oscilar
+    let raf = 0;
+    const update = () => {
+      raf = 0;
+      const y = window.scrollY;
+      const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+      setScrolled((prev) => {
+        // Alto scrollable equivalente con el banner EXPANDIDO (independiente del estado actual).
+        const maxScrollExpanded = maxScroll + (prev ? HERO_DELTA : 0);
+        if (maxScrollExpanded < MIN_EXPANDED_SCROLL) return false; // muy corto: no colapsar
+        return prev ? y > EXPAND_AT : y > COLLAPSE_AT;
+      });
+    };
+    const onScroll = () => { if (!raf) raf = requestAnimationFrame(update); };
     onScroll();
     window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
+    window.addEventListener('resize', onScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
+      if (raf) cancelAnimationFrame(raf);
+    };
   }, []);
   const storeId = routeStoreId ?? (storeIdProp !== undefined ? String(storeIdProp) : undefined);
 
