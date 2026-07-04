@@ -278,7 +278,13 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName,
         orderIdRef.current = existing.id;
         setOrderId(existing.id);
         setOrder(existing);
-        setQuantities(Object.fromEntries(existing.items.map((it) => [it.productId, it.quantity])));
+        const hydratedQuantities = Object.fromEntries(existing.items.map((it) => [it.productId, it.quantity]));
+        quantitiesRef.current = hydratedQuantities; // sync: el reconciliador compara contra estas cantidades
+        setQuantities(hydratedQuantities);
+        // Un draft pudo guardarse antes de que products cotizara (unitPrice=0) o con precio rancio; en
+        // ese caso NADA lo volvería a cotizar hasta tocar el carrito, y "Confirmar y pagar" quedaría
+        // gris al reanudar. Re-cotizamos una vez aquí para que el botón pueda habilitarse solo.
+        if (!isOrderFullyQuoted(existing)) reconcileOrder(existing.id);
       } catch {
         /* el draft ya no existe o no es accesible: se empieza uno nuevo */
       }
@@ -367,24 +373,33 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName,
 
   /**
    * Reconcilia la orden con products-service tras un cambio de carrito. products cotiza de
-   * forma ASÍNCRONA (evento de ida y vuelta), así que sondeamos la orden hasta que refleje las
-   * cantidades actuales con precio en firme, en vez de un único refresco a ciegas que podía
-   * quedarse con la cotización vieja. Está protegido por `refreshSeq`: si el usuario vuelve a
-   * tocar el carrito, este poll se cancela y no puede sobrescribir la orden con datos rancios.
+   * forma ASÍNCRONA (evento de ida y vuelta por el bus), así que sondeamos la orden hasta que
+   * refleje las cantidades actuales con precio en firme, en vez de un único refresco a ciegas que
+   * podía quedarse con la cotización vieja. Está protegido por `refreshSeq`: si el usuario vuelve
+   * a tocar el carrito, este poll se cancela y no puede sobrescribir la orden con datos rancios.
+   *
+   * Ventana AMPLIA con backoff progresivo (~30s): la cotización viaja orders→products→orders y,
+   * bajo carga/escalado, puede llegar bastante más tarde que unos cientos de ms. Antes nos
+   * rendíamos a ~4,6s, así que si el precio llegaba tarde el botón "Confirmar y pagar" se quedaba
+   * bloqueado aunque la orden ya estuviera cotizada en el backend. Sondeamos rápido al principio
+   * (caso común) y luego más espaciado, hasta agotar el presupuesto.
    */
   const reconcileOrder = (id: string): void => {
     const seq = ++refreshSeq.current;
-    let attempts = 0;
+    const startedAt = Date.now();
+    const RECONCILE_BUDGET_MS = 30000;
+    const nextDelay = (elapsed: number): number =>
+      elapsed < 3000 ? 500 : elapsed < 10000 ? 1200 : 2500;
     const poll = async (): Promise<void> => {
       if (seq !== refreshSeq.current) return; // lo reemplazó un cambio más nuevo
       const fresh = await api.getOrderById(id).catch(() => null);
       if (seq !== refreshSeq.current) return; // llegó tarde: no pisar el estado actual
       if (fresh) setOrder(fresh);
-      attempts += 1;
       const done = fresh && orderMatchesLocal(fresh, quantitiesRef.current);
-      if (!done && attempts < 8) setTimeout(() => void poll(), 600);
+      const elapsed = Date.now() - startedAt;
+      if (!done && elapsed < RECONCILE_BUDGET_MS) setTimeout(() => void poll(), nextDelay(elapsed));
     };
-    setTimeout(() => void poll(), 400);
+    setTimeout(() => void poll(), 300);
   };
 
   /** Crea el carrito DRAFT la primera vez que se agrega un producto. */
@@ -501,27 +516,29 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName,
 
   const cartLines = useMemo(
     () =>
-      Object.entries(quantities)
-        .map(([productId, qty]) => {
-          const product = productById.get(productId);
-          if (!product) return null;
-          const quoted = quotedByProductId.get(productId);
-          const listUnitPrice = priceToCents(product.price);
-          // Consideramos la línea "cotizada en firme" solo cuando products ya devolvió un precio
-          // COHERENTE con la cantidad actual (ver isItemFreshlyQuoted). Mientras tanto usamos el
-          // precio de lista: así la línea SIEMPRE está internamente cuadrada (total = unidad × cantidad)
-          // y el total del carrito nunca muestra una suma rancia ni "salta" de la nada.
-          const isLineQuoted =
-            !!quoted && quoted.quantity === qty && quoted.unitPrice > 0 && quoted.totalAmount === quoted.unitPrice * qty;
-          const lineUnitPrice = isLineQuoted ? quoted.unitPrice : listUnitPrice;
-          const lineTotal = isLineQuoted ? quoted.totalAmount : lineUnitPrice * qty;
-          const lineListTotal = listUnitPrice * qty;
-          return { product, qty, lineUnitPrice, lineTotal, lineListTotal, isLineQuoted };
-        })
-        .filter(
-          (x): x is { product: Product; qty: number; lineUnitPrice: number; lineTotal: number; lineListTotal: number; isLineQuoted: boolean } =>
-            x !== null,
-        ),
+      Object.entries(quantities).map(([productId, qty]) => {
+        const product = productById.get(productId);
+        const quoted = quotedByProductId.get(productId);
+        // Metadatos de la línea: preferimos el catálogo cargado, pero si el producto NO está en él
+        // (filtro de búsqueda activo, producto desactivado, o catálogo aún cargando) caemos a lo que
+        // guardó la propia orden. Así una línea del carrito NUNCA desaparece por el estado del catálogo
+        // visible — era la causa de "reanudar pedido sin productos" y del botón que quedaba bloqueado.
+        const name = product?.name ?? quoted?.name ?? 'Producto';
+        const imageUrl = product?.imageUrl ?? quoted?.imageUrl ?? null;
+        // Precio de lista: solo el catálogo lo conoce. Sin catálogo usamos el precio que cotizó la
+        // orden como mejor referencia (o 0 si tampoco hay), de modo que la línea siga cuadrada.
+        const listUnitPrice = product ? priceToCents(product.price) : (quoted?.unitPrice ?? 0);
+        // Consideramos la línea "cotizada en firme" solo cuando products ya devolvió un precio
+        // COHERENTE con la cantidad actual (ver isItemFreshlyQuoted). Mientras tanto usamos el
+        // precio de lista: así la línea SIEMPRE está internamente cuadrada (total = unidad × cantidad)
+        // y el total del carrito nunca muestra una suma rancia ni "salta" de la nada.
+        const isLineQuoted =
+          !!quoted && quoted.quantity === qty && quoted.unitPrice > 0 && quoted.totalAmount === quoted.unitPrice * qty;
+        const lineUnitPrice = isLineQuoted ? quoted.unitPrice : listUnitPrice;
+        const lineTotal = isLineQuoted ? quoted.totalAmount : lineUnitPrice * qty;
+        const lineListTotal = listUnitPrice * qty;
+        return { id: productId, name, imageUrl, qty, lineUnitPrice, lineTotal, lineListTotal, isLineQuoted };
+      }),
     [quantities, productById, quotedByProductId],
   );
 
@@ -530,16 +547,20 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName,
   // Una "ficha" por unidad en el carrito (con imagen del producto) para llenar visualmente la
   // canasta del carrito. Se limita para no montar cientos de nodos con carritos grandes.
   const cartSlots = useMemo(() => {
-    const slots: Product[] = [];
-    for (const { product, qty } of cartLines) {
-      for (let i = 0; i < qty && slots.length < CART_VISUAL_SLOTS; i++) slots.push(product);
+    const slots: { id: string; imageUrl: string | null }[] = [];
+    for (const { id, imageUrl, qty } of cartLines) {
+      for (let i = 0; i < qty && slots.length < CART_VISUAL_SLOTS; i++) slots.push({ id, imageUrl });
       if (slots.length >= CART_VISUAL_SLOTS) break;
     }
     return slots;
   }, [cartLines]);
 
-  // Todas las líneas cotizadas y el conteo de la orden coincide con el carrito local.
-  const isQuoted = !!order && order.items.length === cartLines.length && cartLines.every((l) => l.isLineQuoted);
+  // Todas las líneas cotizadas y el conteo de la orden coincide con el carrito local. Como `cartLines`
+  // ya NO descarta productos ausentes del catálogo, su longitud es el número real de líneas del
+  // carrito: el botón se habilita cuando la orden tiene exactamente esas líneas y todas están
+  // cotizadas en firme — sin depender de qué productos estén cargados/filtrados en pantalla.
+  const isQuoted =
+    !!order && cartLines.length > 0 && order.items.length === cartLines.length && cartLines.every((l) => l.isLineQuoted);
   // Los totales se DERIVAN de las líneas del carrito (no del agregado `order.totalAmount`, que
   // orders-service deja rancio hasta que llega la cotización). Al construirlos sumando líneas
   // que siempre están cuadradas (total = unidad × cantidad), el carrito suma bien de forma
@@ -712,18 +733,18 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName,
       {/* Columna derecha: lista de productos (nombre y precio pegados) con scroll */}
       <div className="rounded-2xl bg-white p-5 shadow-[0_0_22px_rgba(250,204,21,0.28)]">
         <ul className="space-y-3 max-h-[26rem] overflow-y-auto pr-1">
-          {cartLines.map(({ product, qty, lineUnitPrice, lineTotal }) => (
-            <li key={product.id} className="flex items-center gap-3 text-sm">
+          {cartLines.map(({ id, name, imageUrl, qty, lineUnitPrice, lineTotal }) => (
+            <li key={id} className="flex items-center gap-3 text-sm">
               <div className="w-12 h-12 rounded-xl bg-yellow-50 overflow-hidden flex-shrink-0 flex items-center justify-center text-yellow-300">
-                {product.imageUrl ? (
-                  <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                {imageUrl ? (
+                  <img src={imageUrl} alt={name} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                 ) : (
                   <ImageOff size={16} />
                 )}
               </div>
               <div className="min-w-0">
                 <p className="truncate">
-                  <span className="text-gray-800 font-medium">{product.name}</span>{' '}
+                  <span className="text-gray-800 font-medium">{name}</span>{' '}
                   <span className="text-gray-900 font-semibold">{formatCOP(lineTotal)}</span>
                 </p>
                 <p className="text-xs text-gray-400 mt-0.5">{qty} × {formatCOP(lineUnitPrice)}</p>
