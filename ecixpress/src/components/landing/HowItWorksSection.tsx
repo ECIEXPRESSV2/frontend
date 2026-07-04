@@ -2,13 +2,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Package, CreditCard, QrCode, CheckCircle } from 'lucide-react';
 
-/** Minutos de fila que un estudiante pierde al día sin ECIXPRESS (dato del testimonio destacado). */
-const QUEUE_SECONDS = 30 * 60;
-
 const HowItWorksSection: React.FC = () => {
   const sectionRef = useRef<HTMLDivElement | null>(null);
   const [isVisible, setIsVisible] = useState(false);
-  const [queueLeft, setQueueLeft] = useState(QUEUE_SECONDS);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -24,26 +20,6 @@ const HowItWorksSection: React.FC = () => {
 
     return () => observer.disconnect();
   }, []);
-
-  // Contador narrativo: los 30 min de fila bajan a cero cuando la sección entra en pantalla.
-  useEffect(() => {
-    if (!isVisible) return;
-    const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    // Con reduced-motion el contador salta directo a cero, en un solo frame.
-    const duration = prefersReduced ? 0 : 2200;
-    const start = performance.now();
-    let rafId = 0;
-    const tick = (now: number) => {
-      const t = duration === 0 ? 1 : Math.min((now - start) / duration, 1);
-      const eased = 1 - Math.pow(1 - t, 3);
-      setQueueLeft(Math.round(QUEUE_SECONDS * (1 - eased)));
-      if (t < 1) rafId = requestAnimationFrame(tick);
-    };
-    rafId = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(rafId);
-  }, [isVisible]);
-
-  const queueLabel = `${String(Math.floor(queueLeft / 60)).padStart(2, '0')}:${String(queueLeft % 60).padStart(2, '0')}`;
 
   const steps = [
     {
@@ -88,29 +64,13 @@ const HowItWorksSection: React.FC = () => {
 
       <div className="relative max-w-6xl mx-auto">
         {/* HEADER */}
-        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-8 mb-20">
-          <div className="space-y-3">
-            <h2 className="font-display text-4xl md:text-5xl font-semibold text-gray-900 tracking-tight">
-              Cómo funciona
-            </h2>
-            <p className="font-body text-xl text-gray-600 max-w-xl">
-              Un flujo simple, rápido y sin fricción
-            </p>
-          </div>
-
-          {/* Contador narrativo: la fila desapareciendo */}
-          <div className="md:text-right">
-            <p
-              className="font-mono text-5xl md:text-6xl font-bold tabular-nums tracking-tight transition-colors duration-500"
-              style={{ color: queueLeft === 0 ? '#059669' : '#111827' }}
-              aria-hidden="true"
-            >
-              {queueLabel}
-            </p>
-            <p className="font-body text-sm text-gray-500 mt-1">
-              Minutos de fila al día, con ECIXPRESS
-            </p>
-          </div>
+        <div className="space-y-3 mb-20">
+          <h2 className="font-display text-4xl md:text-5xl font-semibold text-gray-900 tracking-tight">
+            Cómo funciona
+          </h2>
+          <p className="font-body text-xl text-gray-600 max-w-xl">
+            Un flujo simple, rápido y sin fricción
+          </p>
         </div>
 
         {/* CONTAINER - 2 COLUMN LAYOUT */}

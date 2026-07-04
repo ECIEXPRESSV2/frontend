@@ -72,7 +72,7 @@ const AuthLayout: React.FC<AuthLayoutProps> = ({ children, dense = false }) => {
           {/* Halo difuso para reforzar el efecto Liquid Glass */}
           <div
             className="pointer-events-none absolute -inset-1 rounded-[2rem]
-                       bg-gradient-to-br from-white/50 via-yellow-100/30 to-transparent
+                       bg-gradient-to-br from-white/70 via-yellow-50/15 to-transparent
                        opacity-60 blur-2xl transition-opacity duration-500 group-hover:opacity-90"
             aria-hidden="true"
           />
@@ -80,18 +80,18 @@ const AuthLayout: React.FC<AuthLayoutProps> = ({ children, dense = false }) => {
           {/* Tarjeta Liquid Glass — borde neutro y suave (estilo referencia) */}
           <div
             className="glass-spotlight glass-spotlight-soft relative overflow-hidden rounded-3xl p-6 sm:p-7
-                       bg-white/40 backdrop-blur-2xl
+                       bg-white/75 backdrop-blur-2xl
                        border border-white/50
                        ring-1 ring-white/20
                        shadow-[0_20px_60px_-15px_rgba(31,38,135,0.25)]
                        transition-all duration-300 ease-out
-                       hover:-translate-y-0.5 hover:bg-white/[0.46]
+                       hover:-translate-y-0.5 hover:bg-white/[0.85]
                        hover:shadow-[0_28px_80px_-18px_rgba(31,38,135,0.35)]"
           >
             {/* Difuminado amarillo muy sutil en la parte superior (estética de la referencia) */}
             <div
               className="pointer-events-none absolute inset-x-0 top-0 h-2/5
-                         bg-gradient-to-b from-[#F4B942]/25 via-[#F4B942]/8 to-transparent"
+                         bg-gradient-to-b from-[#F4B942]/10 via-[#F4B942]/3 to-transparent"
               aria-hidden="true"
             />
 

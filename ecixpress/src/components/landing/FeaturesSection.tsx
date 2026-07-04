@@ -78,7 +78,7 @@ const FeaturesSection: React.FC = () => {
  />
               ?
             </h2>
-            <p className="font-body text-lg text-gray-600 max-w-2xl mx-auto">
+            <p className="font-body text-xl text-gray-600 max-w-2xl mx-auto">
               Diseñado para hacer tu experiencia en campus más rápida y eficiente
             </p>
           </div>
@@ -86,7 +86,7 @@ const FeaturesSection: React.FC = () => {
           {/* CHECKLIST + FOTO DE CAMPUS */}
           <div className="grid md:grid-cols-2 gap-16 items-center mb-20">
             <div className="space-y-6">
-              <span className="font-body text-sm font-semibold uppercase tracking-wide text-a11y-yellow-dark">
+              <span className="font-body text-xl font-semibold uppercase tracking-wide text-a11y-yellow-dark">
                 Tu día en el campus
               </span>
               <ul className="space-y-4">

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ArrowRight, Coffee, ShoppingBag, QrCode } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { useCountUp } from '../../hooks/useCountUp';
 
 interface HeroProps {
@@ -146,26 +146,6 @@ const HeroSection: React.FC<HeroProps> = ({ onGetStartedClick, onSignInClick }) 
                 <div className="absolute inset-x-0 top-0 h-2/5 bg-gradient-to-b from-[#F4B942]/20 via-[#F4B942]/6 to-transparent" />
                 <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/80 to-transparent" />
               </div>
-            </div>
-
-            {/* Iconos flotando alrededor del producto — movimiento ambiental continuo */}
-            <div
-              className="absolute top-16 left-0 z-[5] w-11 h-11 rounded-full flex items-center justify-center bg-white/70 backdrop-blur-md border border-white/50 shadow-sm animate-float will-change-transform"
-              aria-hidden="true"
-            >
-              <Coffee size={20} className="text-primary" strokeWidth={1.75} />
-            </div>
-            <div
-              className="absolute bottom-24 left-6 z-[5] w-11 h-11 rounded-full flex items-center justify-center bg-white/70 backdrop-blur-md border border-white/50 shadow-sm animate-float-delay will-change-transform"
-              aria-hidden="true"
-            >
-              <ShoppingBag size={20} className="text-secondary" strokeWidth={1.75} />
-            </div>
-            <div
-              className="absolute top-1/2 -left-4 -translate-y-1/2 z-[5] w-11 h-11 rounded-full flex items-center justify-center bg-white/70 backdrop-blur-md border border-white/50 shadow-sm animate-float-slow will-change-transform"
-              aria-hidden="true"
-            >
-              <QrCode size={20} className="text-primary" strokeWidth={1.75} />
             </div>
 
             {/* Ticker "pedidos hoy" — actividad en vivo */}
