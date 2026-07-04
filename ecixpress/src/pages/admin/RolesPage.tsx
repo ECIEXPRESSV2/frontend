@@ -25,6 +25,7 @@ import {
   type Permission,
 } from '../../services/roleService';
 import { getPageCache, pageCacheKeys, setPageCache } from '../../services/pageCache';
+import { useRefreshOnScrollTop } from '../../hooks/useRefreshOnScrollTop';
 
 type RolesCache = { roles: Role[]; permissions: Permission[] };
 
@@ -116,6 +117,8 @@ const RolesPage: React.FC = () => {
   };
 
   useEffect(() => { load({ showLoading: !initialCache }); }, []);
+
+  useRefreshOnScrollTop(() => load({ silent: true }), { disabled: loading || refreshing });
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -435,21 +438,23 @@ const RolesPage: React.FC = () => {
             className="absolute inset-0 bg-black/40 backdrop-blur-sm"
             onClick={() => setShowCreate(false)}
           />
-          <div className="w-full max-w-md rounded-[22px] border border-gray-100 bg-white p-6 shadow-2xl">
-            <div className="mb-5 flex items-center justify-between">
-              <h2 className="flex items-center gap-2 text-lg font-bold text-gray-900">
-                <Plus size={17} className="text-amber-600" />
-                Crear rol personalizado
-              </h2>
-              <button
-                type="button"
-                onClick={() => setShowCreate(false)}
-                className="rounded-xl p-2 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"
-              >
-                <X size={18} />
-              </button>
-            </div>
-            <div className="space-y-3">
+          <div className="w-full max-w-md overflow-hidden rounded-[22px] border border-gray-100 bg-white shadow-2xl" role="dialog" aria-modal="true" data-modal-root="true">
+            <div className="h-1 bg-[#F4B942]" />
+            <div className="p-6">
+              <div className="mb-5 flex items-center justify-between">
+                <h2 className="flex items-center gap-2 text-lg font-bold text-gray-900">
+                  <Plus size={17} className="text-amber-600" />
+                  Crear rol personalizado
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setShowCreate(false)}
+                  className="rounded-xl p-2 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+              <div className="space-y-3">
               <div>
                 <label htmlFor="new-role-name" className="mb-1 block text-xs font-semibold text-amber-700">
                   Nombre del rol
@@ -477,29 +482,30 @@ const RolesPage: React.FC = () => {
                   onKeyDown={e => { if (e.key === 'Enter') handleCreateRole(); }}
                 />
               </div>
-            </div>
-            <div className="mt-5 flex gap-3">
-              <button
-                type="button"
-                onClick={handleCreateRole}
-                disabled={creating || !newRoleName.trim()}
-                className="flex-1 rounded-xl bg-yellow-400 py-2.5 text-sm font-bold text-gray-950 transition hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-300 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {creating ? 'Creando...' : 'Crear rol'}
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowCreate(false)}
-                className="flex-1 rounded-xl border border-gray-200 bg-gray-50 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-100"
-              >
-                Cancelar
-              </button>
+              </div>
+              <div className="mt-5 flex gap-3">
+                <button
+                  type="button"
+                  onClick={handleCreateRole}
+                  disabled={creating || !newRoleName.trim()}
+                  className="flex-1 rounded-xl bg-yellow-400 py-2.5 text-sm font-bold text-gray-950 transition hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-300 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {creating ? 'Creando...' : 'Crear rol'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowCreate(false)}
+                  className="flex-1 rounded-xl border border-gray-200 bg-gray-50 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-100"
+                >
+                  Cancelar
+                </button>
+              </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* ── PERMISSIONS DRAWER ── */}
+      {/* ── PERMISSIONS MODAL ── */}
       {selectedRole && (
         <>
           <button
@@ -510,7 +516,10 @@ const RolesPage: React.FC = () => {
           />
           <div
             ref={drawerRef}
-            className="fixed bottom-0 right-0 top-0 z-[61] flex w-full max-w-md flex-col overflow-hidden bg-white shadow-2xl md:rounded-l-[28px]"
+            className="fixed left-1/2 top-1/2 z-[61] flex max-h-[min(92vh,820px)] w-[calc(100vw-2rem)] max-w-2xl -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-[28px] bg-white shadow-2xl shadow-gray-900/20"
+            role="dialog"
+            aria-modal="true"
+            data-modal-root="true"
           >
             <div className="h-1 flex-shrink-0 bg-[#F4B942]" />
             <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">

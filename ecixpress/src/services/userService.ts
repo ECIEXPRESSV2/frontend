@@ -48,11 +48,12 @@ export const getUserById = (id: string, token: string) =>
 export const updateUserStatus = (
   id: string,
   status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED',
-  token: string
+  token: string,
+  reason?: string,
 ) =>
   apiFetch<UserItem>(`/users/${id}/status`, token, {
     method: 'PATCH',
-    body: JSON.stringify({ status }),
+    body: JSON.stringify(reason?.trim() ? { status, reason: reason.trim() } : { status }),
   });
 
 export const assignRole = (userId: string, roleId: string, token: string) =>

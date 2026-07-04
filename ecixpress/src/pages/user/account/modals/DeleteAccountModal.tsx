@@ -11,7 +11,8 @@ const DeleteAccountModal: React.FC<Props> = ({ open, onClose, onConfirm }) => {
   const handleConfirm = () => { setText(''); onConfirm(); };
   return createPortal(
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 p-4" onClick={handleClose}>
-      <div role="dialog" aria-modal="true" aria-labelledby="delete-account-title" className="w-full max-w-md rounded-3xl border border-red-100 bg-white p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
+      <div role="dialog" aria-modal="true" aria-labelledby="delete-account-title" className="relative w-full max-w-md overflow-hidden rounded-3xl border border-red-100 bg-white p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-[#F4B942]" />
         <div className="mb-3 flex items-center justify-between">
           <h2 id="delete-account-title" className="flex items-center gap-2 text-lg font-bold text-red-700"><AlertTriangle size={18} aria-hidden="true" /> Eliminar cuenta</h2>
           <button type="button" onClick={handleClose} aria-label="Cerrar" className="rounded-lg p-1 text-gray-400 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-300"><X size={18} aria-hidden="true" /></button>

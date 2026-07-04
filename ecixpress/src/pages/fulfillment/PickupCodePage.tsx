@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import Sidebar from '../../components/home/Sidebar';
 import { useFulfillmentApi } from '../../hooks/useFulfillmentApi';
+import { useRefreshOnScrollTop } from '../../hooks/useRefreshOnScrollTop';
 import { FulfillmentApiError, type FulfillmentStatus, type PickupCodeResponse } from '../../lib/fulfillment-api';
 import {
   deliveryMethodLabel,
@@ -102,6 +103,8 @@ const PickupCodePage: React.FC<PickupCodePageProps> = ({ onBack }) => {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useRefreshOnScrollTop(load, { disabled: loading || !orderId });
 
   const copy = async (value: string, which: 'short' | 'token') => {
     try {

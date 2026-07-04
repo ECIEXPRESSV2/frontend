@@ -133,6 +133,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   const menuItems = [
     { id: 'home', icon: Grid, label: 'Inicio', path: '/home' },
+    { id: 'profile', icon: User, label: 'Perfil', path: '/profile' },
     { id: 'orders', icon: Clipboard, label: 'Pedidos', path: null },
   ];
 
@@ -425,7 +426,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       {/* Wallet — solo saldo; al hacer click navega al perfil donde están los controles */}
       <div className="mt-4 mb-3 px-3">
         <button
-          onClick={() => navigate('/profile/billetera')}
+          onClick={() => navigate('/profile/pagos')}
           title={`Saldo disponible: ${balanceLabel}`}
           className={`w-full rounded-xl flex items-center bg-gradient-to-r from-amber-400 to-amber-500 text-white shadow-sm hover:shadow-md transition-all overflow-hidden
             ${isExpanded ? 'p-3' : 'h-11 justify-center'}`}

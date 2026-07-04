@@ -289,7 +289,8 @@ const StoreMapModal: React.FC<Props> = ({ open, onClose }) => {
 
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm">
-      <div className="w-full max-w-4xl h-[85vh] flex flex-col rounded-2xl bg-white shadow-2xl overflow-hidden">
+      <div className="w-full max-w-4xl h-[85vh] flex flex-col rounded-2xl bg-white shadow-2xl overflow-hidden" role="dialog" aria-modal="true" data-modal-root="true">
+        <div className="h-1 shrink-0 bg-[#F4B942]" />
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100">
           <div>
             <h2 className="text-base font-bold text-gray-900">Elige una tienda en el mapa</h2>
