@@ -86,8 +86,12 @@ const ScrollRow: React.FC<ScrollRowProps> = ({ images, duration, reverse = false
   );
 };
 
-const FoodCarousel: React.FC = () => {
-  const [row1, row2, row3] = splitIntoRows(IMAGES, 3);
+interface FoodCarouselProps {
+  images?: string[];
+}
+
+const FoodCarousel: React.FC<FoodCarouselProps> = ({ images = IMAGES }) => {
+  const [row1, row2, row3] = splitIntoRows(images, 3);
 
   // Filas con flex-1 → llenan todo el alto sin huecos; sin gap → pegadas entre sí.
   return (

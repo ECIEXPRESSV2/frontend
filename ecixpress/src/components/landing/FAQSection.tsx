@@ -82,7 +82,7 @@ const FAQSection: React.FC = () => {
   const allQuestions = faqData.flatMap((item) => item.questions);
 
   return (
-    <section className="relative py-20 md:py-28 px-6 overflow-hidden bg-gradient-to-br from-white via-gray-50 to-yellow-50">
+    <section className="relative py-20 md:py-28 px-6 overflow-hidden bg-gradient-to-b from-white via-gray-50 to-yellow-50">
       {/* Un solo glow decorativo */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[900px] bg-yellow-200/15 blur-[120px] rounded-full pointer-events-none" />
 

@@ -206,34 +206,34 @@ const CampusMapSection: React.FC = () => {
   }, [inView, navigate]);
 
   return (
-    <section ref={sectionRef} id="campus-map" className="relative py-20 md:py-28 px-6 bg-gray-950 overflow-hidden">
-      {/* Un solo glow ámbar sobre el fondo oscuro */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[700px] bg-amber-500/10 blur-[130px] rounded-full pointer-events-none" />
+    <section ref={sectionRef} id="campus-map" className="relative py-20 md:py-28 px-6 bg-gradient-to-b from-white via-gray-50 to-white overflow-hidden">
+      {/* Un solo glow ámbar, en línea con el resto de secciones claras */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[700px] bg-yellow-300/15 blur-[130px] rounded-full pointer-events-none" />
 
       <div className="relative max-w-6xl mx-auto">
         {/* Header */}
         <div className="text-center mb-12 space-y-4">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10">
-            <MapPin size={14} className="text-primary" />
-            <span className="font-body text-sm font-medium text-gray-300 tracking-wide">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-yellow-100 border border-yellow-300">
+            <MapPin size={14} className="text-a11y-yellow-dark" />
+            <span className="font-body text-sm font-semibold text-a11y-yellow-darker tracking-wide">
               Campus real · Mapa 3D
             </span>
           </div>
-          <h2 className="font-display text-4xl md:text-5xl font-semibold text-white leading-tight">
+          <h2 className="font-display text-4xl md:text-5xl font-semibold text-gray-900 leading-tight">
             Tu pedido te espera{' '}
-            <span className="bg-gradient-to-r from-primary to-amber-500 bg-clip-text text-transparent">aquí</span>
+            <span className="bg-gradient-to-r from-primary to-amber-600 bg-clip-text text-transparent">aquí</span>
           </h2>
-          <p className="font-body text-lg text-gray-400 max-w-2xl mx-auto">
+          <p className="font-body text-lg text-gray-600 max-w-2xl mx-auto">
             Explora el campus en 3D. Cada punto ámbar es una cafetería o kiosko real
             listo para entregarte tu pedido.
           </p>
         </div>
 
         {/* Mapa */}
-        <div className="relative h-[420px] md:h-[540px] rounded-3xl overflow-hidden border border-white/10 shadow-2xl bg-[#e9e6dd]">
+        <div className="relative h-[420px] md:h-[540px] rounded-3xl overflow-hidden border border-gray-200 shadow-xl bg-[#e9e6dd]">
           <div ref={containerRef} className="h-full w-full" />
           {!mapReady && (
-            <div className="absolute inset-0 flex items-center justify-center bg-gray-900 pointer-events-none">
+            <div className="absolute inset-0 flex items-center justify-center bg-gray-100 pointer-events-none">
               <Loader2 className="animate-spin text-primary" size={32} />
             </div>
           )}

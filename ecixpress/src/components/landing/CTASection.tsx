@@ -11,7 +11,7 @@ const CTAFinal: React.FC<CTAFinalProps> = ({ onSignUpClick }) => {
   };
 
   return (
-      <section className="relative py-20 md:py-28 px-6 overflow-hidden bg-gradient-to-br from-yellow-50 via-white to-cyan-50">
+      <section className="relative py-20 md:py-28 px-6 overflow-hidden bg-gradient-to-b from-yellow-50 via-white to-cyan-50">
 
         {/* ✅ glow decorativo */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-yellow-300/20 blur-[120px] rounded-full pointer-events-none" />

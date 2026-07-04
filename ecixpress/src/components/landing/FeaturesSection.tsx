@@ -7,8 +7,10 @@ import {
   BarChart3,
   Bell,
 } from 'lucide-react';
+import { useInViewReveal } from '../../hooks/useInViewReveal';
 
 const FeaturesSection: React.FC = () => {
+  const { ref: sectionRef, isVisible } = useInViewReveal<HTMLElement>({ threshold: 0.15 });
   const dailyChecklist = ['Pide desde clase', 'Recoge en minutos', 'Paga como quieras', 'Todo desde el celular'];
 
   const features = [
@@ -51,7 +53,7 @@ const FeaturesSection: React.FC = () => {
   ];
 
   return (
-      <section id="features" className="relative py-16 md:py-20 px-6 bg-gradient-to-b from-gray-50 to-white overflow-hidden scroll-mt-28">
+      <section ref={sectionRef} id="features" className="relative py-16 md:py-20 px-6 bg-gradient-to-b from-white via-gray-50 to-white overflow-hidden scroll-mt-28">
 
         {/* glow fondo */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[700px] bg-yellow-300/10 blur-[140px] rounded-full" />
@@ -59,7 +61,14 @@ const FeaturesSection: React.FC = () => {
         <div className="relative max-w-7xl mx-auto">
 
           {/* HEADER */}
-          <div className="text-center space-y-4 mb-16">
+          <div
+            className="text-center space-y-4 mb-16"
+            style={{
+              opacity: isVisible ? 1 : 0,
+              transform: isVisible ? 'translateY(0)' : 'translateY(24px)',
+              transition: 'all 0.7s ease-out',
+            }}
+          >
             <h2 className="font-display text-4xl md:text-5xl font-semibold text-gray-900 flex items-center justify-center gap-3">
               ¿Por qué{' '}
               <img
@@ -82,7 +91,15 @@ const FeaturesSection: React.FC = () => {
               </span>
               <ul className="space-y-4">
                 {dailyChecklist.map((item, i) => (
-                  <li key={i} className="flex items-center gap-3 group">
+                  <li
+                    key={i}
+                    className="flex items-center gap-3 group"
+                    style={{
+                      opacity: isVisible ? 1 : 0,
+                      transform: isVisible ? 'translateX(0)' : 'translateX(-16px)',
+                      transition: `all 0.5s ease-out ${i * 0.1}s`,
+                    }}
+                  >
                     <div className="w-2.5 h-2.5 rounded-full bg-primary group-hover:scale-150 transition" />
                     <span className="font-body text-gray-800 group-hover:text-a11y-yellow-dark transition">
                       {item}
@@ -92,7 +109,14 @@ const FeaturesSection: React.FC = () => {
               </ul>
             </div>
 
-            <div className="relative hidden md:flex justify-center">
+            <div
+              className="relative hidden md:flex justify-center"
+              style={{
+                opacity: isVisible ? 1 : 0,
+                transform: isVisible ? 'scale(1)' : 'scale(0.95)',
+                transition: 'all 0.7s ease-out 0.2s',
+              }}
+            >
               <div className="absolute w-[380px] h-[380px] bg-yellow-300/20 blur-[80px] rounded-full" />
               <img
                 src="/EDIFICIO-E-ESCUELA.JPG"
@@ -115,6 +139,21 @@ const FeaturesSection: React.FC = () => {
                       ? 'lg:col-span-4'
                       : '';
 
+              const iconBox = (
+                <div className="relative self-start shrink-0">
+                  <div
+                    className={`absolute inset-0 rounded-xl bg-gradient-to-r ${feature.gradient} opacity-25 blur-md animate-scale-pulse`}
+                    style={{ animationDelay: `${index * 0.3}s` }}
+                    aria-hidden="true"
+                  />
+                  <div className={`relative ${isFeatured ? 'w-16 h-16' : isStrip ? 'w-14 h-14' : 'w-12 h-12'} shrink-0 rounded-xl flex items-center justify-center
+                      bg-gradient-to-r ${feature.gradient} shadow-md
+                      group-hover:scale-110 transition`}>
+                    <Icon className={`text-white ${isFeatured ? 'w-8 h-8' : isStrip ? 'w-7 h-7' : 'w-6 h-6'}`} />
+                  </div>
+                </div>
+              );
+
               return (
                   <div
                       key={index}
@@ -123,6 +162,11 @@ const FeaturesSection: React.FC = () => {
                 hover:shadow-2xl hover:-translate-y-1 transition-all duration-500
                 ${spanClass}
                 ${isStrip ? 'p-6 flex items-center gap-5' : 'p-8'}`}
+                      style={{
+                        opacity: isVisible ? 1 : 0,
+                        transform: isVisible ? 'translateY(0)' : 'translateY(24px)',
+                        transition: `all 0.6s ease-out ${index * 0.08}s`,
+                      }}
                   >
 
                     {/* glow hover */}
@@ -131,11 +175,7 @@ const FeaturesSection: React.FC = () => {
 
                     {isStrip ? (
                       <div className="relative z-10 flex items-center gap-5 w-full">
-                        <div className={`w-14 h-14 shrink-0 rounded-xl flex items-center justify-center
-                          bg-gradient-to-r ${feature.gradient} shadow-md
-                          group-hover:scale-110 transition`}>
-                          <Icon className="text-white w-7 h-7" />
-                        </div>
+                        {iconBox}
                         <div>
                           <h3 className="font-display text-lg font-semibold text-gray-900 group-hover:text-gray-800 transition">
                             {feature.title}
@@ -147,11 +187,7 @@ const FeaturesSection: React.FC = () => {
                       </div>
                     ) : (
                       <div className={`relative z-10 space-y-4 h-full flex flex-col ${isFeatured ? 'justify-center' : ''}`}>
-                        <div className={`${isFeatured ? 'w-16 h-16' : 'w-12 h-12'} rounded-xl flex items-center justify-center
-                      bg-gradient-to-r ${feature.gradient} shadow-md
-                      group-hover:scale-110 transition`}>
-                          <Icon className={`text-white ${isFeatured ? 'w-8 h-8' : 'w-6 h-6'}`} />
-                        </div>
+                        {iconBox}
 
                         <h3 className={`font-display font-semibold text-gray-900 group-hover:text-gray-800 transition ${isFeatured ? 'text-2xl' : 'text-xl'}`}>
                           {feature.title}

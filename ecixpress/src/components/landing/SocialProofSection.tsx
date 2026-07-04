@@ -1,24 +1,76 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Star } from 'lucide-react';
+import { useInViewReveal } from '../../hooks/useInViewReveal';
+import { useCountUp } from '../../hooks/useCountUp';
 
-const SocialProofSection: React.FC = () => {
-  const sectionRef = useRef<HTMLDivElement | null>(null);
-  const [visible, setVisible] = useState(false);
+const STATS: { target: number; decimals?: number; suffix: string; label: string }[] = [
+  { target: 5000, suffix: '+', label: 'Usuarios activos' },
+  { target: 15, suffix: '+', label: 'Universidades' },
+  { target: 150, suffix: 'K+', label: 'Pedidos completados' },
+  { target: 4.9, decimals: 1, suffix: '/5', label: 'Satisfacción' },
+];
+
+/** Número animado con fallback accesible: el valor final se anuncia de inmediato via sr-only. */
+const StatCounter: React.FC<{
+  target: number;
+  decimals?: number;
+  suffix: string;
+  isActive: boolean;
+  delay: number;
+}> = ({ target, decimals = 0, suffix, isActive, delay }) => {
+  const value = useCountUp({ target, isActive, duration: 1800 + delay * 150 });
+  const formatted = decimals ? value.toFixed(decimals) : Math.round(value).toLocaleString('en-US');
+  const finalFormatted = decimals ? target.toFixed(decimals) : Math.round(target).toLocaleString('en-US');
+  return (
+    <>
+      <span aria-hidden="true">{formatted}{suffix}</span>
+      <span className="sr-only">{finalFormatted}{suffix}</span>
+    </>
+  );
+};
+
+/** Burbuja de testimonio: reproduce su propio fade-in al montar (reveal inicial y cada rotación de página). */
+const TestimonialBubble: React.FC<{
+  testimonial: { text: string; author: string; initial: string };
+  delay: number;
+  active: boolean;
+}> = ({ testimonial, delay, active }) => {
+  const [entered, setEntered] = useState(false);
 
   useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setVisible(true);
-        }
-      },
-      { threshold: 0.2 }
-    );
+    if (!active) return;
+    const id = requestAnimationFrame(() => setEntered(true));
+    return () => cancelAnimationFrame(id);
+  }, [active]);
 
-    if (sectionRef.current) observer.observe(sectionRef.current);
+  return (
+    <div
+      className="group relative p-6 rounded-3xl bg-white/60 backdrop-blur-md border border-white/40 shadow-lg hover:shadow-2xl hover:bg-white/80 transition-all duration-500 overflow-hidden"
+      style={{
+        opacity: entered ? 1 : 0,
+        transform: entered ? 'translateY(0)' : 'translateY(30px)',
+        transition: `opacity 0.6s ease-out ${delay}s, transform 0.6s ease-out ${delay}s`,
+      }}
+    >
+      {/* Glow on hover */}
+      <div className="absolute inset-0 bg-gradient-to-br from-yellow-300/10 to-transparent opacity-0 group-hover:opacity-100 transition duration-500 rounded-3xl" />
 
-    return () => observer.disconnect();
-  }, []);
+      {/* Content */}
+      <div className="relative z-10 space-y-4">
+        <p className="font-body text-gray-700 font-medium italic">"{testimonial.text}"</p>
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-amber-600 flex items-center justify-center text-white font-display font-semibold text-sm">
+            {testimonial.initial}
+          </div>
+          <p className="font-body text-sm font-semibold text-gray-900">{testimonial.author}</p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const SocialProofSection: React.FC = () => {
+  const { ref: sectionRef, isVisible: visible } = useInViewReveal<HTMLDivElement>({ threshold: 0.2 });
 
   // Featured testimonial (estudiante principal)
   const featuredTestimonial = {
@@ -30,7 +82,7 @@ const SocialProofSection: React.FC = () => {
     text: 'Con ECIXPRESS ahorro 30 minutos de filas cada día. Puedo concentrarme en mis proyectos y pasar más tiempo con mis amigos.',
   };
 
-  // Testimonios secundarios (burbujas flotantes)
+  // Testimonios secundarios (burbujas flotantes) — rotan automáticamente de a 3
   const floatingTestimonials = [
     {
       text: 'La app es tan fácil de usar que incluso mi abuela pudo hacer un pedido.',
@@ -47,7 +99,39 @@ const SocialProofSection: React.FC = () => {
       author: 'Juan P.',
       initial: 'J',
     },
+    {
+      text: 'Recargo saldo desde el celular y pago en segundos en la cafetería.',
+      author: 'Andrea T.',
+      initial: 'A',
+    },
+    {
+      text: 'Pedí el almuerzo entre clases y lo recogí sin hacer fila. Un antes y un después.',
+      author: 'Miguel R.',
+      initial: 'M',
+    },
+    {
+      text: 'Me encanta poder ver en tiempo real cuándo mi pedido está listo.',
+      author: 'Valentina G.',
+      initial: 'V',
+    },
   ];
+
+  const TESTIMONIALS_PER_PAGE = 3;
+  const pageCount = Math.ceil(floatingTestimonials.length / TESTIMONIALS_PER_PAGE);
+  const [page, setPage] = useState(0);
+  const [paused, setPaused] = useState(false);
+
+  useEffect(() => {
+    const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (prefersReduced || paused || pageCount <= 1) return;
+    const id = setInterval(() => setPage((p) => (p + 1) % pageCount), 6000);
+    return () => clearInterval(id);
+  }, [paused, pageCount]);
+
+  const visibleTestimonials = floatingTestimonials.slice(
+    page * TESTIMONIALS_PER_PAGE,
+    page * TESTIMONIALS_PER_PAGE + TESTIMONIALS_PER_PAGE
+  );
 
   return (
     <section
@@ -148,45 +232,41 @@ const SocialProofSection: React.FC = () => {
           </div>
         </div>
 
-        {/* FLOATING TESTIMONIAL BUBBLES */}
-        <div className="grid md:grid-cols-3 gap-6 mb-20">
-          {floatingTestimonials.map((testimonial, index) => (
-            <div
-              key={index}
-              className="group relative p-6 rounded-3xl bg-white/60 backdrop-blur-md border border-white/40 shadow-lg hover:shadow-2xl hover:bg-white/80 transition-all duration-500 overflow-hidden"
-              style={{
-                opacity: visible ? 1 : 0,
-                transform: visible ? 'translateY(0)' : 'translateY(30px)',
-                transition: `all 0.6s ease-out ${0.2 + index * 0.15}s`,
-              }}
-            >
-              {/* Glow on hover */}
-              <div className="absolute inset-0 bg-gradient-to-br from-yellow-300/10 to-transparent opacity-0 group-hover:opacity-100 transition duration-500 rounded-3xl" />
-
-              {/* Content */}
-              <div className="relative z-10 space-y-4">
-                <p className="font-body text-gray-700 font-medium italic">"{testimonial.text}"</p>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-amber-600 flex items-center justify-center text-white font-display font-semibold text-sm">
-                    {testimonial.initial}
-                  </div>
-                  <p className="font-body text-sm font-semibold text-gray-900">{testimonial.author}</p>
-                </div>
-              </div>
-            </div>
+        {/* FLOATING TESTIMONIAL BUBBLES — rotan solas cada 6s, pausa en hover */}
+        <div
+          className="grid md:grid-cols-3 gap-6 mb-20"
+          onMouseEnter={() => setPaused(true)}
+          onMouseLeave={() => setPaused(false)}
+        >
+          {visibleTestimonials.map((testimonial, index) => (
+            <TestimonialBubble
+              key={`${page}-${index}`}
+              testimonial={testimonial}
+              delay={0.2 + index * 0.15}
+              active={visible}
+            />
           ))}
         </div>
 
+        {/* Paginación decorativa de las burbujas */}
+        {pageCount > 1 && (
+          <div className="flex items-center justify-center gap-2 -mt-14 mb-20" aria-hidden="true">
+            {Array.from({ length: pageCount }).map((_, i) => (
+              <span
+                key={i}
+                className={`h-1.5 rounded-full transition-all duration-500 ${
+                  i === page ? 'w-6 bg-primary' : 'w-1.5 bg-gray-300'
+                }`}
+              />
+            ))}
+          </div>
+        )}
+
         {/* STATISTICS */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[
-            { value: '5,000+', label: 'Usuarios activos' },
-            { value: '15+', label: 'Universidades' },
-            { value: '150K+', label: 'Pedidos completados' },
-            { value: '4.9/5', label: 'Satisfacción' },
-          ].map((stat, index) => (
+          {STATS.map((stat, index) => (
             <div
-              key={index}
+              key={stat.label}
               className="p-6 rounded-2xl bg-white/70 backdrop-blur-md border border-white/40 text-center hover:bg-white/90 hover:shadow-lg transition-all duration-300"
               style={{
                 opacity: visible ? 1 : 0,
@@ -195,7 +275,13 @@ const SocialProofSection: React.FC = () => {
               }}
             >
               <p className="font-display text-3xl md:text-4xl font-semibold bg-gradient-to-r from-primary to-amber-600 bg-clip-text text-transparent">
-                {stat.value}
+                <StatCounter
+                  target={stat.target}
+                  decimals={stat.decimals}
+                  suffix={stat.suffix}
+                  isActive={visible}
+                  delay={index}
+                />
               </p>
               <p className="font-body text-sm text-gray-600 mt-2">{stat.label}</p>
             </div>

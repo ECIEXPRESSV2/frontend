@@ -4,6 +4,7 @@ import Navbar from '../../components/landing/Navbar';
 import HeroSection from '../../components/landing/HeroSection';
 import SocialProofSection from '../../components/landing/SocialProofSection';
 import FeaturesSection from '../../components/landing/FeaturesSection';
+import FoodShowcaseSection from '../../components/landing/FoodShowcaseSection';
 import HowItWorksSection from '../../components/landing/HowItWorksSection';
 import WalletShowcaseSection from '../../components/landing/WalletShowcaseSection';
 import CampusMapSection from '../../components/landing/CampusMapSection';
@@ -51,6 +52,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigateToLogin, onNavigate
 
         {/* Features Section */}
         <FeaturesSection />
+
+        {/* Food Showcase - decorative carousel */}
+        <FoodShowcaseSection />
 
         {/* Wallet Showcase */}
         <WalletShowcaseSection />
