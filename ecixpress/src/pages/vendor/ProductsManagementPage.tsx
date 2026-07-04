@@ -565,7 +565,7 @@ const ProductsManagementPage: React.FC = () => {
                             type="button"
                             onClick={() => {
                               setViewerTitle(editingProduct.name);
-                              setViewerSrc(editingProduct.model3dUrl ?? null);
+                              setViewerSrc(productsApi.getModel3dUrl(editingProduct.id));
                               setViewerOpen(true);
                             }}
                             className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-gray-900 px-3 py-2 text-xs font-semibold text-white hover:bg-gray-800"
