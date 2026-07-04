@@ -166,22 +166,18 @@ export const productsApi = {
    */
   getAll: (storeId: string, params: ProductListFilters = {}, token?: string | null) =>
     catalogFetch<Product[]>(
-      `/${buildQuery({ storeId, ...params })}`,
+      `${buildQuery({ storeId, ...params })}`,  // SIN /products; sin "/" para no generar "/?"
       token,
     ),
-
-  getByStorePaginated: (
-    storeId: string,
-    params: PaginationFilters = {},
-    token?: string | null,
-  ) =>
+    
+  getByStorePaginated: (storeId: string, params: PaginationFilters = {}, token?: string | null) =>
     catalogFetch<PaginatedResult<Product>>(
-      `/store/${storeId}${buildQuery({ ...params })}`,
+      `/store/${storeId}${buildQuery({ ...params })}`,  // SIN /products
       token,
     ),
 
   getLowStock: (storeId: string, token?: string | null) =>
-    catalogFetch<Product[]>(`/store/${storeId}/low-stock`, token),
+  catalogFetch<Product[]>(`/store/${storeId}/low-stock`, token),  // SIN /products
 
   getByCategoryPaginated: (
     storeId: string,
@@ -197,7 +193,7 @@ export const productsApi = {
   getById: (id: string, token?: string | null) =>
     catalogFetch<Product>(`/${id}`, token),
 
-  getModel3dUrl: (id: string) => `${PRODUCTS_API_BASE_URL}/${id}/model3d`,
+  getModel3dUrl: (id: string) => `${PRODUCTS_API_BASE_URL}/${id}/model3d`,  
 
   create: (input: CreateProductInput, token?: string | null) =>
     catalogFetch<Product>('/', token, { method: 'POST', body: JSON.stringify(input) }),
