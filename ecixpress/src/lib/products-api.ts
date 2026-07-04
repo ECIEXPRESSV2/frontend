@@ -166,7 +166,7 @@ export const productsApi = {
    */
   getAll: (storeId: string, params: ProductListFilters = {}, token?: string | null) =>
     catalogFetch<Product[]>(
-      `/${buildQuery({ storeId, ...params })}`,  // SIN /products
+      `${buildQuery({ storeId, ...params })}`,  // SIN /products; sin "/" para no generar "/?"
       token,
     ),
     
