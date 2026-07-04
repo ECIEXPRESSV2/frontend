@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json.schemastore.org/staticwebapp.config.json",
+  "navigationFallback": {
+    "rewrite": "/index.html",
+    "exclude": [
+      "/assets/*",
+      "/*.{css,js,json,geojson,txt,map,ico,svg,png,jpg,jpeg,gif,webp,avif,woff,woff2,ttf,otf,eot,glb,gltf}"
+    ]
+  },
+  "mimeTypes": {
+    ".json": "application/json",
+    ".geojson": "application/geo+json",
+    ".glb": "model/gltf-binary",
+    ".gltf": "model/gltf+json"
+  }
+}
