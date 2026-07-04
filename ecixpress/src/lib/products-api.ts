@@ -61,7 +61,7 @@ export interface PaginatedResult<T> {
 
 /** Pesos (string del catálogo) → centavos COP enteros. */
 export const priceToCents = (price: string | number): number =>
-  Math.round(parseFloat(String(price)) * 100);
+  Math.round(Number(String(price)) * 100);
 
 /** Genera un slug URL-friendly a partir de un nombre (único por tienda). */
 export const slugify = (text: string): string =>
@@ -196,6 +196,8 @@ export const productsApi = {
 
   getById: (id: string, token?: string | null) =>
     catalogFetch<Product>(`/products/${id}`, token),
+
+  getModel3dUrl: (id: string) => `${PRODUCTS_API_BASE_URL}/products/${id}/model3d`,
 
   create: (input: CreateProductInput, token?: string | null) =>
     catalogFetch<Product>('/products', token, { method: 'POST', body: JSON.stringify(input) }),
