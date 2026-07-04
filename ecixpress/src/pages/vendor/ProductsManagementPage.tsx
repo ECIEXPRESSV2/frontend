@@ -27,6 +27,7 @@ import ModalShell from '../../components/wallet/ModalShell';
 import FormInput from '../../components/ui/FormInput';
 import CategoryManager from '../../components/vendor/CategoryManager';
 import InventoryHistoryModal from '../../components/vendor/InventoryHistoryModal';
+import Product3DViewerModal from '../../components/store/Product3DViewerModal';
 import { useAuth } from '../../context/AuthContext';
 import { getStoreById, type Store } from '../../services/storeService';
 import {
@@ -148,6 +149,9 @@ const ProductsManagementPage: React.FC = () => {
   const [submitLoading, setSubmitLoading] = useState(false);
   const [stockModal, setStockModal] = useState<{ open: boolean; product: Product | null; value: string }>({ open: false, product: null, value: '' });
   const [historyModal, setHistoryModal] = useState<{ open: boolean; product: Product | null }>({ open: false, product: null });
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [viewerSrc, setViewerSrc] = useState<string | null>(null);
+  const [viewerTitle, setViewerTitle] = useState('');
 
   const categoryName = useMemo(() => {
     const map = new Map(categories.map((c) => [c.id, c.name]));
@@ -347,6 +351,7 @@ const ProductsManagementPage: React.FC = () => {
   const activeCount = products.filter((p) => p.isActive).length;
 
   return (
+    <>
     <div className="min-h-screen bg-background">
       <Sidebar activeItem="vendor-stores" />
       <main className="app-shift px-4 pb-6 pt-20 md:px-8 md:pb-8 lg:px-10">
@@ -556,15 +561,18 @@ const ProductsManagementPage: React.FC = () => {
                           </div>
                         </div>
                         {editingProduct.model3dUrl && (
-                          <a
-                            href={editingProduct.model3dUrl}
-                            target="_blank"
-                            rel="noreferrer"
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setViewerTitle(editingProduct.name);
+                              setViewerSrc(editingProduct.model3dUrl ?? null);
+                              setViewerOpen(true);
+                            }}
                             className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-gray-900 px-3 py-2 text-xs font-semibold text-white hover:bg-gray-800"
                           >
                             <ExternalLink size={13} />
                             Abrir 3D
-                          </a>
+                          </button>
                         )}
                       </div>
                     </div>
@@ -632,6 +640,13 @@ const ProductsManagementPage: React.FC = () => {
         productName={historyModal.product?.name}
       />
     </div>
+    <Product3DViewerModal
+      open={viewerOpen}
+      title={viewerTitle}
+      src={viewerSrc}
+      onClose={() => setViewerOpen(false)}
+    />
+    </>
   );
 };
 
