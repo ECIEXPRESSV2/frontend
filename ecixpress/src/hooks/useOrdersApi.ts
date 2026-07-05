@@ -6,6 +6,7 @@ import {
   type CreateOrderRequest,
   type OrderStatus,
   type ParticipantRole,
+  type QuoteCartItem,
   type RequestReturnRequest,
   type UpsertCartItemRequest,
 } from '../lib/orders-api';
@@ -27,6 +28,8 @@ export function useOrdersApi() {
     createDraft: async (payload: CreateDraftRequest) => ordersApi.createDraft(payload, await getToken()),
     setCartItem: async (orderId: string, payload: UpsertCartItemRequest) =>
       ordersApi.setCartItem(orderId, payload, await getToken()),
+    quoteCart: async (orderId: string, items: QuoteCartItem[]) =>
+      ordersApi.quoteCart(orderId, items, await getToken()),
     checkout: async (orderId: string) => ordersApi.checkout(orderId, await getToken()),
     requestReturn: async (orderId: string, payload: RequestReturnRequest) =>
       ordersApi.requestReturn(orderId, payload, await getToken()),
