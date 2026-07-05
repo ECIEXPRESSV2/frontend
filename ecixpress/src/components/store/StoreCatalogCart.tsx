@@ -3,11 +3,13 @@ import { Search, Plus, Minus, ShoppingCart, Loader2, ImageOff, X, Tag, Check, Bo
 import { toast } from 'react-toastify';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useWallet } from '../../context/WalletContext';
 import { useOrdersApi } from '../../hooks/useOrdersApi';
 import { productsApi, priceToCents, type Product, type ProductCategory } from '../../lib/products-api';
-import type { OrderResponse } from '../../lib/orders-api';
+import type { OrderResponse, CartQuoteResponse } from '../../lib/orders-api';
 import { formatCOP } from '../../lib/format';
 import Product3DViewerModal from './Product3DViewerModal';
+import CheckoutInvoiceModal from '../cart/CheckoutInvoiceModal';
 
 interface StoreCatalogCartProps {
   storeId: string;
@@ -125,6 +127,7 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName,
   const [searchParams] = useSearchParams();
   const resumeDraftId = searchParams.get('draft');
   const { getToken } = useAuth();
+  const { wallet, refresh: refreshWallet, openRecharge } = useWallet();
   const api = useOrdersApi();
   // Búsqueda: controlada por el contenedor si llega por props, o interna en caso contrario.
   const searchControlled = onSearchChange !== undefined;
@@ -143,7 +146,11 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName,
   const [orderId, setOrderId] = useState<string | null>(null);
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [order, setOrder] = useState<OrderResponse | null>(null);
-  const [checkingOut, setCheckingOut] = useState(false);
+  const [checkingOut, setCheckingOut] = useState(false); // pago (checkout) en curso
+  // Factura del checkout: se abre al "Confirmar" y cotiza de forma síncrona (precio + stock).
+  const [invoiceOpen, setInvoiceOpen] = useState(false);
+  const [quoting, setQuoting] = useState(false);
+  const [quote, setQuote] = useState<CartQuoteResponse | null>(null);
   // Producto cuyo recuadro está "rechazando" un intento de pedir más de lo disponible: se le
   // aplica la clase de sacudida + borde rojo por un instante (feedback en el sitio, sin toasts).
   const [rejectedProductId, setRejectedProductId] = useState<string | null>(null);
@@ -336,18 +343,6 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName,
     () => (appliedCategoryIds.size === 0 ? products : products.filter((p) => appliedCategoryIds.has(p.categoryId))),
     [products, appliedCategoryIds],
   );
-
-  /** Refresca la orden para tomar el total autoritativo que cotizó products. */
-  const refreshOrder = async (id: string): Promise<OrderResponse | null> => {
-    try {
-      const fresh = await api.getOrderById(id);
-      setOrder(fresh);
-      return fresh;
-    } catch {
-      /* el broadcast de products puede tardar; se reintenta en la siguiente acción */
-      return null;
-    }
-  };
 
   /**
    * Una línea de la orden está "cotizada en firme" cuando products-service ya devolvió su
@@ -555,12 +550,6 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName,
     return slots;
   }, [cartLines]);
 
-  // Todas las líneas cotizadas y el conteo de la orden coincide con el carrito local. Como `cartLines`
-  // ya NO descarta productos ausentes del catálogo, su longitud es el número real de líneas del
-  // carrito: el botón se habilita cuando la orden tiene exactamente esas líneas y todas están
-  // cotizadas en firme — sin depender de qué productos estén cargados/filtrados en pantalla.
-  const isQuoted =
-    !!order && cartLines.length > 0 && order.items.length === cartLines.length && cartLines.every((l) => l.isLineQuoted);
   // Los totales se DERIVAN de las líneas del carrito (no del agregado `order.totalAmount`, que
   // orders-service deja rancio hasta que llega la cotización). Al construirlos sumando líneas
   // que siempre están cuadradas (total = unidad × cantidad), el carrito suma bien de forma
@@ -570,39 +559,60 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName,
   const displayTotal = useMemo(() => cartLines.reduce((sum, l) => sum + l.lineTotal, 0), [cartLines]);
   const displayDiscount = Math.max(0, displaySubtotal - displayTotal);
 
-  const handleCheckout = async () => {
+  /**
+   * "Confirmar": persiste lo pendiente y cotiza el carrito de forma SÍNCRONA (precio autoritativo
+   * con promociones + chequeo de stock por línea) vía orders-service, y abre la factura. Ya NO
+   * depende de la cotización asíncrona por eventos, así que no se queda esperando.
+   */
+  const handleConfirm = async () => {
     if (itemCount === 0) return;
-    setCheckingOut(true);
+    setInvoiceOpen(true);
+    setQuote(null);
+    setQuoting(true);
     try {
-      // Vacía de inmediato cualquier cambio pendiente (el debounce) y espera a que se escriban
-      // todos: aquí SÍ hay que esperar la red, porque estamos a punto de validar y reservar stock
-      // (y, solo si hay, cobrar).
+      // Vacía de inmediato cualquier cambio pendiente (el debounce) y espera a que se escriban todos.
       await flushCart();
       await mutationChain.current;
       const id = orderIdRef.current;
       if (!id) {
         toast.error('No se pudo iniciar el carrito');
+        setInvoiceOpen(false);
         return;
       }
+      // Enviamos las cantidades AUTORITATIVAS del carrito (lo que el usuario ve). El backend fija
+      // `order.items` a exactamente esto antes de cotizar, así el modal siempre coincide con el
+      // carrito aunque una escritura incremental previa se hubiera perdido/desordenado.
+      const items = cartLines.map((l) => ({
+        productId: l.id,
+        quantity: l.qty,
+        name: l.name,
+        imageUrl: l.imageUrl ?? undefined,
+      }));
+      const q = await api.quoteCart(id, items);
+      setQuote(q);
+      // Refresca el saldo por si cambió, para que la factura muestre si alcanza.
+      void refreshWallet();
+    } catch (e) {
+      toast.error((e as Error).message || 'No se pudo cotizar el pedido');
+      setInvoiceOpen(false);
+    } finally {
+      setQuoting(false);
+    }
+  };
 
-      // products-service cotiza el carrito de forma asíncrona (evento de ida y vuelta);
-      // reintentamos unas cuantas veces antes de cobrar, en vez de fallar con un 409
-      // apenas el usuario agregó algo y la cotización todavía no llegó.
-      let fresh = await refreshOrder(id);
-      for (let attempt = 0; attempt < 6 && (!fresh || !isOrderFullyQuoted(fresh)); attempt++) {
-        await new Promise((resolve) => setTimeout(resolve, 500));
-        fresh = await refreshOrder(id);
-      }
-      if (!fresh || !isOrderFullyQuoted(fresh)) {
-        toast.error('El carrito todavía se está cotizando, intenta de nuevo en un momento.');
-        return;
-      }
-
+  /**
+   * "Pagar ahora" desde la factura: confirma el carrito y dispara el cobro contra la billetera.
+   * El cobro real y la reserva atómica de stock ocurren en el backend; el resultado llega en vivo
+   * a "Mis pedidos" (WebSocket order:status-updated).
+   */
+  const handlePay = async () => {
+    const id = orderIdRef.current;
+    if (!id) return;
+    setCheckingOut(true);
+    try {
       await api.checkout(id);
-      // El cobro NO ocurre aquí: primero se valida y reserva el stock de forma atómica.
-      // Solo si hay stock se cobra; si no, el pedido se rechaza por falta de stock. El
-      // resultado llega en tiempo real a "Mis pedidos" (WebSocket order:status-updated).
       toast.success('Pedido recibido. Validando disponibilidad de stock…');
+      setInvoiceOpen(false);
       setMobileCartOpen(false);
       navigate('/orders');
     } catch (e) {
@@ -721,12 +731,12 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName,
         </div>
 
         <button
-          onClick={handleCheckout}
-          disabled={checkingOut || itemCount === 0 || !isQuoted}
+          onClick={handleConfirm}
+          disabled={quoting || checkingOut || itemCount === 0}
           className="w-full py-3 rounded-xl bg-gradient-to-r from-yellow-400 to-yellow-500 text-white font-semibold text-sm shadow-md shadow-yellow-300/50 hover:from-yellow-500 hover:to-yellow-600 hover:shadow-yellow-300/70 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
         >
-          {checkingOut ? <Loader2 size={16} className="animate-spin" /> : null}
-          Confirmar y pagar
+          {quoting ? <Loader2 size={16} className="animate-spin" /> : null}
+          Confirmar
         </button>
       </div>
 
@@ -1047,6 +1057,17 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName,
         title={viewerTitle}
         src={viewerSrc}
         onClose={() => setViewerOpen(false)}
+      />
+
+      <CheckoutInvoiceModal
+        open={invoiceOpen}
+        quote={quote}
+        loading={quoting}
+        paying={checkingOut}
+        walletBalance={wallet?.balance ?? 0}
+        onClose={() => setInvoiceOpen(false)}
+        onPay={handlePay}
+        onRecharge={openRecharge}
       />
 
     </div>
