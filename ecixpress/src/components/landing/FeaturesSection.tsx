@@ -1,212 +1,358 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import {
-  Zap,
-  Clock,
-  ShoppingBag,
-  QrCode,
-  BarChart3,
-  Bell,
-} from 'lucide-react';
-import { useInViewReveal } from '../../hooks/useInViewReveal';
+  motion,
+  useScroll,
+  useTransform,
+  useReducedMotion,
+  type Variants,
+} from 'framer-motion';
+import { Zap, QrCode, Users, ShieldCheck, Bell, Sparkles } from 'lucide-react';
 
-const FeaturesSection: React.FC = () => {
-  const { ref: sectionRef, isVisible } = useInViewReveal<HTMLElement>({ threshold: 0.15 });
-  const dailyChecklist = ['Pide desde clase', 'Recoge en minutos', 'Paga como quieras', 'Todo desde el celular'];
+/* ------------------------------------------------------------------ */
+/* Data                                                                */
+/* ------------------------------------------------------------------ */
 
-  const features = [
-    {
-      icon: Clock,
-      title: 'Ahorra tiempo',
-      description: 'Pide en segundos desde tu celular, sin perder tiempo.',
-      gradient: 'from-primary to-amber-600',
-    },
-    {
-      icon: QrCode,
-      title: 'Cero esperas',
-      description: 'Tu pedido te espera a ti, no al revés.',
-      gradient: 'from-emerald-400 to-emerald-600',
-    },
-    {
-      icon: ShoppingBag,
-      title: 'Compra fácil',
-      description: 'Explora y ordena en pocos pasos.',
-      gradient: 'from-secondary to-blue-600',
-    },
-    {
-      icon: Zap,
-      title: 'Acceso rápido',
-      description: 'Interfaz diseñada para velocidad.',
-      gradient: 'from-primary to-amber-600',
-    },
-    {
-      icon: BarChart3,
-      title: 'Organización total',
-      description: 'Controla pedidos y gastos fácilmente.',
-      gradient: 'from-slate-600 to-slate-800',
-    },
-    {
-      icon: Bell,
-      title: 'Alertas en tiempo real',
-      description: 'Sabrás cuándo tu pedido está listo.',
-      gradient: 'from-secondary to-blue-600',
-    },
-  ];
+interface Benefit {
+  number: string;
+  icon: React.ComponentType<{ className?: string }>;
+  title: string;
+  description: string;
+}
 
+const BENEFITS: Benefit[] = [
+  {
+    number: '01',
+    icon: Zap,
+    title: 'Rapidez real',
+    description:
+      'Pide en segundos desde clase y recibe una alerta en tiempo real cuando tu pedido esté listo.',
+  },
+  {
+    number: '02',
+    icon: QrCode,
+    title: 'Cero filas',
+    description:
+      'Muestra tu código QR y recoge al instante. Tu pedido te espera a ti, no al revés.',
+  },
+  {
+    number: '03',
+    icon: Users,
+    title: 'Hecho para la comunidad',
+    description:
+      'Creado por estudiantes de la Escuela para la vida real del campus: sus horarios, sus cafeterías y su ritmo.',
+  },
+  {
+    number: '04',
+    icon: ShieldCheck,
+    title: 'Confianza total',
+    description:
+      'Pagos seguros, historial de pedidos y control de tus gastos en un solo lugar.',
+  },
+];
+
+const DAILY_CHECKLIST = [
+  'Pide desde clase',
+  'Recoge en minutos',
+  'Paga como quieras',
+  'Todo desde el celular',
+];
+
+const CAMPUS_IMAGE = {
+  src: '/campus-people.jpg',
+  alt: 'Estudiantes de la Escuela Colombiana de Ingeniería compartiendo en el campus',
+};
+
+/* ------------------------------------------------------------------ */
+/* Motion primitives                                                   */
+/* ------------------------------------------------------------------ */
+
+const EASE_OUT: [number, number, number, number] = [0.22, 1, 0.36, 1];
+
+const revealVariants: Variants = {
+  hidden: { opacity: 0, y: 28 },
+  visible: (delay: number = 0) => ({
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.8, ease: EASE_OUT, delay },
+  }),
+};
+
+/** Fade-in + rise al entrar en viewport; se desactiva con prefers-reduced-motion. */
+const Reveal: React.FC<{
+  children: React.ReactNode;
+  className?: string;
+  delay?: number;
+}> = ({ children, className, delay = 0 }) => {
+  const reduceMotion = useReducedMotion();
   return (
-      <section ref={sectionRef} id="features" className="relative py-16 md:py-20 px-6 bg-gradient-to-b from-white via-gray-50 to-white overflow-hidden scroll-mt-28">
-
-        {/* glow fondo */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[700px] bg-yellow-300/10 blur-[140px] rounded-full" />
-
-        <div className="relative max-w-7xl mx-auto">
-
-          {/* HEADER */}
-          <div
-            className="text-center space-y-4 mb-16"
-            style={{
-              opacity: isVisible ? 1 : 0,
-              transform: isVisible ? 'translateY(0)' : 'translateY(24px)',
-              transition: 'all 0.7s ease-out',
-            }}
-          >
-            <h2 className="font-display text-4xl md:text-5xl font-semibold text-gray-900 flex items-center justify-center gap-3">
-              ¿Por qué{' '}
-              <img
-                src="/ecixpress-logo.svg"
-                alt="ECIXPRESS"
-                className="h-8 md:h-9 w-auto self-center"
- />
-              ?
-            </h2>
-            <p className="font-body text-xl text-gray-600 max-w-2xl mx-auto">
-              Diseñado para hacer tu experiencia en campus más rápida y eficiente
-            </p>
-          </div>
-
-          {/* CHECKLIST + FOTO DE CAMPUS */}
-          <div className="grid md:grid-cols-2 gap-16 items-center mb-20">
-            <div className="space-y-6">
-              <span className="font-body text-xl font-semibold uppercase tracking-wide text-a11y-yellow-dark">
-                Tu día en el campus
-              </span>
-              <ul className="space-y-4">
-                {dailyChecklist.map((item, i) => (
-                  <li
-                    key={i}
-                    className="flex items-center gap-3 group"
-                    style={{
-                      opacity: isVisible ? 1 : 0,
-                      transform: isVisible ? 'translateX(0)' : 'translateX(-16px)',
-                      transition: `all 0.5s ease-out ${i * 0.1}s`,
-                    }}
-                  >
-                    <div className="w-2.5 h-2.5 rounded-full bg-primary group-hover:scale-150 transition" />
-                    <span className="font-body text-gray-800 group-hover:text-a11y-yellow-dark transition">
-                      {item}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div
-              className="relative hidden md:flex justify-center"
-              style={{
-                opacity: isVisible ? 1 : 0,
-                transform: isVisible ? 'scale(1)' : 'scale(0.95)',
-                transition: 'all 0.7s ease-out 0.2s',
-              }}
-            >
-              <div className="absolute w-[380px] h-[380px] bg-yellow-300/20 blur-[80px] rounded-full" />
-              <img
-                src="/campus-building.jpg"
-                alt="Edificio de la escuela universitaria mostrando el campus donde opera ECIXPRESS"
-                className="relative w-[300px] h-[300px] object-cover rounded-2xl shadow-xl hover:scale-105 transition duration-500"
-              />
-            </div>
-          </div>
-
-          {/* BENTO GRID — tamaños variables en vez de cards uniformes */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 lg:auto-rows-[190px] gap-6">
-
-            {features.map((feature, index) => {
-              const Icon = feature.icon;
-              const isFeatured = index === 0;
-              const isStrip = index === features.length - 1;
-              const spanClass = isFeatured
-                  ? 'lg:col-span-2 lg:row-span-2'
-                  : isStrip
-                      ? 'lg:col-span-4'
-                      : '';
-
-              const iconBox = (
-                <div className="relative self-start shrink-0">
-                  <div
-                    className={`absolute inset-0 rounded-xl bg-gradient-to-r ${feature.gradient} opacity-25 blur-md animate-scale-pulse`}
-                    style={{ animationDelay: `${index * 0.3}s` }}
-                    aria-hidden="true"
-                  />
-                  <div className={`relative ${isFeatured ? 'w-16 h-16' : isStrip ? 'w-14 h-14' : 'w-12 h-12'} shrink-0 rounded-xl flex items-center justify-center
-                      bg-gradient-to-r ${feature.gradient} shadow-md
-                      group-hover:scale-110 transition`}>
-                    <Icon className={`text-white ${isFeatured ? 'w-8 h-8' : isStrip ? 'w-7 h-7' : 'w-6 h-6'}`} />
-                  </div>
-                </div>
-              );
-
-              return (
-                  <div
-                      key={index}
-                      className={`group relative rounded-2xl border border-gray-200
-                bg-white overflow-hidden
-                hover:shadow-2xl hover:-translate-y-1 transition-all duration-500
-                ${spanClass}
-                ${isStrip ? 'p-6 flex items-center gap-5' : 'p-8'}`}
-                      style={{
-                        opacity: isVisible ? 1 : 0,
-                        transform: isVisible ? 'translateY(0)' : 'translateY(24px)',
-                        transition: `all 0.6s ease-out ${index * 0.08}s`,
-                      }}
-                  >
-
-                    {/* glow hover */}
-                    <div className={`absolute inset-0 opacity-0 group-hover:opacity-100 transition duration-500
-                  bg-gradient-to-br ${feature.gradient} blur-2xl`} />
-
-                    {isStrip ? (
-                      <div className="relative z-10 flex items-center gap-5 w-full">
-                        {iconBox}
-                        <div>
-                          <h3 className="font-display text-lg font-semibold text-gray-900 group-hover:text-gray-800 transition">
-                            {feature.title}
-                          </h3>
-                          <p className="font-body text-gray-600 text-sm leading-relaxed">
-                            {feature.description}
-                          </p>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className={`relative z-10 space-y-4 h-full flex flex-col ${isFeatured ? 'justify-center' : ''}`}>
-                        {iconBox}
-
-                        <h3 className={`font-display font-semibold text-gray-900 group-hover:text-gray-800 transition ${isFeatured ? 'text-2xl' : 'text-xl'}`}>
-                          {feature.title}
-                        </h3>
-
-                        <p className={`font-body text-gray-600 leading-relaxed ${isFeatured ? 'text-base max-w-xs' : 'text-sm'}`}>
-                          {feature.description}
-                        </p>
-                      </div>
-                    )}
-
-                  </div>
-              );
-            })}
-
-          </div>
-        </div>
-      </section>
+    <motion.div
+      className={className}
+      custom={delay}
+      variants={revealVariants}
+      initial={reduceMotion ? false : 'hidden'}
+      whileInView="visible"
+      viewport={{ once: true, margin: '-64px' }}
+    >
+      {children}
+    </motion.div>
   );
 };
+
+/* ------------------------------------------------------------------ */
+/* Expanding image — la imagen inicia como card y se vuelve inmersiva  */
+/* ------------------------------------------------------------------ */
+
+const ImageCaption: React.FC<{ className?: string }> = ({ className }) => (
+  <div className={className}>
+    <p className="font-display text-2xl md:text-4xl font-semibold text-white">
+      La comunidad ECI, sin filas
+    </p>
+    <p className="font-body mt-2 max-w-md text-sm md:text-base text-white/80">
+      Miles de estudiantes ya piden desde clase y recogen en minutos.
+    </p>
+  </div>
+);
+
+const ExpandingCampusImage: React.FC = () => {
+  const reduceMotion = useReducedMotion();
+  const figureRef = useRef<HTMLElement>(null);
+
+  // Sin sticky/pin: la imagen vive en el flujo normal y su transformación
+  // sigue el recorrido de la propia sección por el viewport. Progreso 0
+  // cuando empieza a asomar por abajo, 1 cuando termina de salir por arriba.
+  const { scrollYProgress } = useScroll({
+    target: figureRef,
+    offset: ['start end', 'end start'],
+  });
+
+  // La expansión termina justo cuando la imagen queda completamente dentro
+  // de la pantalla (progreso ≈ altura de la figura / distancia total del
+  // recorrido), ni antes (se sentiría cortada) ni después (dejaría un
+  // tramo muerto ya expandida). Un poco más lenta que una entrada rápida,
+  // para que se sienta cinematográfica.
+  const scale = useTransform(scrollYProgress, [0, 0.46], [0.78, 1]);
+  const borderRadius = useTransform(scrollYProgress, [0, 0.46], [40, 0]);
+  const imageY = useTransform(scrollYProgress, [0, 1], ['-8%', '8%']);
+  const captionOpacity = useTransform(scrollYProgress, [0.46, 0.62], [0, 1]);
+  const captionY = useTransform(scrollYProgress, [0.46, 0.62], [24, 0]);
+  const chipReadyY = useTransform(scrollYProgress, [0, 1], [60, -60]);
+  const chipZeroY = useTransform(scrollYProgress, [0, 1], [20, -92]);
+
+  // Versión estática y accesible: sin viaje de scroll ni parallax.
+  if (reduceMotion) {
+    return (
+      <figure className="relative mx-auto max-w-6xl overflow-hidden rounded-[2.5rem] shadow-2xl">
+        <img
+          src={CAMPUS_IMAGE.src}
+          alt={CAMPUS_IMAGE.alt}
+          className="h-[60vh] w-full object-cover md:h-[70vh]"
+          loading="lazy"
+          decoding="async"
+        />
+        <div
+          className="absolute inset-0 bg-gradient-to-t from-gray-950/70 via-gray-950/10 to-transparent"
+          aria-hidden="true"
+        />
+        <figcaption className="absolute inset-x-0 bottom-0 p-6 md:p-10">
+          <ImageCaption />
+        </figcaption>
+      </figure>
+    );
+  }
+
+  return (
+    <motion.figure
+      ref={figureRef}
+      style={{ scale, borderRadius }}
+      className="relative h-[64vh] w-full overflow-hidden bg-gray-950 shadow-[0_48px_120px_-24px_rgba(15,23,42,0.5)] will-change-transform sm:h-[74vh] md:h-[88vh]"
+    >
+      {/* Imagen con parallax interno sutil (sobredimensionada para no dejar bordes) */}
+      <motion.img
+        style={{ y: imageY }}
+        src={CAMPUS_IMAGE.src}
+        alt={CAMPUS_IMAGE.alt}
+        className="absolute -top-[8%] left-0 h-[116%] w-full object-cover"
+        loading="lazy"
+        decoding="async"
+      />
+
+      <div
+        className="absolute inset-0 bg-gradient-to-t from-gray-950/75 via-gray-950/10 to-gray-950/10"
+        aria-hidden="true"
+      />
+
+      {/* Chips flotantes con parallax */}
+      <motion.div
+        style={{ y: chipReadyY }}
+        className="absolute right-4 top-10 md:right-12 md:top-16"
+        aria-hidden="true"
+      >
+        <div className="flex items-center gap-2.5 rounded-2xl border border-white/20 bg-white/10 px-4 py-3 shadow-lg backdrop-blur-md">
+          <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary shadow-md">
+            <Bell className="h-4 w-4 text-white" />
+          </span>
+          <span className="font-body text-sm font-semibold text-white">
+            Tu pedido está listo · 3 min
+          </span>
+        </div>
+      </motion.div>
+
+      <motion.div
+        style={{ y: chipZeroY }}
+        className="absolute left-4 top-1/3 md:left-14"
+        aria-hidden="true"
+      >
+        <div className="flex items-center gap-2.5 rounded-2xl border border-white/20 bg-white/10 px-4 py-3 shadow-lg backdrop-blur-md">
+          <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-secondary shadow-md">
+            <QrCode className="h-4 w-4 text-white" />
+          </span>
+          <span className="font-body text-sm font-semibold text-white">
+            Recoge con QR, sin filas
+          </span>
+        </div>
+      </motion.div>
+
+      {/* Caption que aparece cuando la imagen ya es inmersiva */}
+      <motion.figcaption
+        style={{ opacity: captionOpacity, y: captionY }}
+        className="absolute inset-x-0 bottom-0 p-6 md:p-12"
+      >
+        <ImageCaption />
+      </motion.figcaption>
+    </motion.figure>
+  );
+};
+
+/* ------------------------------------------------------------------ */
+/* Bloques editoriales                                                 */
+/* ------------------------------------------------------------------ */
+
+const BenefitRow: React.FC<{ benefit: Benefit; index: number }> = ({ benefit, index }) => {
+  const Icon = benefit.icon;
+  return (
+    <Reveal delay={index * 0.08}>
+      <div className="group flex items-start gap-5 py-8 transition-transform duration-500 md:gap-8 md:py-10 lg:hover:translate-x-2">
+        <span
+          className="font-display pt-1 text-sm font-semibold tracking-widest text-gray-400 transition-colors duration-300 group-hover:text-a11y-yellow-dark"
+          aria-hidden="true"
+        >
+          {benefit.number}
+        </span>
+        <div className="relative shrink-0">
+          <div
+            className="absolute inset-0 rounded-2xl bg-primary/40 opacity-0 blur-lg transition-opacity duration-500 group-hover:opacity-100"
+            aria-hidden="true"
+          />
+          <div className="relative flex h-12 w-12 items-center justify-center rounded-2xl border border-white/60 bg-white/70 shadow-md backdrop-blur-md transition-transform duration-500 group-hover:scale-110 group-hover:bg-white/90 md:h-14 md:w-14">
+            <Icon className="h-5 w-5 text-a11y-yellow-dark md:h-6 md:w-6" />
+          </div>
+        </div>
+        <div className="space-y-2">
+          <h3 className="font-display text-xl font-semibold text-gray-900 md:text-2xl">
+            {benefit.title}
+          </h3>
+          <p className="font-body max-w-lg leading-relaxed text-gray-600">
+            {benefit.description}
+          </p>
+        </div>
+      </div>
+    </Reveal>
+  );
+};
+
+const EditorialBenefits: React.FC = () => (
+  <div className="grid gap-14 lg:grid-cols-[5fr_7fr] lg:gap-24">
+    {/* Columna sticky: narrativa */}
+    <div className="self-start space-y-8 lg:sticky lg:top-28">
+      <Reveal className="space-y-5">
+        <span className="font-body text-sm font-semibold uppercase tracking-[0.2em] text-a11y-yellow-dark">
+          Tu día en el campus
+        </span>
+        <h3 className="font-display text-3xl font-semibold leading-tight text-gray-900 md:text-5xl">
+          Menos filas.
+          <br />
+          <span className="bg-gradient-to-r from-primary to-amber-600 bg-clip-text text-transparent">
+            Más tiempo para ti.
+          </span>
+        </h3>
+        <p className="font-body max-w-md text-lg leading-relaxed text-gray-600">
+          ECIXPRESS convierte cada descanso entre clases en tiempo tuyo: pide desde el
+          salón, paga desde el celular y recoge sin esperar.
+        </p>
+      </Reveal>
+
+      <ul className="space-y-3">
+        {DAILY_CHECKLIST.map((item, i) => (
+          <Reveal key={item} delay={0.15 + i * 0.08}>
+            <li className="group flex items-center gap-3">
+              <span className="h-2 w-2 rounded-full bg-primary transition-transform duration-300 group-hover:scale-150" />
+              <span className="font-body text-gray-800 transition-colors duration-300 group-hover:text-a11y-yellow-dark">
+                {item}
+              </span>
+            </li>
+          </Reveal>
+        ))}
+      </ul>
+    </div>
+
+    {/* Columna de beneficios: ritmo editorial, sin cards genéricas */}
+    <div className="divide-y divide-gray-200/80 border-t border-gray-200/80">
+      {BENEFITS.map((benefit, index) => (
+        <BenefitRow key={benefit.number} benefit={benefit} index={index} />
+      ))}
+    </div>
+  </div>
+);
+
+/* ------------------------------------------------------------------ */
+/* Sección                                                             */
+/* ------------------------------------------------------------------ */
+
+const FeaturesSection: React.FC = () => (
+  <section
+    id="features"
+    className="relative scroll-mt-28 overflow-hidden bg-white py-20 md:py-28"
+  >
+    {/* Glow de fondo */}
+    <div
+      className="pointer-events-none absolute left-1/2 top-0 h-[700px] w-[700px] -translate-x-1/2 rounded-full bg-yellow-300/10 blur-[140px]"
+      aria-hidden="true"
+    />
+
+    {/* Header */}
+    <div className="relative mx-auto max-w-4xl px-6 text-center">
+      <Reveal className="space-y-5">
+        <div className="inline-flex items-center gap-2 rounded-full border border-yellow-300/60 bg-yellow-100/80 px-4 py-2 backdrop-blur-sm">
+          <Sparkles className="h-3.5 w-3.5 text-a11y-yellow-dark" aria-hidden="true" />
+          <span className="font-body text-sm font-semibold text-a11y-yellow-darker">
+            Diseñado para el campus
+          </span>
+        </div>
+        <h2 className="font-display flex items-center justify-center gap-3 text-4xl font-semibold text-gray-900 md:text-6xl">
+          ¿Por qué{' '}
+          <img
+            src="/ecixpress-logo.svg"
+            alt="ECIXPRESS"
+            className="h-8 w-auto self-center md:h-11"
+          />
+          ?
+        </h2>
+        <p className="font-body mx-auto max-w-2xl text-xl text-gray-600">
+          Diseñado para hacer tu experiencia en campus más rápida, cómoda y tuya.
+        </p>
+      </Reveal>
+    </div>
+
+    {/* Imagen inmersiva ligada al scroll */}
+    <div className="relative mt-8 md:mt-10">
+      <ExpandingCampusImage />
+    </div>
+
+    {/* Composición editorial */}
+    <div className="relative mx-auto mt-10 max-w-7xl px-6 pb-4 md:mt-14">
+      <EditorialBenefits />
+    </div>
+  </section>
+);
 
 export default FeaturesSection;
