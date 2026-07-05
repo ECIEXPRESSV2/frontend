@@ -185,6 +185,44 @@ export interface FrequentProduct {
   totalOrders: number;
 }
 
+/** Una línea de la factura cotizada (paso "Confirmar"). Montos en centavos COP. */
+export interface CartQuoteLine {
+  productId: string;
+  name: string;
+  imageUrl?: string;
+  sku?: string;
+  /** Precio unitario de lista (sin promoción). */
+  listUnitPrice: number;
+  /** Precio unitario con la mejor promoción aplicada. */
+  unitPrice: number;
+  quantity: number;
+  totalAmount: number;
+  /** Unidades disponibles (stock − reservado). */
+  available: number;
+  hasStock: boolean;
+}
+
+/** Ítem autoritativo del carrito que el front envía al cotizar (la fuente de verdad son sus cantidades). */
+export interface QuoteCartItem {
+  productId: string;
+  quantity: number;
+  name?: string;
+  imageUrl?: string;
+}
+
+/** Factura cotizada de forma síncrona por orders-service (precio con promos + stock por línea). */
+export interface CartQuoteResponse {
+  cartId: string;
+  orderNumber: string;
+  storeName: string;
+  currency: string;
+  lines: CartQuoteLine[];
+  subtotalAmount: number;
+  discountAmount: number;
+  totalAmount: number;
+  hasStockIssues: boolean;
+}
+
 export interface MessagesResponse {
   items: MessageResponse[];
   total: number;
@@ -275,6 +313,12 @@ export const ordersApi = {
 
   setCartItem: (orderId: string, payload: UpsertCartItemRequest, token?: string | null) =>
     requestJson<OrderResponse>(`/orders/${orderId}/items`, token, { method: 'POST', body: JSON.stringify(payload) }),
+
+  quoteCart: (orderId: string, items: QuoteCartItem[], token?: string | null) =>
+    requestJson<CartQuoteResponse>(`/orders/${orderId}/quote`, token, {
+      method: 'POST',
+      body: JSON.stringify({ items }),
+    }),
 
   checkout: (orderId: string, token?: string | null) =>
     requestJson<OrderResponse>(`/orders/${orderId}/checkout`, token, { method: 'POST' }),
