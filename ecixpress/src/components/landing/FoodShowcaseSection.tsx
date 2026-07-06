@@ -2,11 +2,15 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Utensils } from 'lucide-react';
 import FoodCarousel from '../ui/FoodCarousel';
 import { mockStores } from '../../mock/stores';
+import { STATIONERY_IMAGES } from '../../mock/stationeryImages';
 
 const FOOD_IMAGES = mockStores.flatMap((store) => [
   store.imageUrl,
   ...store.products.map((product) => product.imageUrl),
 ]);
+
+// Cafeterías/restaurantes reales del mock + papelerías, las dos grandes categorías de tiendas del campus.
+const SHOWCASE_IMAGES = [...FOOD_IMAGES, ...STATIONERY_IMAGES];
 
 const FoodShowcaseSection: React.FC = () => {
   const sectionRef = useRef<HTMLDivElement | null>(null);
@@ -33,7 +37,7 @@ const FoodShowcaseSection: React.FC = () => {
       {/* Un solo glow decorativo */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[700px] bg-yellow-300/15 blur-[120px] rounded-full pointer-events-none" />
 
-      <div className="relative max-w-6xl mx-auto">
+      <div className="relative max-w-7xl mx-auto">
         {/* Header */}
         <div
           className="text-center mb-12 space-y-4"
@@ -46,7 +50,7 @@ const FoodShowcaseSection: React.FC = () => {
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-yellow-100 border border-yellow-300">
             <Utensils size={14} className="text-a11y-yellow-dark" />
             <span className="font-body text-sm font-semibold text-a11y-yellow-darker">
-              Sabores del campus
+              Comida y papelería del campus
             </span>
           </div>
           <h2 className="font-display text-4xl md:text-5xl font-semibold text-gray-900 leading-tight">
@@ -56,20 +60,20 @@ const FoodShowcaseSection: React.FC = () => {
             </span>
           </h2>
           <p className="font-body text-lg text-gray-600 max-w-2xl mx-auto">
-            Cafeterías, pastelerías y restaurantes reales del campus, listos para tu próximo pedido.
+            Cafeterías, pastelerías, restaurantes y papelerías reales del campus, listos para tu próximo pedido.
           </p>
         </div>
 
         {/* Carrusel decorativo */}
         <div
-          className="relative max-w-7xl mx-auto h-72 sm:h-80 md:h-96 lg:h-[30rem] rounded-3xl overflow-hidden shadow-xl"
+          className="relative max-w-7xl mx-auto h-96 sm:h-[28rem] md:h-[36rem] lg:h-[42rem] rounded-3xl overflow-hidden shadow-xl"
           style={{
             opacity: visible ? 1 : 0,
             transform: visible ? 'scale(1)' : 'scale(0.97)',
             transition: 'all 0.7s ease-out 0.15s',
           }}
         >
-          <FoodCarousel images={FOOD_IMAGES} />
+          <FoodCarousel images={SHOWCASE_IMAGES} />
         </div>
       </div>
     </section>

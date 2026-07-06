@@ -1,4 +1,5 @@
 import React from 'react';
+import { STATIONERY_IMAGES } from '../../mock/stationeryImages';
 
 const IMAGES = [
   // Food images (keep some)
@@ -7,11 +8,7 @@ const IMAGES = [
   "https://images.unsplash.com/photo-1562967916-eb82221dfb92?w=400&q=80",
   "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400&q=80",
   // Stationery images from Unsplash
-  "https://images.unsplash.com/photo-1456324504439-367cee3b3c32?w=400&q=80",
-  "https://images.unsplash.com/photo-1507842217343-583bb7270b66?w=400&q=80",
-  "https://images.unsplash.com/photo-1513542789411-b6a5d4f31634?w=400&q=80",
-  "https://images.unsplash.com/photo-1586075010923-2dd4570fb338?w=400&q=80",
-  "https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=400&q=80",
+  ...STATIONERY_IMAGES,
   // Real university images from public folder
   "/campus-building.jpg",
   "/campus-cafeteria.jpg",
