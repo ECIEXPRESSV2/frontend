@@ -1,7 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { X, MapPin, Check, Loader2 } from 'lucide-react';
+import { X, MapPin, Check, Loader2, Building2, ChevronUp, ChevronDown } from 'lucide-react';
+import GalleryCarousel from '../store/GalleryCarousel';
+import { getBuildingImages } from '../../services/buildingImages';
 
 type CampusGeometry = {
   type: 'Polygon' | 'MultiPolygon';
@@ -132,13 +134,27 @@ function createBuildingHoverPin(map: maplibregl.Map) {
  */
 const LocationPickerModal: React.FC<Props> = ({ open, initial, onClose, onSelect }) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<maplibregl.Map | null>(null);
   const selectedIdRef = useRef<string | number | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
+  const [panelMin, setPanelMin] = useState(false); // panel de vista previa minimizado
   const [loading, setLoading] = useState(true);
+
+  // Cierra el panel y quita el resaltado (rojo) del edificio.
+  const closePanel = () => {
+    const map = mapRef.current;
+    if (map && selectedIdRef.current !== null) {
+      map.setFeatureState({ source: 'campus', id: selectedIdRef.current }, { sel: false });
+    }
+    selectedIdRef.current = null;
+    setSelected(null);
+    setPanelMin(false);
+  };
 
   useEffect(() => {
     if (!open || !containerRef.current) return;
     setSelected(initial ?? null);
+    setPanelMin(false);
     setLoading(true);
     selectedIdRef.current = null;
 
@@ -153,6 +169,7 @@ const LocationPickerModal: React.FC<Props> = ({ open, initial, onClose, onSelect
       bearing: -18,
       maxPitch: 75,
     });
+    mapRef.current = map;
 
     map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right');
 
@@ -178,6 +195,11 @@ const LocationPickerModal: React.FC<Props> = ({ open, initial, onClose, onSelect
           map.fitBounds(b, { padding: 50, bearing: -18, pitch: 55, maxZoom: 18, duration: 0 });
           map.resize();
           buildingHoverPin = createBuildingHoverPin(map);
+          // Al editar (ubicación previa), resalta ese edificio en rojo y muestra su panel.
+          if (initial) {
+            map.setFeatureState({ source: 'campus', id: initial }, { sel: true });
+            selectedIdRef.current = initial;
+          }
         })
         .finally(() => {
           if (!disposed) setLoading(false);
@@ -192,6 +214,7 @@ const LocationPickerModal: React.FC<Props> = ({ open, initial, onClose, onSelect
         selectedIdRef.current = f.id ?? null;
         if (f.id !== undefined) map.setFeatureState({ source: 'campus', id: f.id }, { sel: true });
         setSelected((f.properties?.name as string) ?? null);
+        setPanelMin(false); // muestra el panel expandido al elegir otro edificio
       });
       map.on('mousemove', 'edificios', (e) => {
         const f = e.features?.[0];
@@ -211,10 +234,14 @@ const LocationPickerModal: React.FC<Props> = ({ open, initial, onClose, onSelect
       ro.disconnect();
       buildingHoverPin?.remove();
       map.remove();
+      mapRef.current = null;
     };
   }, [open, initial]);
 
   if (!open) return null;
+
+  // Imágenes de referencia del edificio seleccionado (estáticas, desde /public; hoy vacío).
+  const panelImages = getBuildingImages(selected);
 
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm">
@@ -243,29 +270,68 @@ const LocationPickerModal: React.FC<Props> = ({ open, initial, onClose, onSelect
               <Loader2 className="animate-spin text-yellow-500" size={32} />
             </div>
           )}
+
+          {/* Panel inferior: vista previa del edificio elegido (nombre + imágenes + botón usar).
+              Mismo patrón que el panel de tiendas; las imágenes vienen de /public (hoy vacío). */}
+          {selected && (
+            <div className="absolute inset-x-0 bottom-0 z-30 border-t-2 border-yellow-300 bg-white shadow-[0_-8px_24px_rgba(17,24,39,0.18)]">
+              {/* Tirador tipo "sello de sobre": círculo amarillo centrado sobre la línea superior. */}
+              <button
+                onClick={() => setPanelMin(m => !m)}
+                aria-label={panelMin ? 'Expandir panel' : 'Minimizar panel'}
+                title={panelMin ? 'Expandir' : 'Minimizar'}
+                className="absolute left-1/2 top-0 z-10 flex h-9 w-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-yellow-400 text-black shadow-lg ring-2 ring-white transition hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-300"
+              >
+                {panelMin ? <ChevronUp size={18} strokeWidth={2.5} /> : <ChevronDown size={18} strokeWidth={2.5} />}
+              </button>
+
+              {/* Cabecera: nombre del bloque en panel blanco con amarillo */}
+              <div className="flex items-center justify-between gap-3 border-b border-yellow-100 bg-yellow-50 px-3 py-1.5">
+                <div className="flex min-w-0 items-center gap-2">
+                  <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-yellow-400 text-white">
+                    <Building2 size={13} />
+                  </span>
+                  <h3 className="truncate text-sm font-bold text-gray-900">{selected}</h3>
+                </div>
+                <button
+                  onClick={closePanel}
+                  aria-label="Cerrar vista previa"
+                  className="shrink-0 rounded-lg p-1 text-gray-400 transition hover:bg-white hover:text-gray-700"
+                >
+                  <X size={17} />
+                </button>
+              </div>
+
+              {/* Cuerpo: colapsa suavemente al minimizar. */}
+              <div
+                className={`grid transition-[grid-template-rows] duration-300 ease-in-out ${panelMin ? 'grid-rows-[0fr]' : 'grid-rows-[1fr]'}`}
+              >
+                <div className="overflow-hidden">
+                  {panelImages.length === 0 ? (
+                    <div className="mx-3 my-2 rounded-lg border border-dashed border-gray-200 bg-gray-50/60 py-5 text-center text-sm text-gray-500">
+                      Sin imágenes de referencia
+                    </div>
+                  ) : (
+                    <GalleryCarousel images={panelImages} compact />
+                  )}
+
+                  <div className="px-3 pb-2 pt-1">
+                    <button
+                      onClick={() => { onSelect(selected); onClose(); }}
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-yellow-400 px-4 py-2 text-sm font-bold text-gray-950 shadow-sm transition hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-300"
+                    >
+                      <Check size={16} /> Usar esta ubicación
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
-        <div className="flex items-center justify-between gap-4 px-5 py-3.5 border-t border-gray-100 bg-gray-50">
-          <div className="flex items-center gap-2 text-sm min-w-0">
-            <MapPin size={16} className="text-yellow-500 flex-shrink-0" />
-            {selected ? (
-              <span className="text-gray-900 font-medium truncate">{selected}</span>
-            ) : (
-              <span className="text-gray-400">Ningún edificio seleccionado</span>
-            )}
-          </div>
-          <button
-            disabled={!selected}
-            onClick={() => {
-              if (selected) {
-                onSelect(selected);
-                onClose();
-              }
-            }}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-yellow-400 text-white font-semibold text-sm hover:bg-yellow-500 transition disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            <Check size={16} /> Usar esta ubicación
-          </button>
+        <div className="flex items-center gap-2 px-5 py-3.5 border-t border-gray-100 bg-gray-50 text-sm text-gray-500">
+          <MapPin size={16} className="text-yellow-500 flex-shrink-0" />
+          Toca un edificio para ver su vista previa y usarlo como ubicación.
         </div>
       </div>
     </div>

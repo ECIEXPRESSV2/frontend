@@ -2,10 +2,16 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { X, MapPin, Loader2 } from 'lucide-react';
+import { X, MapPin, Loader2, Store as StoreIcon, Check, ChevronDown, ChevronUp } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { getAvailableStores, type Store } from '../../services/storeService';
+import {
+  getAvailableStores,
+  getStoreImages,
+  type Store,
+  type StoreGalleryImage,
+} from '../../services/storeService';
 import { isFavorite } from '../../services/favoritesStore';
+import GalleryCarousel from './GalleryCarousel';
 
 /** Escapa texto para insertarlo con innerHTML sin riesgo de inyección. */
 const escapeHtml = (s: string): string =>
@@ -134,15 +140,65 @@ const StoreMapModal: React.FC<Props> = ({ open, onClose }) => {
   const [storesError, setStoresError] = useState<string | null>(null);
   const [mapReady, setMapReady] = useState(false);
 
+  // Panel inferior de vista previa de una tienda (galería + botón "Elegir tienda").
+  const [panelStore, setPanelStore] = useState<Store | null>(null);
+  const [panelImages, setPanelImages] = useState<StoreGalleryImage[]>([]);
+  const [panelLoading, setPanelLoading] = useState(false);
+  const [panelMin, setPanelMin] = useState(false); // panel minimizado (solo cabecera)
+  const panelReqRef = useRef<string | null>(null); // guarda contra respuestas obsoletas
+  const selRef = useRef<string | null>(null);      // edificio (location) resaltado en verde
+
   const goToStore = (storeId: string) => {
     navigate(`/store/${storeId}`);
     onClose();
   };
 
-  // Una sola tienda en el edificio: navega directo. Varias: muestra un popup para elegir.
+  // Resalta en verde el edificio de una tienda (feature-state "sel"); limpia el anterior.
+  const highlightBuilding = (location: string | null) => {
+    const map = mapRef.current;
+    if (!map || !map.getSource('campus')) return;
+    if (selRef.current && selRef.current !== location) {
+      map.setFeatureState({ source: 'campus', id: selRef.current }, { selStore: false });
+    }
+    if (location) {
+      map.setFeatureState({ source: 'campus', id: location }, { selStore: true });
+    }
+    selRef.current = location;
+  };
+
+  // Cierra el panel y quita el resaltado del edificio.
+  const closePanel = () => {
+    highlightBuilding(null);
+    setPanelStore(null);
+    setPanelMin(false);
+  };
+
+  // Abre el panel inferior con la vista previa de la tienda y carga su galería (endpoint público).
+  const openStorePanel = (store: Store) => {
+    popupRef.current?.remove();
+    highlightBuilding(store.location); // resalta su edificio en verde en el mapa 3D
+    panelReqRef.current = store.id;
+    setPanelStore(store);
+    setPanelMin(false);
+    setPanelImages([]);
+    setPanelLoading(true);
+    (async () => {
+      try {
+        const token = await getToken().catch(() => null);
+        const res = await getStoreImages(store.id, token);
+        if (panelReqRef.current === store.id) setPanelImages(res.images);
+      } catch {
+        if (panelReqRef.current === store.id) setPanelImages([]); // se trata como "sin imágenes"
+      } finally {
+        if (panelReqRef.current === store.id) setPanelLoading(false);
+      }
+    })();
+  };
+
+  // Una sola tienda en el edificio: abre su panel. Varias: muestra un popup para elegir cuál.
   const selectStores = (map: maplibregl.Map, lngLat: [number, number], here: Store[]) => {
     if (here.length === 1) {
-      goToStore(here[0].id);
+      openStorePanel(here[0]);
       return;
     }
     popupRef.current?.remove();
@@ -152,7 +208,7 @@ const StoreMapModal: React.FC<Props> = ({ open, onClose }) => {
       const btn = document.createElement('button');
       setStoreLabel(btn, store);
       btn.className = 'w-full text-left px-3 py-2 rounded-lg text-sm font-medium bg-yellow-50 text-amber-800 hover:bg-yellow-100 transition';
-      btn.onclick = () => goToStore(store.id);
+      btn.onclick = () => openStorePanel(store);
       wrapper.append(btn);
     });
     popupRef.current = new maplibregl.Popup({ closeButton: true, offset: 12 })
@@ -164,6 +220,9 @@ const StoreMapModal: React.FC<Props> = ({ open, onClose }) => {
   // Carga las tiendas disponibles cada vez que se abre el mapa.
   useEffect(() => {
     if (!open) return;
+    setPanelStore(null); // arranca sin panel al reabrir el mapa
+    setPanelMin(false);
+    selRef.current = null; // el mapa se recrea al reabrir; sin resaltado previo
     let active = true;
     (async () => {
       setStoresLoading(true);
@@ -319,11 +378,75 @@ const StoreMapModal: React.FC<Props> = ({ open, onClose }) => {
               <Loader2 className="animate-spin text-yellow-500" size={32} />
             </div>
           )}
+
+          {/* Panel inferior: vista previa de la tienda elegida (nombre + galería + botón elegir).
+              Pegado al borde inferior y a los lados del mapa, sin márgenes; compacto. */}
+          {panelStore && (
+            <div className="absolute inset-x-0 bottom-0 z-30 border-t-2 border-yellow-300 bg-white shadow-[0_-8px_24px_rgba(17,24,39,0.18)]">
+              {/* Tirador tipo "sello de sobre": círculo amarillo centrado, con su centro sobre la
+                  línea superior del panel (mitad afuera, mitad adentro). Minimiza/expande. */}
+              <button
+                onClick={() => setPanelMin(m => !m)}
+                aria-label={panelMin ? 'Expandir panel' : 'Minimizar panel'}
+                title={panelMin ? 'Expandir' : 'Minimizar'}
+                className="absolute left-1/2 top-0 z-10 flex h-9 w-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-yellow-400 text-black shadow-lg ring-2 ring-white transition hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-300"
+              >
+                {panelMin ? <ChevronUp size={18} strokeWidth={2.5} /> : <ChevronDown size={18} strokeWidth={2.5} />}
+              </button>
+
+              {/* Cabecera: nombre de la tienda en panel blanco con amarillo */}
+              <div className="flex items-center justify-between gap-3 border-b border-yellow-100 bg-yellow-50 px-3 py-1.5">
+                <div className="flex min-w-0 items-center gap-2">
+                  <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-yellow-400 text-white">
+                    <StoreIcon size={13} />
+                  </span>
+                  <h3 className="truncate text-sm font-bold text-gray-900">{panelStore.name}</h3>
+                </div>
+                <button
+                  onClick={closePanel}
+                  aria-label="Cerrar vista previa"
+                  className="shrink-0 rounded-lg p-1 text-gray-400 transition hover:bg-white hover:text-gray-700"
+                >
+                  <X size={17} />
+                </button>
+              </div>
+
+              {/* Cuerpo: al minimizar colapsa la altura suavemente (grid 1fr→0fr), así el panel
+                  baja poco a poco y el sello amarillo (anclado al borde superior) baja con él. */}
+              <div
+                className={`grid transition-[grid-template-rows] duration-300 ease-in-out ${panelMin ? 'grid-rows-[0fr]' : 'grid-rows-[1fr]'}`}
+              >
+                <div className="overflow-hidden">
+                  {/* Galería a todo el ancho (pegada a los lados); vacío/carga con su padding. */}
+                  {panelLoading ? (
+                    <div className="flex items-center justify-center gap-2 py-6 text-sm text-gray-400">
+                      <Loader2 size={15} className="animate-spin" /> Cargando imágenes…
+                    </div>
+                  ) : panelImages.length === 0 ? (
+                    <div className="mx-3 my-2 rounded-lg border border-dashed border-gray-200 bg-gray-50/60 py-5 text-center text-sm text-gray-500">
+                      Sin imágenes de referencia
+                    </div>
+                  ) : (
+                    <GalleryCarousel images={panelImages} compact />
+                  )}
+
+                  <div className="px-3 pb-2 pt-1">
+                    <button
+                      onClick={() => goToStore(panelStore.id)}
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-yellow-400 px-4 py-2 text-sm font-bold text-gray-950 shadow-sm transition hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-300"
+                    >
+                      <Check size={16} /> Elegir tienda
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="flex items-center gap-2 px-5 py-3.5 border-t border-gray-100 bg-gray-50 text-sm text-gray-500">
           <MapPin size={16} className="text-emerald-500 flex-shrink-0" />
-          Los edificios marcados en verde tienen una tienda disponible — toca uno para entrar.
+          Toca un edificio con tienda para ver su vista previa; el seleccionado se marca en verde.
         </div>
       </div>
     </div>

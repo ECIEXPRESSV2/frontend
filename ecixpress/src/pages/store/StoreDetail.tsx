@@ -8,7 +8,6 @@ import { useAuth } from '../../context/AuthContext';
 import { useFavorites } from '../../hooks/useFavorites';
 import { useRefreshOnScrollTop } from '../../hooks/useRefreshOnScrollTop';
 import { getStoreById, getStoreSchedules, getDayName, type Store, type StoreSchedule } from '../../services/storeService';
-import { getStoreBannerUrl, getStoreLogoUrl } from '../../services/storeAssets';
 
 const STATUS_LABELS: Record<string, { label: string; dot: string; color: string }> = {
   OPEN: { label: 'Abierto', dot: 'bg-green-500', color: 'text-green-700 bg-green-50 ring-1 ring-green-200' },
@@ -145,8 +144,8 @@ const StoreDetail: React.FC<StoreDetailProps> = ({ storeId: storeIdProp, onBack 
 
   const statusInfo = STATUS_LABELS[store.status] || { label: store.status, dot: 'bg-gray-400', color: 'text-gray-600 bg-gray-50 ring-1 ring-gray-200' };
   const storeImage = store.imageUrl;
-  const bannerUrl = getStoreBannerUrl(store.id);
-  const logoUrl = getStoreLogoUrl(store.id);
+  const bannerUrl = store.bannerUrl ?? null;
+  const logoUrl = store.imageUrl ?? null;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-white to-yellow-100">

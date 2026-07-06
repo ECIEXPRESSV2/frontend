@@ -9,6 +9,7 @@ import {
   ChevronRight,
   Clock,
   ImagePlus,
+  Images,
   Map,
   MapPin,
   Pencil,
@@ -35,10 +36,11 @@ import {
 } from '../../services/storeService';
 import { getUsers, type UserItem } from '../../services/userService';
 import { deletePageCache, getPageCache, pageCacheKeys, setPageCache } from '../../services/pageCache';
-import { getStoreLogoUrl, fileToDataUrl, compressImageToWebp } from '../../services/storeAssets';
+import { fileToDataUrl, compressImageToWebp } from '../../services/storeAssets';
+import StoreGalleryManager from '../../components/store/StoreGalleryManager';
 import { useRefreshOnScrollTop } from '../../hooks/useRefreshOnScrollTop';
 
-type TabType = 'schedules' | 'staff' | 'menu';
+type TabType = 'schedules' | 'staff' | 'gallery' | 'menu';
 type StatusAction = { store: Store; nextStatus: Store['status'] } | null;
 
 type StoreDetailCache = {
@@ -99,6 +101,7 @@ const STATUS_META: Record<Store['status'], {
 const DETAIL_TABS: Array<{ id: TabType; label: string; icon: typeof StoreIcon }> = [
   { id: 'schedules', label: 'Horario', icon: Clock },
   { id: 'staff', label: 'Vendedores', icon: Users },
+  { id: 'gallery', label: 'Galería', icon: Images },
   { id: 'menu', label: 'Menú', icon: Tag },
 ];
 
@@ -137,12 +140,12 @@ const getStoreInitials = (name: string) =>
     .map(part => part[0]?.toUpperCase())
     .join('') || 'EC';
 
-// Imagen de la tienda: la URL pública del Blob (imageUrl, seteada por el backend al subir el logo),
-// con cache-bust por updatedAt para reflejar reemplazos al instante; si no hay, la URL por convención.
+// Imagen de la tienda: la URL pública del Blob (imageUrl, seteada por el backend), con cache-bust
+// por updatedAt para reflejar reemplazos al instante (el nombre del blob es fijo: imagen.png).
 const getStoreVisual = (store: Store): string =>
   store.imageUrl
     ? `${store.imageUrl}?v=${encodeURIComponent(store.updatedAt ?? '')}`
-    : getStoreLogoUrl(store.id) ?? '';
+    : '';
 
 // Formatos que acepta el backend (ver ALLOWED_IMAGE_TYPES en identity). La optimización convierte a
 // WebP; si el navegador no soportara la conversión, se sube el original y debe ser uno de estos.
@@ -507,22 +510,16 @@ const StoresPage: React.FC = () => {
 
   const handleCreateStore = async () => {
     if (!createForm.name || !createForm.location) return;
+    // Logo y banner son OBLIGATORIOS al crear (el backend los exige en la misma petición).
+    if (!createImageFile) { toast.error('El logo de la tienda es obligatorio.'); return; }
+    if (!createBannerFile) { toast.error('El banner de la tienda es obligatorio.'); return; }
     setCreating(true);
     try {
       const token = await getToken();
-      const created = await createStore(createForm, token);
-      // Logo y banner viajan al backend, que los sube a Azure Blob Storage como <storeId>.png.
-      const failed: string[] = [];
-      if (created?.id && createImageFile) {
-        try { await uploadStoreLogo(created.id, createImageFile, token); }
-        catch { failed.push('el logo'); }
-      }
-      if (created?.id && createBannerFile) {
-        try { await uploadStoreBanner(created.id, createBannerFile, token); }
-        catch { failed.push('el banner'); }
-      }
-      if (failed.length) toast.warning(`Tienda creada, pero no se pudo subir ${failed.join(' ni ')}.`);
-      else toast.success('Tienda creada correctamente.');
+      // Una sola petición multipart: el backend sube logo+banner al Blob y devuelve la tienda con
+      // imageUrl y bannerUrl ya poblados.
+      await createStore(createForm, createImageFile, createBannerFile, token);
+      toast.success('Tienda creada correctamente.');
       setShowCreate(false);
       setCreateForm({ name: '', type: 'CAFETERIA', location: '' });
       setCreateImage(undefined);
@@ -571,12 +568,10 @@ const StoresPage: React.FC = () => {
       name: store.name,
       description: store.description ?? undefined,
       location: store.location,
-      imageUrl: store.imageUrl ?? undefined,
     });
-    setEditImage(store.imageUrl ?? undefined); // vista previa del logo actual (si existe)
+    setEditImage(store.imageUrl ?? undefined);   // vista previa del logo actual (si existe)
     setEditImageFile(null);
-    // El banner no tiene campo en BD; no pre-cargamos preview para no mostrar un 404 si no hay.
-    setEditBanner(undefined);
+    setEditBanner(store.bannerUrl ?? undefined); // vista previa del banner actual (si existe)
     setEditBannerFile(null);
     setEditingStore(store);
   };
@@ -779,6 +774,14 @@ const StoresPage: React.FC = () => {
       { day: 6, label: 'Sá' },
       { day: 0, label: 'Do' },
     ];
+
+    if (activeTab === 'gallery') {
+      return (
+        <div className="rounded-2xl border border-gray-100 bg-white p-4 md:p-5">
+          <StoreGalleryManager storeId={selectedStore.id} />
+        </div>
+      );
+    }
 
     if (activeTab === 'schedules') {
       return (
@@ -1643,14 +1646,14 @@ const StoresPage: React.FC = () => {
               <div>
                 <input ref={createFileRef} type="file" accept="image/*" className="hidden" onChange={e => { handleImageFile(e.target.files?.[0], setCreateImage, setCreateImageFile); e.target.value = ''; }} />
                 <button type="button" onClick={() => createFileRef.current?.click()} className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-gray-300 px-3 py-4 text-sm font-bold text-gray-500 transition hover:border-yellow-400 hover:text-amber-700 focus:outline-none focus:ring-2 focus:ring-yellow-300">
-                  <ImagePlus size={16} aria-hidden="true" /> {createImage ? 'Cambiar logo' : 'Subir logo (opcional)'}
+                  <ImagePlus size={16} aria-hidden="true" /> {createImage ? 'Cambiar logo' : 'Subir logo *'}
                 </button>
                 {createImage && <img src={createImage} alt="Vista previa del logo" className="mt-3 h-36 w-full rounded-xl border border-gray-100 object-cover" />}
               </div>
               <div>
                 <input ref={createBannerRef} type="file" accept="image/*" className="hidden" onChange={e => { handleImageFile(e.target.files?.[0], setCreateBanner, setCreateBannerFile); e.target.value = ''; }} />
                 <button type="button" onClick={() => createBannerRef.current?.click()} className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-gray-300 px-3 py-4 text-sm font-bold text-gray-500 transition hover:border-yellow-400 hover:text-amber-700 focus:outline-none focus:ring-2 focus:ring-yellow-300">
-                  <ImagePlus size={16} aria-hidden="true" /> {createBanner ? 'Cambiar banner' : 'Subir banner (opcional)'}
+                  <ImagePlus size={16} aria-hidden="true" /> {createBanner ? 'Cambiar banner' : 'Subir banner *'}
                 </button>
                 {createBanner && <img src={createBanner} alt="Vista previa del banner" className="mt-3 h-24 w-full rounded-xl border border-gray-100 object-cover" />}
               </div>
@@ -1659,7 +1662,7 @@ const StoresPage: React.FC = () => {
               <button onClick={() => { setShowCreate(false); setCreateImage(undefined); setCreateImageFile(null); setCreateBanner(undefined); setCreateBannerFile(null); }} className="inline-flex min-h-11 flex-1 items-center justify-center rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700 transition hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-yellow-300">
                 Cancelar
               </button>
-              <button onClick={handleCreateStore} disabled={creating || !createForm.name || !createForm.location} className="inline-flex min-h-11 flex-1 items-center justify-center rounded-xl bg-yellow-400 px-4 py-2 text-sm font-bold text-gray-950 transition hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-300 disabled:cursor-not-allowed disabled:opacity-50">
+              <button onClick={handleCreateStore} disabled={creating || !createForm.name || !createForm.location || !createImageFile || !createBannerFile} className="inline-flex min-h-11 flex-1 items-center justify-center rounded-xl bg-yellow-400 px-4 py-2 text-sm font-bold text-gray-950 transition hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-300 disabled:cursor-not-allowed disabled:opacity-50">
                 {creating ? 'Creando...' : 'Crear tienda'}
               </button>
             </div>
