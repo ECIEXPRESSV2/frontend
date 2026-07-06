@@ -1,25 +1,9 @@
-
-import React, { useEffect, useRef, useState } from 'react';
+import React from 'react';
 import { Package, CreditCard, QrCode, CheckCircle } from 'lucide-react';
+import { useInViewReveal } from '../../hooks/useInViewReveal';
 
 const HowItWorksSection: React.FC = () => {
-  const sectionRef = useRef<HTMLDivElement | null>(null);
-  const [isVisible, setIsVisible] = useState(false);
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsVisible(true);
-        }
-      },
-      { threshold: 0.2 }
-    );
-
-    if (sectionRef.current) observer.observe(sectionRef.current);
-
-    return () => observer.disconnect();
-  }, []);
+  const { ref: sectionRef, isVisible } = useInViewReveal<HTMLDivElement>({ threshold: 0.2 });
 
   const steps = [
     {
@@ -59,11 +43,9 @@ const HowItWorksSection: React.FC = () => {
   return (
     <section ref={sectionRef} id="how-it-works" className="relative py-20 md:py-28 px-6 bg-white overflow-hidden scroll-mt-28">
 
-      {/* Un solo glow decorativo */}
       <div className="absolute -top-20 -left-20 w-96 h-96 rounded-full bg-yellow-300/20 blur-[100px] pointer-events-none" />
 
       <div className="relative max-w-6xl mx-auto">
-        {/* HEADER */}
         <div className="space-y-3 mb-20">
           <h2 className="font-display text-4xl md:text-5xl font-semibold text-gray-900 tracking-tight">
             Cómo funciona
@@ -73,11 +55,8 @@ const HowItWorksSection: React.FC = () => {
           </p>
         </div>
 
-        {/* CONTAINER - 2 COLUMN LAYOUT */}
         <div className="grid md:grid-cols-2 gap-16 items-start relative">
-          {/* LEFT COLUMN - TIMELINE */}
           <div className="relative hidden md:block">
-            {/* Timeline Line */}
             <div className="absolute left-12 top-0 bottom-0 w-1 bg-gradient-to-b from-yellow-400 via-cyan-400 to-emerald-400 rounded-full"
                  style={{
                    opacity: isVisible ? 1 : 0.3,
@@ -85,7 +64,6 @@ const HowItWorksSection: React.FC = () => {
                  }}
             />
 
-            {/* Steps - LEFT */}
             <div className="space-y-16 pr-32">
               {steps.map((step, index) => {
                 const Icon = step.icon;
@@ -99,17 +77,14 @@ const HowItWorksSection: React.FC = () => {
                       transition: `all 0.6s ease-out ${index * 0.1}s`,
                     }}
                   >
-                    {/* Timeline dot - Animated */}
                     <div className="timeline-dot absolute -right-[98px] top-0 w-8 h-8 bg-white border-4 border-gray-900 rounded-full shadow-lg z-10 group-hover:scale-125 group-hover:shadow-xl transition-all duration-300" />
 
-                    {/* Number - BIG */}
                     <div className="font-display text-7xl font-semibold text-gray-900 leading-none mb-6 group-hover:scale-105 transition-all duration-300 cursor-pointer relative z-20"
                          style={{ transformOrigin: 'right bottom' }}
                     >
                       {step.number}
                     </div>
 
-                    {/* Small icon + hint - LARGER */}
                     <div className="flex items-center justify-end gap-4 mb-5 relative z-20">
                       <span className="font-body text-base font-bold text-gray-900 uppercase tracking-widest group-hover:text-a11y-yellow-dark transition-colors duration-300">
                         Paso {step.number}
@@ -119,12 +94,10 @@ const HowItWorksSection: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Title */}
                     <h3 className="font-display text-2xl font-semibold text-gray-900 leading-tight mb-3 group-hover:text-a11y-yellow-dark transition-colors duration-300">
                       {step.title}
                     </h3>
 
-                    {/* Description */}
                     <p className="font-body text-base text-gray-700 leading-relaxed max-w-sm group-hover:text-gray-900 transition-colors duration-300 ml-auto">
                       {step.description}
                     </p>
@@ -134,9 +107,7 @@ const HowItWorksSection: React.FC = () => {
             </div>
           </div>
 
-          {/* RIGHT COLUMN - Visual decoration with Stock Images */}
           <div className="relative hidden md:block">
-            {/* Cards with Stock Images - Decorative */}
             <div className="space-y-12 mt-20">
               {steps.map((step, index) => {
                 return (
@@ -149,21 +120,17 @@ const HowItWorksSection: React.FC = () => {
                       transition: `all 0.6s ease-out ${index * 0.1}s`,
                     }}
                   >
-                    {/* Background Image */}
                     <img
                       src={step.image}
                       alt={step.title}
                       className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                     />
 
-                    {/* Overlay oscuro para contraste */}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/30 to-transparent group-hover:from-black/50 transition-all duration-300" />
 
-                    {/* Glow effect on hover */}
                     <div className={`absolute inset-0 opacity-0 group-hover:opacity-20 transition-opacity duration-500
                       bg-gradient-to-br ${step.gradient}`} />
 
-                    {/* Content */}
                     <div className="absolute inset-0 flex flex-col justify-end p-6 relative z-10">
                       <div className="w-10 h-10 rounded-xl bg-white/30 backdrop-blur-md border border-white/40 flex items-center justify-center mb-3 group-hover:scale-110 group-hover:bg-white/40 transition-all duration-300">
                         <step.icon size={24} className="text-white" strokeWidth={1.5} />
@@ -181,34 +148,27 @@ const HowItWorksSection: React.FC = () => {
             </div>
           </div>
 
-          {/* MOBILE LAYOUT - Stacked */}
           <div className="md:hidden space-y-12 col-span-full">
-            {/* Timeline Line - Mobile */}
             <div className="absolute left-6 top-0 bottom-0 w-1 bg-gradient-to-b from-yellow-400 via-cyan-400 to-emerald-400 h-full" />
 
             {steps.map((step, index) => {
               const Icon = step.icon;
               return (
                 <div key={index} className="relative pl-20">
-                  {/* Timeline dot - Mobile */}
                   <div className="absolute -left-3 top-1 w-6 h-6 bg-white border-3 border-gray-900 rounded-full shadow-lg z-10" />
 
-                  {/* Number - Mobile */}
                   <div className="font-display text-5xl font-semibold text-gray-900 mb-2">
                     {step.number}
                   </div>
 
-                  {/* Icon */}
                   <div className="w-5 h-5 text-gray-700 mb-2">
                     <Icon size={20} strokeWidth={1.5} />
                   </div>
 
-                  {/* Title */}
                   <h3 className="font-display text-xl font-semibold text-gray-900 mb-2">
                     {step.title}
                   </h3>
 
-                  {/* Description */}
                   <p className="font-body text-base text-gray-700">
                     {step.description}
                   </p>
@@ -219,7 +179,6 @@ const HowItWorksSection: React.FC = () => {
         </div>
       </div>
 
-      {/* ANIMATIONS */}
       <style>
         {`
           @keyframes dotPulse {

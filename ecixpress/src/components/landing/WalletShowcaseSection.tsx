@@ -1,60 +1,54 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   CreditCard, PlusCircle, Shield, Zap, Sparkles, ArrowRight,
 } from 'lucide-react';
 import CreditCardUI from '../ui/CreditCard';
+import { useInViewReveal } from '../../hooks/useInViewReveal';
 
-// ─── Types ─────────────────────────────────────────────────────────────────
 interface ChipItem {
   icon: React.ElementType;
   title: string;
   description: string;
-  gradient: string;
 }
 
-// ─── Mock data — swap with backend/CMS props ────────────────────────────────
 const CHIP_ITEMS: ChipItem[] = [
   {
     icon: PlusCircle,
     title: 'Recarga tu saldo',
     description: 'Tarjeta, efectivo o transferencia',
-    gradient: 'from-amber-400 to-orange-500',
   },
   {
     icon: CreditCard,
     title: 'Paga en cafeterías',
     description: 'En todo el campus',
-    gradient: 'from-secondary to-blue-600',
   },
   {
     icon: Zap,
     title: 'Paga y listo',
     description: 'Confirma en segundos',
-    gradient: 'from-emerald-400 to-emerald-600',
   },
   {
     icon: Shield,
     title: '100% Segura',
     description: 'Encriptación nivel bancario',
-    gradient: 'from-slate-600 to-slate-800',
   },
 ];
 
-// ─── Mock card data — swap with userData from backend ──────────────────────
 const CARD_DATA = {
   balance: '$125,000',
   logoSrc: '/ecixpress-mark.svg',
 };
 
-// ─── Helpers ────────────────────────────────────────────────────────────────
-
 /** Spring easing — matches natural physics without Framer Motion */
 const SPRING = 'cubic-bezier(0.22, 1, 0.36, 1)';
 
-// ─── Sub-components ─────────────────────────────────────────────────────────
+const revealStyle = (visible: boolean, distance: number, delayMs = 0, durationMs = 800) => ({
+  opacity: visible ? 1 : 0,
+  transform: visible ? 'translateY(0)' : `translateY(${distance}px)`,
+  transition: `opacity ${durationMs}ms ${SPRING} ${delayMs}ms, transform ${durationMs}ms ${SPRING} ${delayMs}ms`,
+});
 
-/** Glass pill badge */
 const EyebrowBadge: React.FC<{ children: React.ReactNode }> = ({ children }) => (
     <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-yellow-400/30 mb-6"
          style={{
@@ -68,13 +62,13 @@ const EyebrowBadge: React.FC<{ children: React.ReactNode }> = ({ children }) => 
     </div>
 );
 
-/** Compact feature chip — reemplaza las cards fotográficas grandes que competían con la tarjeta */
+/** Compact feature chip */
 const FeatureChip: React.FC<{ item: ChipItem }> = ({ item }) => {
   const Icon = item.icon;
   return (
     <div className="group flex items-center gap-3 p-4 rounded-xl border border-gray-200 bg-white hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300">
-      <div className={`w-10 h-10 shrink-0 rounded-lg flex items-center justify-center bg-gradient-to-r ${item.gradient} group-hover:scale-110 transition`}>
-        <Icon className="w-5 h-5 text-white" />
+      <div className="w-10 h-10 shrink-0 rounded-lg flex items-center justify-center bg-gray-100/80 backdrop-blur-md border border-white shadow-sm group-hover:scale-110 group-hover:bg-white transition">
+        <Icon className="w-5 h-5 text-gray-600" />
       </div>
       <div className="min-w-0">
         <p className="font-body font-semibold text-sm text-gray-900 truncate">{item.title}</p>
@@ -84,27 +78,15 @@ const FeatureChip: React.FC<{ item: ChipItem }> = ({ item }) => {
   );
 };
 
-// ─── Main component ─────────────────────────────────────────────────────────
 const WalletShowcaseSection: React.FC = () => {
-  const sectionRef = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(false);
+  const { ref: sectionRef, isVisible: visible } = useInViewReveal<HTMLDivElement>({ threshold: 0.15 });
   const navigate = useNavigate();
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-        ([entry]) => { if (entry.isIntersecting) setVisible(true); },
-        { threshold: 0.15 }
-    );
-    if (sectionRef.current) observer.observe(sectionRef.current);
-    return () => observer.disconnect();
-  }, []);
 
   return (
       <section
           ref={sectionRef}
           className="relative py-20 md:py-28 px-6 overflow-hidden bg-gradient-to-b from-white via-gray-50 to-white"
       >
-        {/* Un solo glow ambiental, centrado detrás de la tarjeta */}
         <div
             className="absolute pointer-events-none"
             style={{
@@ -119,14 +101,9 @@ const WalletShowcaseSection: React.FC = () => {
 
         <div className="relative max-w-5xl mx-auto">
 
-          {/* ── Header ───────────────────────────────────────────────── */}
           <div
               className="text-center mb-12"
-              style={{
-                opacity: visible ? 1 : 0,
-                transform: visible ? 'translateY(0)' : 'translateY(32px)',
-                transition: `opacity 0.9s ${SPRING}, transform 0.9s ${SPRING}`,
-              }}
+              style={revealStyle(visible, 32, 0, 900)}
           >
             <EyebrowBadge>Nueva generación</EyebrowBadge>
             <h2 className="font-display text-4xl md:text-5xl font-semibold text-gray-900 leading-tight mb-5">
@@ -141,14 +118,9 @@ const WalletShowcaseSection: React.FC = () => {
             </p>
           </div>
 
-          {/* ── Credit Card — protagonista visual de la sección ─────────── */}
           <div
               className="py-8 flex justify-center relative"
-              style={{
-                opacity: visible ? 1 : 0,
-                transform: visible ? 'translateY(0)' : 'translateY(40px)',
-                transition: `opacity 0.8s ${SPRING} 120ms, transform 0.8s ${SPRING} 120ms`,
-              }}
+              style={revealStyle(visible, 40, 120)}
           >
             <CreditCardUI
               balance={CARD_DATA.balance}
@@ -156,28 +128,18 @@ const WalletShowcaseSection: React.FC = () => {
             />
           </div>
 
-          {/* ── Chips de apoyo — compactos, sin competir con la tarjeta ──── */}
           <div
               className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-8"
-              style={{
-                opacity: visible ? 1 : 0,
-                transform: visible ? 'translateY(0)' : 'translateY(24px)',
-                transition: `opacity 0.8s ${SPRING} 280ms, transform 0.8s ${SPRING} 280ms`,
-              }}
+              style={revealStyle(visible, 24, 280)}
           >
             {CHIP_ITEMS.map((item) => (
               <FeatureChip key={item.title} item={item} />
             ))}
           </div>
 
-          {/* ── CTA ──────────────────────────────────────────────────── */}
           <div
               className="mt-16 flex flex-col items-center gap-4"
-              style={{
-                opacity: visible ? 1 : 0,
-                transform: visible ? 'translateY(0)' : 'translateY(20px)',
-                transition: `opacity 0.8s ${SPRING} 400ms, transform 0.8s ${SPRING} 400ms`,
-              }}
+              style={revealStyle(visible, 20, 400)}
           >
             <button
                 onClick={() => navigate('/signup')}
@@ -189,7 +151,7 @@ const WalletShowcaseSection: React.FC = () => {
               <ArrowRight size={20} />
             </button>
             <p className="font-body text-gray-500 text-xs tracking-wide">
-              Sin comisiones · Activación inmediata · Cancela cuando quieras
+              Sin comisiones · Activación inmediata
             </p>
           </div>
         </div>

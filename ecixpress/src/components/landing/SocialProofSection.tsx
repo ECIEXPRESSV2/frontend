@@ -36,11 +36,9 @@ const SocialProofSection: React.FC = () => {
       ref={sectionRef}
       className="relative py-32 px-6 overflow-hidden bg-gradient-to-b from-white via-gray-50 to-white"
     >
-      {/* Un solo glow decorativo */}
       <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-yellow-300/15 blur-[120px] rounded-full pointer-events-none" />
 
       <div className="relative max-w-7xl mx-auto">
-        {/* Header */}
         <div className="text-center mb-16 space-y-4">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-yellow-100/80 border border-yellow-300/60 backdrop-blur-sm">
             <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
@@ -59,7 +57,6 @@ const SocialProofSection: React.FC = () => {
           </p>
         </div>
 
-        {/* TESTIMONIOS - carrusel animado */}
         <div
           className="relative"
           style={{

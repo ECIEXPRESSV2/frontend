@@ -1,44 +1,28 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React from 'react';
 import { Utensils } from 'lucide-react';
 import FoodCarousel from '../ui/FoodCarousel';
 import { mockStores } from '../../mock/stores';
 import { STATIONERY_IMAGES } from '../../mock/stationeryImages';
+import { useInViewReveal } from '../../hooks/useInViewReveal';
 
 const FOOD_IMAGES = mockStores.flatMap((store) => [
   store.imageUrl,
   ...store.products.map((product) => product.imageUrl),
 ]);
 
-// Cafeterías/restaurantes reales del mock + papelerías, las dos grandes categorías de tiendas del campus.
 const SHOWCASE_IMAGES = [...FOOD_IMAGES, ...STATIONERY_IMAGES];
 
 const FoodShowcaseSection: React.FC = () => {
-  const sectionRef = useRef<HTMLDivElement | null>(null);
-  const [visible, setVisible] = useState(false);
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) setVisible(true);
-      },
-      { threshold: 0.15 }
-    );
-
-    if (sectionRef.current) observer.observe(sectionRef.current);
-
-    return () => observer.disconnect();
-  }, []);
+  const { ref: sectionRef, isVisible: visible } = useInViewReveal<HTMLDivElement>({ threshold: 0.15 });
 
   return (
     <section
       ref={sectionRef}
       className="relative py-20 md:py-24 px-6 overflow-hidden bg-gradient-to-b from-white via-gray-50 to-white"
     >
-      {/* Un solo glow decorativo */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[700px] bg-yellow-300/15 blur-[120px] rounded-full pointer-events-none" />
 
       <div className="relative max-w-7xl mx-auto">
-        {/* Header */}
         <div
           className="text-center mb-12 space-y-4"
           style={{
@@ -64,7 +48,6 @@ const FoodShowcaseSection: React.FC = () => {
           </p>
         </div>
 
-        {/* Carrusel decorativo */}
         <div
           className="relative max-w-7xl mx-auto h-96 sm:h-[28rem] md:h-[36rem] lg:h-[42rem] rounded-3xl overflow-hidden shadow-xl"
           style={{

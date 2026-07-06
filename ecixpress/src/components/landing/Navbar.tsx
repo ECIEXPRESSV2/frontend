@@ -19,7 +19,6 @@ const Navbar: React.FC<NavbarProps> = ({ onLoginClick, onSignUpClick }) => {
     <nav className="sticky top-3 z-50 w-full bg-gradient-to-r from-white/80 to-yellow-50/60 backdrop-blur-xl border border-white/40 shadow-lg rounded-xl mx-6 mt-4">
       <div className="w-full px-6 md:px-12 py-3 md:py-4 gap-12">
         <div className="flex items-center justify-between">
-          {/* Logo */}
           <div className="flex items-center gap-2 transition">
             <img
               src="/ecixpress-logo.svg"
@@ -28,7 +27,6 @@ const Navbar: React.FC<NavbarProps> = ({ onLoginClick, onSignUpClick }) => {
             />
           </div>
 
-          {/* Desktop Menu */}
           <div className="hidden md:flex items-center gap-8">
             <a href="#features" className={NAV_LINK_CLASS}>
               Características
@@ -38,7 +36,6 @@ const Navbar: React.FC<NavbarProps> = ({ onLoginClick, onSignUpClick }) => {
             </a>
           </div>
 
-          {/* Auth Buttons */}
           <div className="hidden md:flex items-center gap-3">
             <button
               onClick={onLoginClick}
@@ -54,7 +51,6 @@ const Navbar: React.FC<NavbarProps> = ({ onLoginClick, onSignUpClick }) => {
             </button>
           </div>
 
-          {/* Mobile Menu Button */}
           <button
             onClick={() => setIsOpen(!isOpen)}
             className="md:hidden p-2 rounded-lg text-gray-700 hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
@@ -65,7 +61,6 @@ const Navbar: React.FC<NavbarProps> = ({ onLoginClick, onSignUpClick }) => {
           </button>
         </div>
 
-        {/* Mobile Menu */}
         {isOpen && (
           <div className="md:hidden pt-4 border-t border-gray-100 mt-4 space-y-3">
             <a

@@ -48,7 +48,6 @@ function pixelsPerMeter(map: MapLibreMap, lat: number) {
   return 1 / metersPerPixel;
 }
 
-// ─── Componente ─────────────────────────────────────────────────────────────
 const CampusMapSection: React.FC = () => {
   const navigate = useNavigate();
   const sectionRef = useRef<HTMLElement | null>(null);
@@ -134,7 +133,6 @@ const CampusMapSection: React.FC = () => {
             );
             currentMap.fitBounds(bounds, { padding: 60, bearing: -18, pitch: 60, maxZoom: 17.6, duration: 0 });
 
-            // Pines con ping sobre cafeterías y kioskos reales.
             campus.features
               .filter((f) => f.properties.tipo && PICKUP_TYPES.has(f.properties.tipo) && f.properties.name)
               .forEach((feature) => {
@@ -207,11 +205,9 @@ const CampusMapSection: React.FC = () => {
 
   return (
     <section ref={sectionRef} id="campus-map" className="relative py-20 md:py-28 px-6 bg-gradient-to-b from-white via-gray-50 to-white overflow-hidden">
-      {/* Un solo glow ámbar, en línea con el resto de secciones claras */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[700px] bg-yellow-300/15 blur-[130px] rounded-full pointer-events-none" />
 
       <div className="relative max-w-6xl mx-auto">
-        {/* Header */}
         <div className="text-center mb-12 space-y-4">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-yellow-100 border border-yellow-300">
             <MapPin size={14} className="text-a11y-yellow-dark" />
@@ -229,7 +225,6 @@ const CampusMapSection: React.FC = () => {
           </p>
         </div>
 
-        {/* Mapa */}
         <div className="relative h-[420px] md:h-[540px] rounded-3xl overflow-hidden border border-gray-200 shadow-xl bg-[#e9e6dd]">
           <div ref={containerRef} className="h-full w-full" />
           {!mapReady && (
@@ -239,7 +234,6 @@ const CampusMapSection: React.FC = () => {
           )}
         </div>
 
-        {/* Hint de interacción */}
         <div className="mt-5 flex items-center justify-center gap-2 text-gray-500">
           <Rotate3d size={16} />
           <span className="font-body text-sm">
@@ -248,7 +242,6 @@ const CampusMapSection: React.FC = () => {
         </div>
       </div>
 
-      {/* Estilos de los pines */}
       <style>{`
         .landing-map-pin {
           display: flex;

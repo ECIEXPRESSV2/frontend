@@ -17,7 +17,7 @@ const HeroSection: React.FC<HeroProps> = ({ onGetStartedClick, onSignInClick }) 
   const [orderTarget, setOrderTarget] = useState(BASE_ORDER_COUNT);
   const displayedOrderCount = useCountUp({ target: orderTarget, start: BASE_ORDER_COUNT, duration: 900 });
 
-  // Brillo de cristal (Liquid Glass) que sigue al cursor, acotado a esta sección
+  // Brillo de cristal que sigue al cursor, acotado a esta sección
   useEffect(() => {
     reducedMotionRef.current = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (reducedMotionRef.current) return;
@@ -51,7 +51,6 @@ const HeroSection: React.FC<HeroProps> = ({ onGetStartedClick, onSignInClick }) 
     return () => clearTimeout(timeoutId);
   }, []);
 
-  // Inclinación 3D del iPhone al mover el mouse sobre la columna visual
   const handlePhoneMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (reducedMotionRef.current || !phoneImgRef.current || !visualRef.current) return;
     const r = visualRef.current.getBoundingClientRect();
@@ -71,7 +70,7 @@ const HeroSection: React.FC<HeroProps> = ({ onGetStartedClick, onSignInClick }) 
     <section
       ref={sectionRef}
       className="relative min-h-screen w-full
-        bg-[linear-gradient(270deg,#ffffff,#fef3c7,#fde68a,#ffffff)]
+        bg-[linear-gradient(270deg,#ffffff,#fffbeb,#fef3c7,#ffffff)]
         bg-[length:400%_400%]
         animate-gradient
          flex items-center justify-center pt-20 pb-12 px-6 overflow-hidden">
@@ -80,15 +79,12 @@ const HeroSection: React.FC<HeroProps> = ({ onGetStartedClick, onSignInClick }) 
 
       <div className="max-w-7xl mx-auto w-full">
         <div className="grid md:grid-cols-2 gap-12 items-center">
-          {/* Left Content */}
           <div className="space-y-8 animate-fade-in-left">
-            {/* Badge */}
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/70 backdrop-blur-md border border-yellow-200/80 shadow-sm">
               <div className="w-2 h-2 rounded-full bg-primary animate-glow" />
               <span className="font-body text-sm font-semibold text-a11y-yellow-darker">Pide. Llega. Recoge.</span>
             </div>
 
-            {/* Main Heading */}
             <div className="space-y-5">
               <h1
                 className="font-display text-4xl md:text-6xl lg:text-7xl font-semibold tracking-tight text-gray-900 leading-tight animate-reveal"
@@ -105,7 +101,6 @@ const HeroSection: React.FC<HeroProps> = ({ onGetStartedClick, onSignInClick }) 
               </p>
             </div>
 
-            {/* Buttons */}
             <div className="flex flex-col sm:flex-row gap-4 pt-4 animate-slide-up-delay-2">
               <button
                 onClick={onGetStartedClick}
@@ -122,21 +117,15 @@ const HeroSection: React.FC<HeroProps> = ({ onGetStartedClick, onSignInClick }) 
                 <span className="relative z-10">Iniciar sesión</span>
               </button>
             </div>
-
-            {/* Trust Indicators */}
-
           </div>
 
-          {/* Right Visual - iPhone Mockup */}
           <div
             ref={visualRef}
             onMouseMove={handlePhoneMove}
             onMouseLeave={handlePhoneLeave}
             className="relative h-full min-h-[650px] hidden md:flex items-center justify-center"
           >
-            {/* Glow ambiental primario (dorado) */}
             <div className="absolute w-[520px] h-[520px] bg-yellow-300/25 blur-[100px] rounded-full pointer-events-none" aria-hidden="true" />
-            {/* Segundo glow ambiental (cian) — aporta profundidad detrás del pedestal */}
             <div className="absolute bottom-8 left-4 w-[320px] h-[320px] bg-secondary/15 blur-[90px] rounded-full pointer-events-none" aria-hidden="true" />
 
             {/* Pedestal de vidrio — superficie sobre la que "se apoya" el producto */}
@@ -148,7 +137,6 @@ const HeroSection: React.FC<HeroProps> = ({ onGetStartedClick, onSignInClick }) 
               </div>
             </div>
 
-            {/* Ticker "pedidos hoy" — actividad en vivo */}
             <div
               className="absolute top-6 left-4 z-20 hidden md:flex items-center gap-2 px-3 py-2 rounded-xl bg-white/75 backdrop-blur-md border border-white/50 shadow-md"
               aria-hidden="true"
@@ -160,7 +148,6 @@ const HeroSection: React.FC<HeroProps> = ({ onGetStartedClick, onSignInClick }) 
               <span className="font-body text-xs text-gray-600">pedidos hoy</span>
             </div>
 
-            {/* iPhone Mockup — protagonista único del hero */}
             <div className="relative z-10 animate-reveal" style={{ animationDelay: '200ms' }}>
               <div className="animate-float">
                 <div className="relative w-full h-[620px] mx-auto [perspective:1200px]">

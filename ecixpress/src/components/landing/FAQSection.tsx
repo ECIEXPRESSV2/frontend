@@ -82,12 +82,10 @@ const FAQSection: React.FC = () => {
   const allQuestions = faqData.flatMap((item) => item.questions);
 
   return (
-    <section className="relative py-20 md:py-28 px-6 overflow-hidden bg-gradient-to-b from-white via-gray-50 to-yellow-50">
-      {/* Un solo glow decorativo */}
+    <section id="faq" className="relative py-20 md:py-28 px-6 overflow-hidden bg-gradient-to-b from-white via-gray-50 to-yellow-50 scroll-mt-28">
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[900px] bg-yellow-200/15 blur-[120px] rounded-full pointer-events-none" />
 
       <div className="relative max-w-4xl mx-auto">
-        {/* Header */}
         <div className="text-center mb-16 space-y-4">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-yellow-100 border border-yellow-300">
             <HelpCircle size={16} className="text-a11y-yellow-dark" />
@@ -95,12 +93,12 @@ const FAQSection: React.FC = () => {
               Preguntas Frecuentes
             </span>
           </div>
-          <h2 className="font-display text-4xl md:text-5xl font-semibold text-gray-900 leading-tight flex flex-col md:flex-row items-center justify-center gap-3">
-            <span>Todo lo que necesitas saber sobre</span>
+          <h2 className="font-display text-xl sm:text-3xl md:text-5xl font-semibold text-gray-900 leading-tight flex flex-row flex-nowrap items-center justify-center gap-2 sm:gap-3">
+            <span className="whitespace-nowrap">Todo lo que necesitas saber sobre</span>
             <img
               src="/ecixpress-logo.svg"
               alt="ECIXPRESS"
-              className="h-8 md:h-9 w-auto self-center"
+              className="h-5 sm:h-7 md:h-9 w-auto self-center"
             />
           </h2>
           <p className="font-body text-lg text-gray-600 max-w-2xl mx-auto">
@@ -108,7 +106,6 @@ const FAQSection: React.FC = () => {
           </p>
         </div>
 
-        {/* FAQ Accordion */}
         <div className="space-y-4">
           {allQuestions.map((item, index) => (
             <div
@@ -139,13 +136,11 @@ const FAQSection: React.FC = () => {
                 </div>
               </div>
 
-              {/* Hover glow */}
               <div className="absolute inset-0 bg-gradient-to-r from-yellow-400/0 via-yellow-400/0 to-yellow-400/0 group-hover:from-yellow-400/5 group-hover:via-yellow-400/10 group-hover:to-yellow-400/5 transition-all duration-500 pointer-events-none" />
             </div>
           ))}
         </div>
 
-        {/* Contact CTA */}
         <div className="mt-12 text-center p-8 rounded-2xl bg-gradient-to-r from-yellow-100 to-orange-100 border border-yellow-200">
           <div className="flex items-center justify-center gap-3 mb-3">
             <Mail size={20} className="text-a11y-yellow-dark" />

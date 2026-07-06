@@ -8,10 +8,6 @@ import {
 } from 'framer-motion';
 import { Zap, QrCode, Users, ShieldCheck, Bell, Sparkles } from 'lucide-react';
 
-/* ------------------------------------------------------------------ */
-/* Data                                                                */
-/* ------------------------------------------------------------------ */
-
 interface Benefit {
   number: string;
   icon: React.ComponentType<{ className?: string }>;
@@ -62,10 +58,6 @@ const CAMPUS_IMAGE = {
   alt: 'Estudiantes de la Escuela Colombiana de Ingeniería compartiendo en el campus',
 };
 
-/* ------------------------------------------------------------------ */
-/* Motion primitives                                                   */
-/* ------------------------------------------------------------------ */
-
 const EASE_OUT: [number, number, number, number] = [0.22, 1, 0.36, 1];
 
 const revealVariants: Variants = {
@@ -97,10 +89,6 @@ const Reveal: React.FC<{
     </motion.div>
   );
 };
-
-/* ------------------------------------------------------------------ */
-/* Expanding image — la imagen inicia como card y se vuelve inmersiva  */
-/* ------------------------------------------------------------------ */
 
 const ImageCaption: React.FC<{ className?: string }> = ({ className }) => (
   <div className={className}>
@@ -181,7 +169,6 @@ const ExpandingCampusImage: React.FC = () => {
         aria-hidden="true"
       />
 
-      {/* Chips flotantes con parallax */}
       <motion.div
         style={{ y: chipReadyY }}
         className="absolute right-4 top-10 md:right-12 md:top-16"
@@ -212,7 +199,6 @@ const ExpandingCampusImage: React.FC = () => {
         </div>
       </motion.div>
 
-      {/* Caption que aparece cuando la imagen ya es inmersiva */}
       <motion.figcaption
         style={{ opacity: captionOpacity, y: captionY }}
         className="absolute inset-x-0 bottom-0 p-6 md:p-12"
@@ -222,10 +208,6 @@ const ExpandingCampusImage: React.FC = () => {
     </motion.figure>
   );
 };
-
-/* ------------------------------------------------------------------ */
-/* Bloques editoriales                                                 */
-/* ------------------------------------------------------------------ */
 
 const BenefitRow: React.FC<{ benefit: Benefit; index: number }> = ({ benefit, index }) => {
   const Icon = benefit.icon;
@@ -262,10 +244,9 @@ const BenefitRow: React.FC<{ benefit: Benefit; index: number }> = ({ benefit, in
 
 const EditorialBenefits: React.FC = () => (
   <div className="grid gap-14 lg:grid-cols-[5fr_7fr] lg:gap-24">
-    {/* Columna sticky: narrativa */}
     <div className="self-start space-y-8 lg:sticky lg:top-28">
       <Reveal className="space-y-5">
-        <span className="font-body text-sm font-semibold uppercase tracking-[0.2em] text-a11y-yellow-dark">
+        <span className="font-body text-lg font-semibold uppercase tracking-[0.2em] text-a11y-yellow-dark">
           Tu día en el campus
         </span>
         <h3 className="font-display text-3xl font-semibold leading-tight text-gray-900 md:text-5xl">
@@ -304,22 +285,16 @@ const EditorialBenefits: React.FC = () => (
   </div>
 );
 
-/* ------------------------------------------------------------------ */
-/* Sección                                                             */
-/* ------------------------------------------------------------------ */
-
 const FeaturesSection: React.FC = () => (
   <section
     id="features"
     className="relative scroll-mt-28 overflow-hidden bg-white py-20 md:py-28"
   >
-    {/* Glow de fondo */}
     <div
       className="pointer-events-none absolute left-1/2 top-0 h-[700px] w-[700px] -translate-x-1/2 rounded-full bg-yellow-300/10 blur-[140px]"
       aria-hidden="true"
     />
 
-    {/* Header */}
     <div className="relative mx-auto max-w-4xl px-6 text-center">
       <Reveal className="space-y-5">
         <div className="inline-flex items-center gap-2 rounded-full border border-yellow-300/60 bg-yellow-100/80 px-4 py-2 backdrop-blur-sm">
@@ -343,12 +318,10 @@ const FeaturesSection: React.FC = () => (
       </Reveal>
     </div>
 
-    {/* Imagen inmersiva ligada al scroll */}
     <div className="relative mt-8 md:mt-10">
       <ExpandingCampusImage />
     </div>
 
-    {/* Composición editorial */}
     <div className="relative mx-auto mt-10 max-w-7xl px-6 pb-4 md:mt-14">
       <EditorialBenefits />
     </div>
