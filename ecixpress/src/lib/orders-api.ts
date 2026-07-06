@@ -356,6 +356,9 @@ export const ordersApi = {
   cancelOrder: (id: string, payload: { actorType?: string; reason?: string }, token?: string | null) =>
     requestJson<OrderResponse>(`/orders/${id}/cancel`, token, { method: 'POST', body: JSON.stringify(payload) }),
 
+  deleteOrder: (id: string, token?: string | null) =>
+    requestJson<void>(`/orders/${id}`, token, { method: 'DELETE' }),
+
   rateOrder: (id: string, payload: { score: number; comment?: string }, token?: string | null) =>
     requestJson<OrderResponse>(`/orders/${id}/rating`, token, { method: 'POST', body: JSON.stringify(payload) }),
 
