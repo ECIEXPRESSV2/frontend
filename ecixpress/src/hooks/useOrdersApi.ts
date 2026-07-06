@@ -35,6 +35,7 @@ export function useOrdersApi() {
       ordersApi.requestReturn(orderId, payload, await getToken()),
     cancelOrder: async (id: string, payload: { actorType?: string; reason?: string }) =>
       ordersApi.cancelOrder(id, payload, await getToken()),
+    deleteOrder: async (id: string) => ordersApi.deleteOrder(id, await getToken()),
     updateOrderStatus: async (
       id: string,
       payload: { status: OrderStatus; actorType: string; actorId?: string; reason?: string },

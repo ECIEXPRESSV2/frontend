@@ -1,7 +1,7 @@
 ﻿import React, { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { io, Socket } from 'socket.io-client';
-import { ArrowLeft, RefreshCw, MessageCircle, RotateCcw, XCircle, Star, Plus, Undo2, X, Eye, EyeOff, CreditCard, Loader2, Store as StoreIcon, ChevronLeft, ChevronRight, Search, ShoppingCart } from 'lucide-react';
+import { ArrowLeft, RefreshCw, MessageCircle, RotateCcw, XCircle, Star, Plus, Undo2, X, Trash2, CreditCard, Loader2, Store as StoreIcon, ChevronLeft, ChevronRight, Search, ShoppingCart } from 'lucide-react';
 import Sidebar from '../../components/home/Sidebar';
 import ModalShell from '../../components/wallet/ModalShell';
 import { OrderFulfillmentPanel } from '../../components/orders/OrderFulfillmentPanel';
@@ -12,7 +12,7 @@ import { useOrdersApi } from '../../hooks/useOrdersApi';
 import { useRefreshOnScrollTop } from '../../hooks/useRefreshOnScrollTop';
 import { ORDERS_WS_URL, type OrderResponse, type OrderStatus } from '../../lib/orders-api';
 import { formatCOP, formatDateTime } from '../../lib/format';
-import { isCancellable, isHideable, isPayable, isRateable, isReorderable, isReturnable, orderDisplayName, statusLabel, statusTone } from '../../lib/orders-ui';
+import { isCancellable, isPayable, isRateable, isReorderable, isReturnable, orderDisplayName, statusLabel, statusTone } from '../../lib/orders-ui';
 
 const StoreMapModal = lazy(() => import('../../components/store/StoreMapModal'));
 
@@ -49,9 +49,6 @@ function statusChangedAt(order: OrderResponse, status: OrderStatus): string | un
     .find((entry) => entry.toStatus === status)?.occurredAt;
 }
 
-/** Clave de localStorage donde guardamos los pedidos ocultos por usuario. */
-const hiddenStorageKey = (userId?: string) => `eciexpress:orders:hidden:${userId ?? 'anon'}`;
-
 const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -67,9 +64,6 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
   const [search, setSearch] = useState('');
   const [connected, setConnected] = useState(false);
 
-  // Pedidos que el cliente ocultó de su vista (persisten en localStorage por usuario).
-  const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set());
-  const [showHidden, setShowHidden] = useState(false);
   const [page, setPage] = useState(1);
 
   const [rating, setRating] = useState<{ open: boolean; score: number; comment: string }>({ open: false, score: 5, comment: '' });
@@ -105,38 +99,18 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
           ].some((value) => value.toLowerCase().includes(query)),
         )
       : byStatus;
-    // En la vista normal escondemos los ocultos; en la vista "ocultos" solo mostramos esos.
-    return bySearch.filter((o) => (showHidden ? hiddenIds.has(o.id) : !hiddenIds.has(o.id)));
-  }, [orders, filter, search, hiddenIds, showHidden]);
+    return bySearch;
+  }, [orders, filter, search]);
   const totalPages = Math.max(1, Math.ceil(visibleOrders.length / PAGE_SIZE));
   const pagedOrders = useMemo(() => {
     const start = (page - 1) * PAGE_SIZE;
     return visibleOrders.slice(start, start + PAGE_SIZE);
   }, [visibleOrders, page]);
-  const hiddenCount = useMemo(() => orders.filter((o) => hiddenIds.has(o.id)).length, [orders, hiddenIds]);
-
   const upsertOrder = (order: OrderResponse) =>
     setOrders((current) => {
       const exists = current.some((o) => o.id === order.id);
       return exists ? current.map((o) => (o.id === order.id ? order : o)) : [order, ...current];
     });
-
-  // Carga los pedidos ocultos guardados para este usuario.
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(hiddenStorageKey(userProfile?.id));
-      setHiddenIds(new Set(raw ? (JSON.parse(raw) as string[]) : []));
-    } catch {
-      setHiddenIds(new Set());
-    }
-  }, [userProfile?.id]);
-
-  const persistHidden = (next: Set<string>) => {
-    setHiddenIds(next);
-    try {
-      localStorage.setItem(hiddenStorageKey(userProfile?.id), JSON.stringify([...next]));
-    } catch { /* localStorage no disponible */ }
-  };
 
   const openOrderSummary = (id: string) => {
     const index = visibleOrders.findIndex((order) => order.id === id);
@@ -160,19 +134,6 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
     setSelectedId('');
   };
 
-  const hideOrder = (id: string) => {
-    const next = new Set(hiddenIds);
-    next.add(id);
-    persistHidden(next);
-    if (selectedId === id) closeOrderSummary();
-  };
-
-  const unhideOrder = (id: string) => {
-    const next = new Set(hiddenIds);
-    next.delete(id);
-    persistHidden(next);
-  };
-
   useEffect(() => {
     const orderId = searchParams.get('orderId');
     setSelectedId(orderId ?? '');
@@ -184,7 +145,7 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
 
   useEffect(() => {
     setPage(1);
-  }, [filter, search, showHidden]);
+  }, [filter, search]);
 
   useEffect(() => {
     if (!selectedId) return;
@@ -261,6 +222,38 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
     }
   };
 
+  const handleDelete = async (order: OrderResponse) => {
+    if (!window.confirm(`¿Borrar pedido ${order.orderNumber.slice(-4)}? Esta acción no se puede deshacer.`)) return;
+    setActionMsg(null);
+    setSuccessMsg(null);
+    try {
+      await api.deleteOrder(order.id);
+      setOrders((current) => current.filter((o) => o.id !== order.id));
+      if (selectedId === order.id) closeOrderSummary();
+    } catch (e) {
+      setActionMsg(e instanceof Error ? e.message : 'No se pudo borrar el pedido');
+    }
+  };
+
+  const handleBulkDelete = async (status: 'DELIVERED' | 'CANCELLED') => {
+    const targets = orders.filter((o) => o.status === status);
+    if (targets.length === 0) return;
+    const label = status === 'CANCELLED' ? 'cancelados' : 'entregados';
+    if (!window.confirm(`¿Borrar ${targets.length} pedido${targets.length === 1 ? '' : 's'} ${label}?`)) return;
+    setActionMsg(null);
+    setSuccessMsg(null);
+    let deleted = 0;
+    for (const order of targets) {
+      try {
+        await api.deleteOrder(order.id);
+        deleted++;
+      } catch { /* skip individual failures */ }
+    }
+    setOrders((current) => current.filter((o) => o.status !== status));
+    if (selected && selected.status === status) closeOrderSummary();
+    if (deleted > 0) setActionMsg(`Se borraron ${deleted} pedido${deleted === 1 ? '' : 's'} ${label}.`);
+  };
+
   const handleReorder = async (order: OrderResponse) => {
     setActionMsg(null);
     setSuccessMsg(null);
@@ -282,8 +275,6 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
         currency: order.currency,
       });
       upsertOrder(created);
-      // Volver a la vista de pedidos no ocultos para ver el pedido recién recreado.
-      setShowHidden(false);
       setFilter('ALL');
       openOrderSummary(created.id);
       socketRef.current?.emit('order:subscribe', { orderId: created.id });
@@ -411,19 +402,27 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
                 </button>
               ))}
             </div>
+            {(orders.some(o => o.status === 'CANCELLED') || orders.some(o => o.status === 'DELIVERED')) && (
+              <div className="mt-3 flex flex-wrap gap-2 border-t border-gray-100 pt-3">
+                {orders.some(o => o.status === 'CANCELLED') && (
+                  <button
+                    onClick={() => handleBulkDelete('CANCELLED')}
+                    className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 transition"
+                  >
+                    <Trash2 size={12} /> Limpiar cancelados
+                  </button>
+                )}
+                {orders.some(o => o.status === 'DELIVERED') && (
+                  <button
+                    onClick={() => handleBulkDelete('DELIVERED')}
+                    className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition"
+                  >
+                    <Trash2 size={12} /> Limpiar entregados
+                  </button>
+                )}
+              </div>
+            )}
           </div>
-
-          {/* Organizar la vista: mostrar/ocultar los pedidos cerrados que el cliente archivó */}
-          {(hiddenCount > 0 || showHidden) && (
-            <div className="flex justify-end">
-              <button
-                onClick={() => setShowHidden((v) => !v)}
-                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold bg-white/80 text-gray-600 border border-white/60 hover:bg-white transition-all"
-              >
-                {showHidden ? <><Eye size={14} /> Ver pedidos activos</> : <><EyeOff size={14} /> Ver ocultos ({hiddenCount})</>}
-              </button>
-            </div>
-          )}
 
           {successMsg && <div className="rounded-xl bg-green-50 border border-green-300 px-4 py-3 text-sm font-bold text-green-700">{successMsg}</div>}
           {actionMsg && <div className="rounded-xl bg-yellow-50 border border-yellow-200 px-4 py-3 text-sm text-gray-700">{actionMsg}</div>}
@@ -435,7 +434,7 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
               {loading && <p className="text-sm text-gray-500">Cargando pedidos…</p>}
               {!loading && visibleOrders.length === 0 && (
                 <div className="rounded-2xl bg-white/60 backdrop-blur-xl border border-white/50 p-8 text-center text-gray-500">
-                  {search ? `No hay pedidos que coincidan con "${search}".` : showHidden ? 'No tienes pedidos ocultos.' : `No tienes pedidos ${filter !== 'ALL' ? 'con ese estado' : 'todavía'}.`}
+                  {search ? `No hay pedidos que coincidan con "${search}".` : `No tienes pedidos ${filter !== 'ALL' ? 'con ese estado' : 'todavía'}.`}
                 </div>
               )}
               {pagedOrders.map((order) => {
@@ -514,24 +513,15 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
                     </div>
                   </div>
 
-                  {/* Ocultar (pedidos cerrados) o restaurar (vista de ocultos) */}
-                  {showHidden ? (
+                  {(order.status === 'DELIVERED' || order.status === 'CANCELLED' || order.status === 'FAILED') && (
                     <button
-                      onClick={() => unhideOrder(order.id)}
-                      title="Restaurar a mi vista"
-                      className="absolute top-2 right-2 w-7 h-7 rounded-full bg-white border border-gray-200 text-gray-400 flex items-center justify-center hover:text-emerald-600 hover:border-emerald-300 transition-colors"
-                    >
-                      <Eye size={14} />
-                    </button>
-                  ) : isHideable(order.status) ? (
-                    <button
-                      onClick={() => hideOrder(order.id)}
-                      title="Ocultar de mi vista"
+                      onClick={() => handleDelete(order)}
+                      title="Borrar pedido"
                       className="absolute top-2 right-2 w-7 h-7 rounded-full bg-white border border-gray-200 text-gray-400 flex items-center justify-center hover:text-red-500 hover:border-red-300 transition-colors"
                     >
-                      <X size={14} />
+                      <Trash2 size={14} />
                     </button>
-                  ) : null}
+                  )}
                 </article>
               );
               })}
@@ -731,6 +721,11 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
                     {isCancellable(selected.status) && (
                       <button onClick={() => handleCancel(selected)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-red-500 px-4 py-2 text-sm font-black text-white transition hover:bg-red-600">
                         <XCircle size={16} /> Cancelar
+                      </button>
+                    )}
+                    {(selected.status === 'DELIVERED' || selected.status === 'CANCELLED' || selected.status === 'FAILED') && (
+                      <button onClick={() => handleDelete(selected)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-red-200 bg-white px-4 py-2 text-sm font-black text-red-600 transition hover:bg-red-50">
+                        <Trash2 size={16} /> Borrar pedido
                       </button>
                     )}
                   </div>

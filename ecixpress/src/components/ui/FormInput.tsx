@@ -10,6 +10,7 @@ interface FormInputProps {
   error?: string;
   touched?: boolean;
   className?: string;
+  min?: string | number;
 }
 
 const FormInput: React.FC<FormInputProps> = ({
@@ -22,18 +23,27 @@ const FormInput: React.FC<FormInputProps> = ({
   error,
   touched = false,
   className = '',
+  min,
 }) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let val = e.target.value;
+    if (type === 'number') val = val.replace(/\D/g, '');
+    onChange(val);
+  };
+
   return (
     <div className="space-y-1">
       <label className="block text-sm font-semibold text-gray-700">
         {label}
       </label>
       <input
-        type={type}
+        type="text"
+        inputMode={type === 'number' ? 'numeric' : undefined}
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={handleChange}
         onBlur={onBlur}
         placeholder={placeholder}
+        min={min}
         className={`w-full px-4 py-3 rounded-xl border text-sm
           bg-white/60 backdrop-blur-sm transition-all duration-200 outline-none
           ${touched && error
