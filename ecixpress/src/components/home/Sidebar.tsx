@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { User, Plus, Grid, Clipboard, MessageCircle, LogOut, Wallet, Shield, Store, PackageCheck } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useWallet } from '../../context/WalletContext';
+import { useNotifications } from '../../context/NotificationsContext';
+import { useChat } from '../../context/ChatContext';
 import NotificationBell from '../notifications/NotificationBell';
 import CartDraftsBell from '../orders/CartDraftsBell';
 
@@ -41,9 +43,15 @@ const Sidebar: React.FC<SidebarProps> = ({
   const navigate = useNavigate();
   const { userProfile, signOut, isAdmin, isVendor } = useAuth();
   const { balanceLabel, loading: walletLoading } = useWallet();
+  const { unreadCount: unreadNotifications } = useNotifications();
+  const { unreadMessagesCount } = useChat();
   const firstName = (userProfile?.fullName || userProfile?.email || 'Usuario').trim().split(/\s+/)[0] || 'Usuario';
   const [internalExpanded, setInternalExpanded] = useState(defaultExpanded);
   const [mapOpen, setMapOpen] = useState(false);
+  // Carritos pendientes: CartDraftsBell hace su propio fetch y solo nos avisa si hay
+  // alguno, para que el puntico rojo del avatar los cuente sin duplicar la petición.
+  const [hasCartDrafts, setHasCartDrafts] = useState(false);
+  const hasPending = unreadNotifications > 0 || unreadMessagesCount > 0 || hasCartDrafts;
   const isExpanded = expanded ?? internalExpanded;
   const setIsExpanded = (next: boolean) => {
     if (expanded === undefined) setInternalExpanded(next);
@@ -154,15 +162,20 @@ const Sidebar: React.FC<SidebarProps> = ({
               onMessagesClick?.();
               if (!onMessagesClick) navigate('/messages');
             }}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/70 bg-white/55 text-gray-500 backdrop-blur-sm transition hover:border-yellow-200/80 hover:bg-yellow-50/70 hover:text-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-300"
+            className="relative inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/70 bg-white/55 text-gray-500 backdrop-blur-sm transition hover:border-yellow-200/80 hover:bg-yellow-50/70 hover:text-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-300"
             title="Mensajes"
             aria-label="Abrir mensajes"
           >
             <MessageCircle size={20} strokeWidth={2.2} aria-hidden="true" />
+            {unreadMessagesCount > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white">
+                {unreadMessagesCount > 9 ? '9+' : unreadMessagesCount}
+              </span>
+            )}
           </button>
 
           {/* Atajo de carritos pendientes (solo aparece si hay algún pedido en carrito) */}
-          <CartDraftsBell onOpenChange={setTopbarNotifOpen} />
+          <CartDraftsBell onOpenChange={setTopbarNotifOpen} onHasDraftsChange={setHasCartDrafts} />
 
           {/* Campana */}
           <NotificationBell variant="topbar" onOpenChange={setTopbarNotifOpen} />
@@ -190,6 +203,15 @@ const Sidebar: React.FC<SidebarProps> = ({
                 <span>{(userProfile?.fullName || userProfile?.email || 'E').trim()[0]?.toUpperCase()}</span>
               )}
             </button>
+            {/* Puntico rojo: hay algo por ver (mensajes, notificaciones o carritos
+                pendientes). Hermano del <button>, no anidado dentro de la rama de la
+                imagen ni de la inicial, para que se vea con o sin foto de perfil. */}
+            {hasPending && (
+              <span
+                className="pointer-events-none absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full bg-red-500 ring-2 ring-white"
+                aria-label="Tienes novedades pendientes"
+              />
+            )}
           </div>
         </div>
 
