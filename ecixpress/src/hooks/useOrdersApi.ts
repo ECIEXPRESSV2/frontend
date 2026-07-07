@@ -42,7 +42,7 @@ export function useOrdersApi() {
     ) => ordersApi.updateOrderStatus(id, payload, await getToken()),
     rateOrder: async (id: string, payload: { score: number; comment?: string }) =>
       ordersApi.rateOrder(id, payload, await getToken()),
-    getConversations: async (params?: { orderId?: string; customerId?: string; vendorId?: string; storeId?: string }) =>
+    getConversations: async (params?: { orderId?: string; storeId?: string }) =>
       ordersApi.getConversations(await getToken(), params),
     getConversationById: async (id: string) => ordersApi.getConversationById(id, await getToken()),
     markConversationRead: async (id: string) => ordersApi.markConversationRead(id, await getToken()),
