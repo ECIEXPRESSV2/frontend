@@ -35,13 +35,14 @@ export function useOrdersApi() {
       ordersApi.requestReturn(orderId, payload, await getToken()),
     cancelOrder: async (id: string, payload: { actorType?: string; reason?: string }) =>
       ordersApi.cancelOrder(id, payload, await getToken()),
+    deleteOrder: async (id: string) => ordersApi.deleteOrder(id, await getToken()),
     updateOrderStatus: async (
       id: string,
       payload: { status: OrderStatus; actorType: string; actorId?: string; reason?: string },
     ) => ordersApi.updateOrderStatus(id, payload, await getToken()),
     rateOrder: async (id: string, payload: { score: number; comment?: string }) =>
       ordersApi.rateOrder(id, payload, await getToken()),
-    getConversations: async (params?: { orderId?: string; customerId?: string; vendorId?: string; storeId?: string }) =>
+    getConversations: async (params?: { orderId?: string; storeId?: string }) =>
       ordersApi.getConversations(await getToken(), params),
     getConversationById: async (id: string) => ordersApi.getConversationById(id, await getToken()),
     markConversationRead: async (id: string) => ordersApi.markConversationRead(id, await getToken()),

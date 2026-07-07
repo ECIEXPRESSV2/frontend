@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Search, Plus, Minus, ShoppingCart, Loader2, ImageOff, X, Tag, Check, Box, ExternalLink } from 'lucide-react';
+import { Search, Plus, Minus, ShoppingCart, Loader2, ImageOff, X, Tag, Check } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -22,9 +22,6 @@ interface StoreCatalogCartProps {
   search?: string;
   onSearchChange?: (value: string) => void;
 }
-
-/** Cuántas fichas de producto se dibujan como máximo dentro de la canasta del carrito. */
-const CART_VISUAL_SLOTS = 12;
 
 /**
  * Umbral por defecto para avisar "últimas unidades" cuando la tienda no configuró un `minStock`
@@ -68,14 +65,14 @@ const QuantityStepper: React.FC<{
   };
 
   return (
-    <div className="flex items-center gap-1.5">
+    <div className="flex items-center gap-1">
       <button
         disabled={disabled}
         onClick={() => onCommit(qty - 1)}
         aria-label="Quitar una unidad"
-        className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 disabled:opacity-50"
+        className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 disabled:opacity-50"
       >
-        <Minus size={14} />
+        <Minus size={11} />
       </button>
       <input
         type="text"
@@ -87,34 +84,20 @@ const QuantityStepper: React.FC<{
         onFocus={(e) => e.currentTarget.select()}
         onBlur={commit}
         onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
-        className="w-10 h-7 text-center text-sm font-semibold rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-yellow-300 focus:border-yellow-300 disabled:opacity-50"
+        className="w-8 h-6 text-center text-[11px] font-semibold rounded-md border border-gray-200 focus:outline-none focus:ring-2 focus:ring-yellow-300 focus:border-yellow-300 disabled:opacity-50"
       />
-      {/* El "+" NO se deshabilita al llegar al tope: así, al intentar pasarse, `changeQuantity`
-          hace vibrar el recuadro en vez de simplemente quedar inerte. Solo se bloquea si hay una
-          mutación en curso (`disabled`). */}
       <button
         disabled={disabled}
         title={atLimit ? `Solo quedan ${max} unidades` : undefined}
         onClick={() => onCommit(qty + 1)}
         aria-label="Agregar una unidad"
-        className="w-7 h-7 rounded-full bg-yellow-400 text-white flex items-center justify-center hover:bg-yellow-500 disabled:opacity-50"
+        className="w-6 h-6 rounded-full bg-yellow-400 text-white flex items-center justify-center hover:bg-yellow-500 disabled:opacity-50"
       >
-        <Plus size={14} />
+        <Plus size={11} />
       </button>
     </div>
   );
 };
-
-/**
- * Posiciones aleatorias (no un patrón de rejilla) para las fichas dentro de la canasta.
- * Se generan una sola vez al cargar el módulo — fuera del render — así son verdaderamente al
- * azar y a la vez estables: las fichas ya colocadas no saltan cuando se agregan más productos.
- */
-const CART_SCATTER = Array.from({ length: CART_VISUAL_SLOTS }, () => ({
-  u: Math.random(),
-  jy: Math.random(),
-  rot: Math.random() * 2 - 1,
-}));
 
 /**
  * Catálogo de la tienda + carrito en vivo. El carrito es una orden DRAFT en
@@ -539,17 +522,6 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName,
 
   const itemCount = useMemo(() => cartLines.reduce((sum, { qty }) => sum + qty, 0), [cartLines]);
 
-  // Una "ficha" por unidad en el carrito (con imagen del producto) para llenar visualmente la
-  // canasta del carrito. Se limita para no montar cientos de nodos con carritos grandes.
-  const cartSlots = useMemo(() => {
-    const slots: { id: string; imageUrl: string | null }[] = [];
-    for (const { id, imageUrl, qty } of cartLines) {
-      for (let i = 0; i < qty && slots.length < CART_VISUAL_SLOTS; i++) slots.push({ id, imageUrl });
-      if (slots.length >= CART_VISUAL_SLOTS) break;
-    }
-    return slots;
-  }, [cartLines]);
-
   // Los totales se DERIVAN de las líneas del carrito (no del agregado `order.totalAmount`, que
   // orders-service deja rancio hasta que llega la cotización). Al construirlos sumando líneas
   // que siempre están cuadradas (total = unidad × cantidad), el carrito suma bien de forma
@@ -622,155 +594,69 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName,
     }
   };
 
-  // Carrito ilustrado que se llena con la imagen de cada producto añadido. Se dibuja por capas:
-  // los productos van AL FONDO y el carrito ENCIMA (más cerca de la pantalla), de modo que la
-  // rejilla "enjaula" a los productos y se perciben dentro de la canasta.
-  //
-  // TODO (pendiente): en vez de la imagen del producto, mostrar aquí una previsualización del
-  // modelo 3D del producto dentro de la canasta (p. ej. un <canvas>/three.js o <model-viewer>
-  // por cada ficha). Las "fichas" seguirían apilándose al azar, pero cada una renderizaría el
-  // modelo 3D en miniatura en lugar de <img>. Requiere que products-service exponga la URL del
-  // modelo (glTF/GLB) por producto y una estrategia de rendimiento (instanciar pocos, o un
-  // sprite/thumbnail 3D pre-renderizado) para no montar muchos canvas a la vez.
-  const cartVisual = (
-    <div className="relative w-full max-w-[15rem] mx-auto aspect-[6/5] select-none">
-      {/* Capa trasera: fichas de producto tiradas al azar dentro del trapecio de la canasta,
-          recortadas a su forma exacta como red de seguridad para que nunca sobresalgan.
-          TODO (pendiente): reemplazar el <img> de cada ficha por la previsualización del modelo
-          3D del producto (ver nota de arriba). */}
-      <div
-        className="absolute inset-0"
-        style={{ clipPath: 'polygon(16.67% 38%, 86.67% 26%, 75.83% 66%, 25% 66%)' }}
-      >
-        {cartSlots.map((p, i) => {
-          const s = CART_SCATTER[i] ?? { u: 0.5, jy: 0.5, rot: 0 };
-          const perRow = 4;
-          const row = Math.floor(i / perRow);
-          // Se llena de abajo hacia arriba; cada fila sube ~9 unidades, con algo de ruido.
-          const cy = Math.min(61, Math.max(36, 60 - row * 9 + (s.jy - 0.5) * 5));
-          // Bordes de la canasta a esa altura (izq: A→D, der: B→C), con margen para el tamaño de la ficha.
-          const inset = 7;
-          const xLeft = 30 - 10 * ((66 - cy) / 28) + inset;
-          const xRight = 91 + 13 * ((66 - cy) / 40) - inset;
-          const cx = xLeft + s.u * Math.max(0, xRight - xLeft);
-          return (
-            <div
-              key={`${p.id}-${i}`}
-              className="absolute w-6 h-6 rounded-md overflow-hidden bg-yellow-100 ring-1 ring-white shadow-md flex items-center justify-center text-yellow-400"
-              style={{ left: `${(cx / 120) * 100}%`, top: `${cy}%`, transform: `translate(-50%, -50%) rotate(${s.rot * 22}deg)`, zIndex: i }}
-            >
-              {p.imageUrl ? (
-                <img src={p.imageUrl} alt="" className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-              ) : (
-                <ImageOff size={12} />
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Capa frontal: el carrito, con degradado vertical (relieve) y sombra para que "salga" de la pantalla. */}
-      <svg viewBox="0 0 120 100" fill="none" className="absolute inset-0 w-full h-full" style={{ filter: 'drop-shadow(0 3px 3px rgba(0,0,0,0.28))' }}>
-        <defs>
-          <linearGradient id="cartRelief" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor="#4a4a4a" />
-            <stop offset="0.5" stopColor="#232323" />
-            <stop offset="1" stopColor="#0b0b0b" />
-          </linearGradient>
-        </defs>
-        <g stroke="url(#cartRelief)" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
-          {/* Canasta */}
-          <path d="M20 38 L104 26 L91 66 L30 66 Z" />
-          {/* Rejilla vertical */}
-          <path d="M36.8 35.6 L42.2 66 M53.6 33.2 L54.4 66 M70.4 30.8 L66.6 66 M87.2 28.4 L78.8 66" strokeWidth="2.6" />
-          {/* Rejilla horizontal */}
-          <path d="M23.3 47.2 L99.7 39.2 M26.6 56.5 L95.4 52.4" strokeWidth="2.6" />
-          {/* Mango */}
-          <path d="M104 26 L113 15" />
-          {/* Base: patas de la canasta a la barra inferior + frente limpio (sin curvatura sobrante) */}
-          <path d="M30 66 L40 76 L88 76 L91 66" />
-          <path d="M40 76 L22 76" />
-          {/* Ejes de las ruedas */}
-          <path d="M44 76 L44 80 M80 76 L80 80" />
-        </g>
-        {/* Mango (agarradera) y ruedas, rellenos con el mismo relieve */}
-        <circle cx="114" cy="12" r="5" fill="url(#cartRelief)" />
-        <circle cx="44" cy="86" r="6.5" fill="url(#cartRelief)" />
-        <circle cx="80" cy="86" r="6.5" fill="url(#cartRelief)" />
-      </svg>
-    </div>
-  );
-
-  // Resumen de carrito reutilizado por el panel lateral (desktop) y el drawer móvil.
+  // Resumen de carrito — limpio, sin ilustración
   const cartSummary = cartLines.length === 0 ? (
-    <div className="py-2 text-center">
-      {cartVisual}
+    <div className="py-8 text-center">
+      <ShoppingCart size={32} className="mx-auto text-gray-200" />
       <p className="text-sm text-gray-400 mt-3">Añade productos del menú para empezar.</p>
     </div>
   ) : (
-    <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
-      {/* Columna izquierda: el carrito que se llena + totales + botón de confirmar y pagar */}
-      <div className="space-y-4 rounded-2xl bg-white p-5 shadow-[0_0_22px_rgba(250,204,21,0.28)]">
-        <div className="lg:pt-2">{cartVisual}</div>
-
-        <div className="border-t border-gray-100 pt-3.5 space-y-1.5">
-          <div className="flex justify-between text-sm text-gray-500">
-            <span>Subtotal</span>
-            <span>{formatCOP(displaySubtotal)}</span>
-          </div>
-          {displayDiscount > 0 && (
-            <div className="flex justify-between text-sm font-medium text-green-600">
-              <span>Descuento (promos)</span>
-              <span>-{formatCOP(displayDiscount)}</span>
+    <div className="space-y-4">
+      {/* Lista de productos */}
+      <ul className="space-y-2 max-h-[50vh] overflow-y-auto pr-1">
+        {cartLines.map(({ id, name, imageUrl, qty, lineUnitPrice, lineTotal }) => (
+          <li key={id} className="flex items-center gap-3 py-2 border-b border-gray-50 last:border-0">
+            <div className="w-10 h-10 rounded-lg bg-yellow-50 overflow-hidden shrink-0 flex items-center justify-center text-yellow-300">
+              {imageUrl ? (
+                <img src={imageUrl} alt={name} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+              ) : (
+                <ImageOff size={14} />
+              )}
             </div>
-          )}
-          <div className="flex justify-between items-baseline pt-1">
-            <span className="font-bold text-gray-900">Total</span>
-            <span className="text-lg font-bold text-gray-900">{formatCOP(displayTotal)}</span>
-          </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-gray-800 truncate">{name}</p>
+              <p className="text-xs text-gray-400">{qty} × {formatCOP(lineUnitPrice)}</p>
+            </div>
+            <span className="text-sm font-semibold text-gray-900 shrink-0">{formatCOP(lineTotal)}</span>
+          </li>
+        ))}
+      </ul>
+
+      {/* Totales */}
+      <div className="border-t border-gray-100 pt-3 space-y-1.5">
+        <div className="flex justify-between text-sm text-gray-500">
+          <span>Subtotal</span>
+          <span>{formatCOP(displaySubtotal)}</span>
         </div>
-
-        <button
-          onClick={handleConfirm}
-          disabled={quoting || checkingOut || itemCount === 0}
-          className="w-full py-3 rounded-xl bg-gradient-to-r from-yellow-400 to-yellow-500 text-white font-semibold text-sm shadow-md shadow-yellow-300/50 hover:from-yellow-500 hover:to-yellow-600 hover:shadow-yellow-300/70 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-        >
-          {quoting ? <Loader2 size={16} className="animate-spin" /> : null}
-          Confirmar
-        </button>
+        {displayDiscount > 0 && (
+          <div className="flex justify-between text-sm font-medium text-green-600">
+            <span>Descuento (promos)</span>
+            <span>-{formatCOP(displayDiscount)}</span>
+          </div>
+        )}
+        <div className="flex justify-between items-baseline pt-1">
+          <span className="text-base font-bold text-gray-900">Total</span>
+          <span className="text-lg font-bold text-gray-900">{formatCOP(displayTotal)}</span>
+        </div>
       </div>
 
-      {/* Columna derecha: lista de productos (nombre y precio pegados) con scroll */}
-      <div className="rounded-2xl bg-white p-5 shadow-[0_0_22px_rgba(250,204,21,0.28)]">
-        <ul className="space-y-3 max-h-[26rem] overflow-y-auto pr-1">
-          {cartLines.map(({ id, name, imageUrl, qty, lineUnitPrice, lineTotal }) => (
-            <li key={id} className="flex items-center gap-3 text-sm">
-              <div className="w-12 h-12 rounded-xl bg-yellow-50 overflow-hidden flex-shrink-0 flex items-center justify-center text-yellow-300">
-                {imageUrl ? (
-                  <img src={imageUrl} alt={name} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-                ) : (
-                  <ImageOff size={16} />
-                )}
-              </div>
-              <div className="min-w-0">
-                <p className="truncate">
-                  <span className="text-gray-800 font-medium">{name}</span>{' '}
-                  <span className="text-gray-900 font-semibold">{formatCOP(lineTotal)}</span>
-                </p>
-                <p className="text-xs text-gray-400 mt-0.5">{qty} × {formatCOP(lineUnitPrice)}</p>
-              </div>
-            </li>
-          ))}
-        </ul>
-      </div>
+      {/* Botón confirmar */}
+      <button
+        onClick={handleConfirm}
+        disabled={quoting || checkingOut || itemCount === 0}
+        className="w-full py-3 rounded-xl bg-gradient-to-r from-yellow-400 to-yellow-500 text-white font-semibold text-sm shadow-md shadow-yellow-300/50 hover:from-yellow-500 hover:to-yellow-600 hover:shadow-yellow-300/70 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+      >
+        {quoting ? <Loader2 size={16} className="animate-spin" /> : null}
+        Confirmar
+      </button>
     </div>
   );
 
   return (
     <>
-    <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-      {/* Catálogo: más angosto, una sola columna de productos */}
-      <div className="lg:col-span-2 space-y-4">
+    <div className="space-y-4">
+      {/* Catálogo: ancho completo con rejilla de productos */}
+      <div className="space-y-4">
         {/* Barra de búsqueda interna: solo cuando NO está controlada desde afuera (en la página
             de tienda vive arriba). */}
         {!searchControlled && (
@@ -895,7 +781,7 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName,
           // un estado `draggingProductId` que active el overlay/atenuado global, y onDragOver/
           // onDrop en el contenedor del cartVisual como zona de drop. Cuidar accesibilidad
           // (teclado) y touch (los eventos HTML5 drag no funcionan en móvil → usar pointer events).
-          <div className="grid grid-cols-1 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
             {displayProducts.map((product) => {
               const qty = quantities[product.id] ?? 0;
               const available = availableStock(product);
@@ -909,32 +795,15 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName,
               return (
                 <div
                   key={product.id}
-                  /* `isolate` acota los z-index internos (badge "Agotado"/"Quedan N") a la propia
-                     tarjeta, para que NO pasen por encima del banner/búsqueda fijos al hacer scroll. */
                   className={`group relative isolate rounded-2xl bg-white border border-gray-100 shadow-sm transition-shadow overflow-hidden flex flex-col ${
                     outOfStock
-                      ? 'pointer-events-none select-none' // agotado: no seleccionable
+                      ? 'pointer-events-none select-none'
                       : 'hover:shadow-md'
                   } ${rejectedProductId === product.id ? 'animate-stock-reject' : ''}`}
                   aria-disabled={outOfStock}
                 >
-                  {/* Etiqueta de stock — va FUERA del contenido atenuado para que el rojo de
-                      "Agotado" (y el amarillo de "quedan N") se vea nítido y no se apague con el
-                      filtro gris/opacidad que se aplica al resto del recuadro cuando está agotado. */}
-                  {outOfStock ? (
-                    <span className="absolute top-2 right-2 z-20 px-2 py-0.5 rounded-full bg-red-600 text-[11px] font-semibold text-white shadow-sm">
-                      Agotado
-                    </span>
-                  ) : lowStock ? (
-                    <span className="absolute top-2 right-2 z-20 px-2 py-0.5 rounded-full bg-yellow-400 text-[11px] font-semibold text-yellow-950 shadow-sm">
-                      Quedan {available} {available === 1 ? 'unidad' : 'unidades'}
-                    </span>
-                  ) : null}
-
-                  {/* Contenido del producto: se atenúa (muy opaco + gris) cuando está agotado. */}
-                  <div className={`flex flex-1 flex-col ${outOfStock ? 'opacity-40 grayscale' : ''}`}>
-                    {/* Imagen con badges superpuestos */}
-                    <div className="relative h-32 bg-gradient-to-br from-yellow-50 to-yellow-100">
+                  <div className={`flex-1 flex flex-col ${outOfStock ? 'opacity-40 grayscale' : ''}`}>
+                    <div className="relative aspect-square bg-gradient-to-br from-yellow-50 to-yellow-100">
                       {product.frontImageUrl ?? product.imageUrl ? (
                         <img
                           src={product.frontImageUrl ?? product.imageUrl ?? ''}
@@ -944,60 +813,63 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName,
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-yellow-300">
-                          <ShoppingCart size={28} />
+                          <ShoppingCart size={18} />
                         </div>
                       )}
                       {product.category?.name && (
-                        <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-white/90 backdrop-blur-sm text-[11px] font-semibold text-gray-700 shadow-sm">
+                        <span className="absolute top-1.5 left-1.5 px-2 py-0.5 rounded-md bg-white/90 backdrop-blur-sm text-[9px] font-semibold text-gray-700 leading-tight shadow-sm">
                           {product.category.name}
                         </span>
                       )}
-                      {product.model3dUrl && product.modelGenerationStatus === 'READY' && (
-                        <button
-                          type="button"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            setViewerTitle(product.name);
-                            setViewerSrc(productsApi.getModel3dUrl(product.id));
-                            setViewerOpen(true);
-                          }}
-                          className="absolute bottom-2 left-2 z-10 inline-flex items-center gap-1.5 rounded-full bg-gray-900/90 px-2.5 py-1 text-[11px] font-semibold text-white shadow-sm transition hover:bg-gray-800"
-                        >
-                          <Box size={12} />
-                          Ver 3D
-                          <ExternalLink size={10} />
-                        </button>
-                      )}
-                      {/* Botón flotante de añadir, anclado al borde inferior de la imagen */}
                       {qty === 0 && (
                         <button
                           disabled={outOfStock}
                           onClick={() => changeQuantity(product, 1)}
-                          className="absolute -bottom-4 right-3 w-9 h-9 rounded-full bg-yellow-400 text-white flex items-center justify-center shadow-lg shadow-yellow-400/50 hover:bg-yellow-500 hover:scale-105 transition-all disabled:opacity-50 disabled:hover:scale-100"
+                          className="absolute -bottom-3 right-2 w-7 h-7 rounded-full bg-yellow-400 text-white flex items-center justify-center shadow-md shadow-yellow-400/40 hover:bg-yellow-500 hover:scale-105 transition-all disabled:opacity-50 disabled:hover:scale-100"
                         >
-                          <Plus size={18} />
+                          <Plus size={14} />
                         </button>
                       )}
+                      {outOfStock ? (
+                        <span className="absolute top-1.5 right-1.5 z-20 px-2 py-0.5 rounded-md bg-red-600 text-[9px] font-semibold text-white shadow-sm">
+                          Agotado
+                        </span>
+                      ) : lowStock ? (
+                        <span className="absolute top-1.5 right-1.5 z-20 px-2 py-0.5 rounded-md bg-yellow-400 text-[9px] font-semibold text-yellow-950 shadow-sm">
+                          {available}
+                        </span>
+                      ) : null}
                     </div>
 
-                    <div className="flex-1 flex flex-col p-3.5 pt-4">
-                      <h4 className="font-semibold text-gray-900 text-sm truncate">{product.name}</h4>
-                      {product.description ? (
-                        <p className="text-xs text-gray-500 line-clamp-2 mt-0.5 flex-1">{product.description}</p>
-                      ) : (
-                        <div className="flex-1" />
-                      )}
-                      <div className="mt-2.5 flex items-center justify-between">
-                        <span className="text-sm font-bold text-gray-900">{formatCOP(priceToCents(product.price))}</span>
-                        {qty > 0 && (
-                          <QuantityStepper
-                            qty={qty}
-                            max={available}
-                            disabled={false}
-                            atLimit={atStockLimit}
-                            onCommit={(next) => changeQuantity(product, next)}
-                          />
-                        )}
+                    <div className="flex-1 flex flex-col p-2.5">
+                      <h4 className="font-semibold text-gray-900 text-xs leading-tight truncate">{product.name}</h4>
+                      <div className="mt-2 flex items-center justify-between gap-1.5">
+                        <span className="text-xs font-bold text-gray-900 shrink-0">{formatCOP(priceToCents(product.price))}</span>
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          {product.model3dUrl && product.modelGenerationStatus === 'READY' && (
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                setViewerTitle(product.name);
+                                setViewerSrc(productsApi.getModel3dUrl(product.id));
+                                setViewerOpen(true);
+                              }}
+                              className="shrink-0 inline-flex items-center gap-1 rounded-lg bg-gray-800 px-3 py-1.5 text-xs font-bold text-white shadow-sm transition hover:bg-gray-700 hover:shadow-md hover:scale-105 active:scale-95"
+                            >
+                              3D
+                            </button>
+                          )}
+                          {qty > 0 && (
+                            <QuantityStepper
+                              qty={qty}
+                              max={available}
+                              disabled={false}
+                              atLimit={atStockLimit}
+                              onCommit={(next) => changeQuantity(product, next)}
+                            />
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1008,48 +880,37 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName,
         )}
       </div>
 
-      {/* Carrito — panel lateral en desktop, más grande y prominente */}
-      <aside className="hidden lg:block lg:col-span-3">
-        <div className="rounded-2xl bg-white border border-gray-100 shadow-sm p-8 sticky top-6 space-y-6">
-          <div className="flex items-center gap-2">
-            <ShoppingCart size={22} className="text-yellow-500" />
-            <h3 className="font-bold text-gray-900 text-lg">Tu carrito</h3>
-            {itemCount > 0 && <span className="ml-auto text-xs bg-yellow-100 text-yellow-700 font-semibold px-2 py-0.5 rounded-full">{itemCount}</span>}
-          </div>
-          {cartSummary}
-        </div>
-      </aside>
-
-      {/* Carrito — barra flotante + drawer en mobile/tablet */}
+      {/* Carrito — botón flotante + drawer (todas las pantallas) */}
       {itemCount > 0 && (
-        <button
-          onClick={() => setMobileCartOpen(true)}
-          className="lg:hidden fixed bottom-5 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 pl-3 pr-5 py-2.5 rounded-full bg-gradient-to-r from-yellow-400 to-yellow-500 text-white shadow-xl shadow-yellow-400/40 max-w-[calc(100%-2rem)]"
-        >
-          <span className="relative flex items-center justify-center w-9 h-9 rounded-full bg-white/25">
-            <ShoppingCart size={17} />
-            <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-white text-[11px] font-bold flex items-center justify-center text-yellow-600 shadow-sm">{itemCount}</span>
-          </span>
-          <span className="text-sm font-semibold truncate">Ver carrito</span>
-          <span className="text-sm font-bold whitespace-nowrap ml-auto">{formatCOP(displayTotal)}</span>
-        </button>
-      )}
+        <>
+          <button
+            onClick={() => setMobileCartOpen(true)}
+            className="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 pl-3 pr-4 py-2.5 rounded-full bg-gradient-to-r from-yellow-400 to-yellow-500 text-white shadow-xl shadow-yellow-400/40 hover:from-yellow-500 hover:to-yellow-600 hover:shadow-yellow-400/60 transition-all"
+          >
+            <span className="relative flex items-center justify-center w-9 h-9 rounded-full bg-white/25">
+              <ShoppingCart size={17} />
+              <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-white text-[11px] font-bold flex items-center justify-center text-yellow-600 shadow-sm">{itemCount}</span>
+            </span>
+            <span className="text-sm font-bold whitespace-nowrap">{formatCOP(displayTotal)}</span>
+          </button>
 
-      {mobileCartOpen && (
-        <div className="lg:hidden fixed inset-0 z-50 flex flex-col justify-end">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setMobileCartOpen(false)} />
-          <div className="relative bg-white rounded-t-3xl p-5 pb-6 max-h-[85vh] overflow-auto space-y-4">
-            <div className="flex items-center gap-2">
-              <ShoppingCart size={18} className="text-yellow-500" />
-              <h3 className="font-bold text-gray-900">Tu carrito</h3>
-              {itemCount > 0 && <span className="ml-auto text-xs bg-yellow-100 text-yellow-700 font-semibold px-2 py-0.5 rounded-full">{itemCount}</span>}
-              <button onClick={() => setMobileCartOpen(false)} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500">
-                <X size={16} />
-              </button>
+          {mobileCartOpen && (
+            <div className="fixed inset-0 z-50 flex flex-col justify-end">
+              <div className="absolute inset-0 bg-black/40" onClick={() => setMobileCartOpen(false)} />
+              <div className="relative bg-white rounded-t-3xl p-5 pb-6 max-h-[85vh] overflow-auto space-y-4 ml-[var(--sidebar-w)]">
+                <div className="flex items-center gap-2">
+                  <ShoppingCart size={18} className="text-yellow-500" />
+                  <h3 className="font-bold text-gray-900">Tu carrito</h3>
+                  {itemCount > 0 && <span className="ml-auto text-xs bg-yellow-100 text-yellow-700 font-semibold px-2 py-0.5 rounded-full">{itemCount}</span>}
+                  <button onClick={() => setMobileCartOpen(false)} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500">
+                    <X size={16} />
+                  </button>
+                </div>
+                {cartSummary}
+              </div>
             </div>
-            {cartSummary}
-          </div>
-        </div>
+          )}
+        </>
       )}
 
       <Product3DViewerModal

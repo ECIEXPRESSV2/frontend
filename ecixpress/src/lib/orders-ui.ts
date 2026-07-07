@@ -63,13 +63,6 @@ export const isReturnable = (status: OrderStatus): boolean =>
   ['CONFIRMED', 'READY_FOR_PICKUP', 'DELIVERED', 'PARTIALLY_RETURNED'].includes(status);
 
 /**
- * Estados "cerrados" que el comprador puede ocultar de su vista de "Mis pedidos"
- * (no se borra del backend, solo deja de mostrarse para el cliente).
- */
-export const isHideable = (status: OrderStatus): boolean =>
-  ['DELIVERED', 'CANCELLED', 'FAILED'].includes(status);
-
-/**
  * ¿El pedido admite "reordenar"? Solo tiene sentido sobre pedidos ya cerrados
  * (entregado, cancelado o fallido); reordenar genera un pedido nuevo (otro id).
  */

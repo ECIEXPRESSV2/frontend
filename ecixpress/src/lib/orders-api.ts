@@ -155,6 +155,11 @@ export interface ConversationResponse {
   participants: ConversationParticipant[];
   lastMessageAt?: string;
   lastMessagePreview?: string;
+  /** Identidad visual del chat (foto fija tomada al confirmarse el pedido). */
+  storeName?: string;
+  storeLogoUrl?: string;
+  customerName?: string;
+  customerAvatarUrl?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -356,17 +361,20 @@ export const ordersApi = {
   cancelOrder: (id: string, payload: { actorType?: string; reason?: string }, token?: string | null) =>
     requestJson<OrderResponse>(`/orders/${id}/cancel`, token, { method: 'POST', body: JSON.stringify(payload) }),
 
+  deleteOrder: (id: string, token?: string | null) =>
+    requestJson<void>(`/orders/${id}`, token, { method: 'DELETE' }),
+
   rateOrder: (id: string, payload: { score: number; comment?: string }, token?: string | null) =>
     requestJson<OrderResponse>(`/orders/${id}/rating`, token, { method: 'POST', body: JSON.stringify(payload) }),
 
+  // customerId/vendorId ya NO son filtros: el backend siempre acota al usuario
+  // autenticado (cliente = su propio token; vendedor = staff verificado de storeId).
   getConversations: (
     token?: string | null,
-    params?: { orderId?: string; customerId?: string; vendorId?: string; storeId?: string },
+    params?: { orderId?: string; storeId?: string },
   ) => {
     const q = new URLSearchParams();
     if (params?.orderId) q.set('orderId', params.orderId);
-    if (params?.customerId) q.set('customerId', params.customerId);
-    if (params?.vendorId) q.set('vendorId', params.vendorId);
     if (params?.storeId) q.set('storeId', params.storeId);
     const qs = q.toString();
     return requestJson<ConversationResponse[]>(`/conversations${qs ? `?${qs}` : ''}`, token);
