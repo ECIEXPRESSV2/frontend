@@ -179,7 +179,6 @@ const Home: React.FC<HomeProps> = ({ onUserClick, onCartClick, onOrdersClick, on
             />
           ) : null}
 
-<<<<<<< Updated upstream
           {shownFavoriteStores.length > 0 && (
             <section>
               <h2 className="mb-4 flex items-center gap-2 text-xl font-bold text-gray-900">
@@ -270,7 +269,6 @@ const Home: React.FC<HomeProps> = ({ onUserClick, onCartClick, onOrdersClick, on
               ))}
             </div>
           </section>
-=======
           <FeaturedProductsSection
             key={`featured-${activeSection}`}
             section={section}
@@ -280,7 +278,6 @@ const Home: React.FC<HomeProps> = ({ onUserClick, onCartClick, onOrdersClick, on
           />
 
           <AppPromoSection />
->>>>>>> Stashed changes
         </div>
       </main>
 

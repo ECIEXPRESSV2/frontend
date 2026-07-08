@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import type { Store } from '../../services/storeService';
+import { getStoreLogoUrl } from '../../services/storeAssets';
 import { FAVORITES_CHIP_ID, type HomeSection } from './homeSections';
 import CategoryChips, { type ChipOption } from './CategoryChips';
 import StoreCarousel from './StoreCarousel';
@@ -103,17 +104,22 @@ const OurStoresSection: React.FC<OurStoresSectionProps> = ({
         )
       ) : (
         <StoreCarousel>
-          {shownStores.map((store) => (
-            <StoreItem
-              key={store.id}
-              id={store.id as unknown as number}
-              name={store.name}
-              imageUrl={store.imageUrl || STORE_FALLBACK_IMAGE}
-              fallbackUrl={STORE_FALLBACK_IMAGE}
-              size="sm"
-              onClick={() => onStoreClick(store)}
-            />
-          ))}
+          {shownStores.map((store) => {
+            // Logo desde Azure Blob (store-logos/<id>.png); si aún no está subido, el onError
+            // de StoreItem cae a la imagen de la tienda o a la genérica.
+            const fallback = store.imageUrl || STORE_FALLBACK_IMAGE;
+            return (
+              <StoreItem
+                key={store.id}
+                id={store.id as unknown as number}
+                name={store.name}
+                imageUrl={getStoreLogoUrl(store.id) ?? fallback}
+                fallbackUrl={fallback}
+                size="sm"
+                onClick={() => onStoreClick(store)}
+              />
+            );
+          })}
         </StoreCarousel>
       )}
     </section>
