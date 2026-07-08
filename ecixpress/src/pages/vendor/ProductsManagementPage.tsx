@@ -154,6 +154,7 @@ const ProductsManagementPage: React.FC = () => {
   const [viewerSrc, setViewerSrc] = useState<string | null>(null);
   const [viewerTitle, setViewerTitle] = useState('');
   const [showInactive, setShowInactive] = useState(false);
+  const [aiAvailable, setAiAvailable] = useState<boolean | null>(null);
 
   const categoryName = useMemo(() => {
     const map = new Map(categories.map((c) => [c.id, c.name]));
@@ -249,7 +250,19 @@ const ProductsManagementPage: React.FC = () => {
   const resetForm = () => {
     setForm(emptyForm);
     setAssets(emptyAssetState);
+    setAiAvailable(null);
   };
+
+  useEffect(() => {
+    if (!form.open) return;
+    let cancelled = false;
+    productsApi.checkAiHealth().then((res) => {
+      if (!cancelled) setAiAvailable(res.available);
+    }).catch(() => {
+      if (!cancelled) setAiAvailable(false);
+    });
+    return () => { cancelled = true; };
+  }, [form.open]);
 
   const submitForm = async () => {
     const price = Number(form.price);
@@ -527,7 +540,21 @@ const ProductsManagementPage: React.FC = () => {
           </div>
 
           <div className="space-y-3 pt-3 border-t border-gray-100">
-            <p className="text-[11px] font-bold uppercase tracking-wide text-gray-400">Multimedia</p>
+            <div className="flex items-center gap-3">
+              <p className="text-[11px] font-bold uppercase tracking-wide text-gray-400">Multimedia</p>
+              {aiAvailable === true && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 border border-emerald-200">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                  Servicio 3D disponible
+                </span>
+              )}
+              {aiAvailable === false && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-semibold text-red-700 border border-red-200">
+                  <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
+                  Servicio 3D no disponible
+                </span>
+              )}
+            </div>
             {form.editingId ? (
               <div className="space-y-3">
                 <FormInput label="URL de imagen principal (opcional)" value={form.imageUrl} onChange={(v) => setForm((f) => ({ ...f, imageUrl: v }))} />
@@ -579,6 +606,24 @@ const ProductsManagementPage: React.FC = () => {
                           >
                             <ExternalLink size={13} />
                             Abrir 3D
+                          </button>
+                        )}
+                        {editingProduct.modelGenerationStatus === 'FAILED' && (
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              try {
+                                await productsApi.retryModel3d(editingProduct.id);
+                                toast.success('Reintentando generación 3D…');
+                                load();
+                              } catch {
+                                toast.error('No se pudo reintentar la generación 3D');
+                              }
+                            }}
+                            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-red-500 px-3 py-2 text-xs font-semibold text-white hover:bg-red-600"
+                          >
+                            <RefreshCw size={13} />
+                            Reintentar 3D
                           </button>
                         )}
                       </div>

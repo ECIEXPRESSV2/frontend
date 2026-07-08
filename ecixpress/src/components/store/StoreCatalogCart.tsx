@@ -485,6 +485,20 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName,
     flushTimer.current = setTimeout(() => void flushCart(), 250);
   };
 
+  // Llegada desde "¿Y si pruebas algo nuevo?" del Home con ?addProduct=<id>: al cargar el
+  // catálogo se agrega UNA unidad de ese producto al carrito (el draft se crea solo con el
+  // primer flush). El ref garantiza que ocurra una única vez aunque el catálogo se re-sondee.
+  const autoAddProductId = searchParams.get('addProduct');
+  const autoAddedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!autoAddProductId || autoAddedRef.current === autoAddProductId || loading) return;
+    const product = productById.get(autoAddProductId);
+    if (!product) return; // el catálogo aún no lo trae (o ya no existe)
+    autoAddedRef.current = autoAddProductId;
+    if ((quantitiesRef.current[product.id] ?? 0) === 0) changeQuantity(product, 1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoAddProductId, loading, productById]);
+
   /** Líneas de la orden ya cotizadas por products-service (unitPrice/totalAmount autoritativos), por productId. */
   const quotedByProductId = useMemo(() => {
     const map = new Map<string, OrderResponse['items'][number]>();
@@ -846,7 +860,7 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName,
                       <div className="mt-2 flex items-center justify-between gap-1.5">
                         <span className="text-xs font-bold text-gray-900 shrink-0">{formatCOP(priceToCents(product.price))}</span>
                         <div className="flex items-center gap-1.5 min-w-0">
-                          {product.model3dUrl && product.modelGenerationStatus === 'READY' && (
+                          {product.model3dUrl && product.modelGenerationStatus === 'READY' ? (
                             <button
                               type="button"
                               onClick={(event) => {
@@ -859,7 +873,11 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName,
                             >
                               3D
                             </button>
-                          )}
+                          ) : product.modelGenerationStatus === 'FAILED' ? (
+                            <span className="shrink-0 inline-flex items-center gap-1 rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-400 cursor-default" title="El modelo 3D no está disponible">
+                              3D
+                            </span>
+                          ) : null}
                           {qty > 0 && (
                             <QuantityStepper
                               qty={qty}

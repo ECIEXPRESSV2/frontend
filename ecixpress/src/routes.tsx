@@ -24,6 +24,7 @@ import OrdersPage from './pages/orders/OrdersPage';
 import MessagesPage from './pages/messages/MessagesPage';
 import PickupCodePage from './pages/fulfillment/PickupCodePage';
 import DeliveriesPage from './pages/fulfillment/DeliveriesPage';
+import InfoPage from './pages/info/InfoPage';
 
 const AppRoutes: React.FC = () => {
   const navigate = useNavigate();
@@ -75,6 +76,9 @@ const AppRoutes: React.FC = () => {
       <Route path="/vendor/orders" element={<ProtectedRoute requireVendor><VendorOrdersPage onBack={goHome} /></ProtectedRoute>} />
       <Route path="/vendor/stores/:storeId/products" element={<ProtectedRoute requireVendor><ProductsManagementPage /></ProtectedRoute>} />
       <Route path="/vendor/stores/:storeId/promotions" element={<ProtectedRoute requireVendor><PromotionsPage /></ProtectedRoute>} />
+
+      {/* Páginas informativas (pie de página) — públicas */}
+      <Route path="/info/:slug" element={<InfoPage />} />
 
       {/* Catch all */}
       <Route path="*" element={<Navigate to="/" replace />} />
