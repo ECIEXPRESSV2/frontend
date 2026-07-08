@@ -193,7 +193,13 @@ export const productsApi = {
   getById: (id: string, token?: string | null) =>
     catalogFetch<Product>(`/${id}`, token),
 
-  getModel3dUrl: (id: string) => `${PRODUCTS_API_BASE_URL}/${id}/model3d`,  
+  getModel3dUrl: (id: string) => `${PRODUCTS_API_BASE_URL}/${id}/model3d`,
+
+  checkAiHealth: (token?: string | null) =>
+    catalogFetch<{ available: boolean }>('/ai-health', token),
+
+  retryModel3d: (id: string, token?: string | null) =>
+    catalogFetch<Product>(`/${id}/retry-3d`, token, { method: 'POST' }),
 
   create: (input: CreateProductInput, token?: string | null) =>
     catalogFetch<Product>('/', token, { method: 'POST', body: JSON.stringify(input) }),

@@ -16,7 +16,6 @@ import { useAuth } from '../../context/AuthContext';
 import { useOrdersApi } from '../../hooks/useOrdersApi';
 import type { OrderResponse } from '../../lib/orders-api';
 import { getAvailableStores, type Store } from '../../services/storeService';
-import { getStoreLogoUrl } from '../../services/storeAssets';
 import { useFavorites } from '../../hooks/useFavorites';
 import { useRefreshOnScrollTop } from '../../hooks/useRefreshOnScrollTop';
 
@@ -189,13 +188,13 @@ const Home: React.FC<HomeProps> = ({ onUserClick, onCartClick, onOrdersClick, on
               </h2>
               <div className="flex flex-wrap gap-6 py-4 px-1">
                 {shownFavoriteStores.map((store) => {
-                  const fallback = store.imageUrl || STORE_FALLBACK_IMAGE;
+                  const fallback = STORE_FALLBACK_IMAGE;
                   return (
                     <StoreItem
                       key={store.id}
                       id={store.id as unknown as number}
                       name={store.name}
-                      imageUrl={getStoreLogoUrl(store.id) ?? fallback}
+                      imageUrl={store.imageUrl || fallback}
                       fallbackUrl={fallback}
                       onClick={() => {
                         if (onStoreClick) onStoreClick(Number(store.id));
@@ -223,13 +222,13 @@ const Home: React.FC<HomeProps> = ({ onUserClick, onCartClick, onOrdersClick, on
             ) : (
               <div className="flex flex-wrap gap-6 py-4 px-1">
                 {shownStores.map((store, index) => {
-                  const fallback = store.imageUrl || STORE_FALLBACK_IMAGE;
+                  const fallback = STORE_FALLBACK_IMAGE;
                   return (
                     <StoreItem
                       key={store.id}
                       id={store.id as unknown as number}
                       name={store.name}
-                      imageUrl={getStoreLogoUrl(store.id) ?? fallback}
+                      imageUrl={store.imageUrl || fallback}
                       fallbackUrl={fallback}
                       isActive={activeStore === index}
                       onClick={() => {

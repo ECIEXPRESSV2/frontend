@@ -37,6 +37,15 @@ export const updateMe = (data: UpdateProfileDto, token: string) =>
     body: JSON.stringify(data),
   });
 
+export const uploadAvatar = (file: File, token: string) => {
+  const form = new FormData();
+  form.append('file', file);
+  return apiFetch<{ avatarUrl: string }>('/users/me/avatar', token, {
+    method: 'POST',
+    body: form,
+  });
+};
+
 export const getUsers = (token: string, params?: Record<string, string>) => {
   const qs = params ? '?' + new URLSearchParams(params).toString() : '';
   return apiFetch<PaginatedUsers>(`/users${qs}`, token);

@@ -155,6 +155,11 @@ export interface ConversationResponse {
   participants: ConversationParticipant[];
   lastMessageAt?: string;
   lastMessagePreview?: string;
+  /** Identidad visual del chat (foto fija tomada al confirmarse el pedido). */
+  storeName?: string;
+  storeLogoUrl?: string;
+  customerName?: string;
+  customerAvatarUrl?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -183,6 +188,44 @@ export interface FrequentProduct {
   name: string;
   imageUrl?: string;
   totalOrders: number;
+}
+
+/** Una línea de la factura cotizada (paso "Confirmar"). Montos en centavos COP. */
+export interface CartQuoteLine {
+  productId: string;
+  name: string;
+  imageUrl?: string;
+  sku?: string;
+  /** Precio unitario de lista (sin promoción). */
+  listUnitPrice: number;
+  /** Precio unitario con la mejor promoción aplicada. */
+  unitPrice: number;
+  quantity: number;
+  totalAmount: number;
+  /** Unidades disponibles (stock − reservado). */
+  available: number;
+  hasStock: boolean;
+}
+
+/** Ítem autoritativo del carrito que el front envía al cotizar (la fuente de verdad son sus cantidades). */
+export interface QuoteCartItem {
+  productId: string;
+  quantity: number;
+  name?: string;
+  imageUrl?: string;
+}
+
+/** Factura cotizada de forma síncrona por orders-service (precio con promos + stock por línea). */
+export interface CartQuoteResponse {
+  cartId: string;
+  orderNumber: string;
+  storeName: string;
+  currency: string;
+  lines: CartQuoteLine[];
+  subtotalAmount: number;
+  discountAmount: number;
+  totalAmount: number;
+  hasStockIssues: boolean;
 }
 
 export interface MessagesResponse {
@@ -276,6 +319,12 @@ export const ordersApi = {
   setCartItem: (orderId: string, payload: UpsertCartItemRequest, token?: string | null) =>
     requestJson<OrderResponse>(`/orders/${orderId}/items`, token, { method: 'POST', body: JSON.stringify(payload) }),
 
+  quoteCart: (orderId: string, items: QuoteCartItem[], token?: string | null) =>
+    requestJson<CartQuoteResponse>(`/orders/${orderId}/quote`, token, {
+      method: 'POST',
+      body: JSON.stringify({ items }),
+    }),
+
   checkout: (orderId: string, token?: string | null) =>
     requestJson<OrderResponse>(`/orders/${orderId}/checkout`, token, { method: 'POST' }),
 
@@ -312,17 +361,20 @@ export const ordersApi = {
   cancelOrder: (id: string, payload: { actorType?: string; reason?: string }, token?: string | null) =>
     requestJson<OrderResponse>(`/orders/${id}/cancel`, token, { method: 'POST', body: JSON.stringify(payload) }),
 
+  deleteOrder: (id: string, token?: string | null) =>
+    requestJson<void>(`/orders/${id}`, token, { method: 'DELETE' }),
+
   rateOrder: (id: string, payload: { score: number; comment?: string }, token?: string | null) =>
     requestJson<OrderResponse>(`/orders/${id}/rating`, token, { method: 'POST', body: JSON.stringify(payload) }),
 
+  // customerId/vendorId ya NO son filtros: el backend siempre acota al usuario
+  // autenticado (cliente = su propio token; vendedor = staff verificado de storeId).
   getConversations: (
     token?: string | null,
-    params?: { orderId?: string; customerId?: string; vendorId?: string; storeId?: string },
+    params?: { orderId?: string; storeId?: string },
   ) => {
     const q = new URLSearchParams();
     if (params?.orderId) q.set('orderId', params.orderId);
-    if (params?.customerId) q.set('customerId', params.customerId);
-    if (params?.vendorId) q.set('vendorId', params.vendorId);
     if (params?.storeId) q.set('storeId', params.storeId);
     const qs = q.toString();
     return requestJson<ConversationResponse[]>(`/conversations${qs ? `?${qs}` : ''}`, token);
