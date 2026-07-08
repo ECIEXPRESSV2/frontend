@@ -84,6 +84,8 @@ jobs:
           VITE_ORDERS_SERVICE_URL: ${{ vars.VITE_GATEWAY_URL }}/orders
           VITE_FINANCIAL_API_URL: ${{ vars.VITE_GATEWAY_URL }}/financial
           VITE_NOTIFICATIONS_API_URL: ${{ vars.VITE_GATEWAY_URL }}/notifications
+          # Reporting (centro de monitoreo: KPIs, salud). Solo lo consume el rol ADMIN/ANALYST.
+          VITE_REPORTING_API_URL: ${{ vars.VITE_GATEWAY_URL }}/reporting
           # Fulfillment: sus paths ya incluyen /fulfillment y el gateway añade /api/v1;
           # por eso la base es la RAÍZ del gateway y el prefijo /api/v1 se vacía.
           VITE_FULFILLMENT_API_URL: ${{ vars.VITE_GATEWAY_URL }}

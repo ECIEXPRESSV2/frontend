@@ -6,12 +6,18 @@ interface ProtectedRouteProps {
   children: React.ReactNode;
   requireAdmin?: boolean;
   requireVendor?: boolean;
+  /**
+   * Deja pasar si el usuario tiene AL MENOS UNO de estos roles. ADMIN siempre pasa
+   * (superusuario). Se usa, p. ej., para el centro de monitoreo (ADMIN o ANALYST).
+   */
+  requireRoles?: string[];
 }
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   children,
   requireAdmin = false,
   requireVendor = false,
+  requireRoles,
 }) => {
   const { firebaseUser, userProfile, loading } = useAuth();
 
@@ -53,6 +59,15 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   }
 
   if (requireVendor && !roles.includes('VENDOR') && !roles.includes('ADMIN')) {
+    return <Navigate to="/home" replace />;
+  }
+
+  if (
+    requireRoles &&
+    requireRoles.length > 0 &&
+    !roles.includes('ADMIN') &&
+    !requireRoles.some((r) => roles.includes(r))
+  ) {
     return <Navigate to="/home" replace />;
   }
 
