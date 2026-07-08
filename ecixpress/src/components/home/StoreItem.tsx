@@ -7,8 +7,15 @@ interface StoreItemProps {
   /** Imagen de respaldo si `imageUrl` no carga (p. ej. el logo aún no está subido → 404). */
   fallbackUrl?: string;
   isActive?: boolean;
+  /** `sm` = círculos compactos del carrusel del Home; `md` = tamaño original. */
+  size?: 'md' | 'sm';
   onClick?: () => void;
 }
+
+const SIZE_CLASSES = {
+  md: { button: 'w-[134px]', circle: 'w-[134px] h-[134px]' },
+  sm: { button: 'w-[96px]', circle: 'w-[96px] h-[96px]' },
+} as const;
 
 const StoreItem: React.FC<StoreItemProps> = ({
   id,
@@ -16,19 +23,21 @@ const StoreItem: React.FC<StoreItemProps> = ({
   imageUrl,
   fallbackUrl,
   isActive = false,
+  size = 'md',
   onClick
 }) => {
+  const sizes = SIZE_CLASSES[size];
   return (
     <button
       onClick={onClick}
       data-store-id={id}
-      className={`flex w-[134px] flex-col items-center gap-2 transition-all duration-300 ease-in-out group
+      className={`flex ${sizes.button} flex-col items-center gap-2 transition-all duration-300 ease-in-out group focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-ring)] rounded-2xl
         ${isActive ? 'scale-110' : 'hover:scale-105'}`}
     >
-      <div className={`relative w-[134px] h-[134px] rounded-full overflow-hidden border-2 transition-all duration-300 ease-in-out
-        ${isActive 
-          ? 'border-yellow-400 shadow-lg shadow-yellow-200/60' 
-          : 'border-gray-200 group-hover:border-yellow-300 group-hover:shadow-md'
+      <div className={`theme-surface relative ${sizes.circle} rounded-full overflow-hidden border-2 transition-all duration-300 ease-in-out
+        ${isActive
+          ? 'border-[var(--accent-400)] shadow-[0_10px_22px_rgb(var(--accent-rgb)/0.35)]'
+          : 'border-gray-200 group-hover:border-[var(--accent-300)] group-hover:shadow-md'
         }`}>
         <img
           src={imageUrl}
@@ -41,11 +50,11 @@ const StoreItem: React.FC<StoreItemProps> = ({
           }}
         />
         {isActive && (
-          <div className="absolute inset-0 bg-yellow-400/20" />
+          <div className="absolute inset-0 bg-[rgb(var(--accent-rgb)/0.18)]" />
         )}
       </div>
       <span className={`max-w-full truncate text-center text-sm font-medium transition-colors duration-300
-        ${isActive ? 'text-yellow-600' : 'text-gray-600 group-hover:text-gray-900'}`}>
+        ${isActive ? 'text-[var(--accent-600)]' : 'text-gray-600 group-hover:text-gray-900'}`}>
         {name}
       </span>
     </button>
