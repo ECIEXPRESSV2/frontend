@@ -1,6 +1,6 @@
 import React, { Suspense, lazy, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, Plus, Grid, Clipboard, MessageCircle, LogOut, Wallet, Shield, Store, PackageCheck } from 'lucide-react';
+import { User, Plus, Grid, Clipboard, MessageCircle, LogOut, Wallet, Shield, Store, PackageCheck, Activity } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useWallet } from '../../context/WalletContext';
 import { useNotifications } from '../../context/NotificationsContext';
@@ -42,6 +42,9 @@ const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const navigate = useNavigate();
   const { userProfile, signOut, isAdmin, isVendor } = useAuth();
+  // Centro de monitoreo: visible para ADMIN o ANALYST (rol de solo lectura de métricas).
+  const canMonitor =
+    (userProfile?.roles.includes('ADMIN') || userProfile?.roles.includes('ANALYST')) ?? false;
   const { balanceLabel, loading: walletLoading } = useWallet();
   const { unreadCount: unreadNotifications } = useNotifications();
   const { unreadMessagesCount } = useChat();
@@ -360,6 +363,25 @@ const Sidebar: React.FC<SidebarProps> = ({
                 </button>
               );
             })}
+          </>
+        )}
+
+        {/* Monitoreo — ADMIN o ANALYST. Su propia sección porque no depende de ser admin. */}
+        {canMonitor && (
+          <>
+            {isExpanded && <p className="text-xs text-gray-500 font-medium px-1 pt-3 pb-1 uppercase tracking-wider">Monitoreo</p>}
+            {!isExpanded && <div className="border-t border-gray-100 my-2" />}
+            <button
+              onClick={() => navigate('/admin/monitoring')}
+              className={`relative w-full h-11 rounded-xl flex items-center transition-all duration-300 ease-in-out group overflow-hidden
+                ${activeItem === 'admin-monitoring' ? 'bg-amber-100 text-amber-800 shadow-sm' : 'text-gray-600 hover:bg-white/70 hover:text-amber-700'}
+                ${isExpanded ? 'px-4' : 'justify-center'}`}
+              title="Centro de monitoreo"
+            >
+              <Activity size={18} className="flex-shrink-0" />
+              {isExpanded && <span className="ml-3 font-medium text-sm whitespace-nowrap">Monitoreo</span>}
+              {activeItem === 'admin-monitoring' && <div className="absolute left-0 w-1 h-6 bg-amber-400 rounded-r-full" />}
+            </button>
           </>
         )}
 

@@ -15,6 +15,7 @@ import UsersPage from './pages/admin/UsersPage';
 import RolesPage from './pages/admin/RolesPage';
 import StoresPage from './pages/admin/StoresPage';
 import AuditPage from './pages/admin/AuditPage';
+import MonitoringPage from './pages/admin/MonitoringPage';
 import VendorStoresPage from './pages/vendor/VendorStoresPage';
 import VendorOrdersPage from './pages/vendor/VendorOrdersPage';
 import ProductsManagementPage from './pages/vendor/ProductsManagementPage';
@@ -67,6 +68,7 @@ const AppRoutes: React.FC = () => {
       <Route path="/admin/stores" element={<ProtectedRoute requireAdmin><StoresPage /></ProtectedRoute>} />
       <Route path="/admin/stores/:storeId" element={<ProtectedRoute requireAdmin><StoresPage /></ProtectedRoute>} />
       <Route path="/admin/audit" element={<ProtectedRoute requireAdmin><AuditPage /></ProtectedRoute>} />
+      <Route path="/admin/monitoring" element={<ProtectedRoute requireRoles={['ANALYST']}><MonitoringPage /></ProtectedRoute>} />
 
       {/* Vendor */}
       <Route path="/vendor/stores" element={<ProtectedRoute requireVendor><VendorStoresPage /></ProtectedRoute>} />
