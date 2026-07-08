@@ -52,38 +52,27 @@ const StoreDetail: React.FC<StoreDetailProps> = ({ storeId: storeIdProp, onBack 
   // La barra de búsqueda se expande hacia los lados al enfocarla.
   const [searchFocused, setSearchFocused] = useState(false);
   // Al bajar, el banner se "recoge" hacia arriba y se oscurece (queda fijo como barra compacta).
-  // Colapsar reduce el alto scrollable de la página; en pantallas/contenidos cortos eso realimenta
-  // el scroll y hace que el banner parpadee (sube/baja solo). Se refuerza con:
-  //   1) rAF para no saturar el handler;
-  //   2) histéresis: colapsa al pasar COLLAPSE_AT y solo se expande al bajar de EXPAND_AT
-  //      (zona muerta que evita el flip-flop cerca del umbral);
-  //   3) un guard que NO permite colapsar si la página, ya expandida, no tiene suficiente scroll
-  //      como para sostener el estado colapsado (raíz del bug: si no hay mucho que scrollear).
+  // Recoger el banner reduce su alto (es sticky); antes eso encogía el alto scrollable de la página
+  // y realimentaba el scroll → o parpadeaba, o directamente no se recogía si había poco contenido.
+  // Se resuelve con:
+  //   1) histéresis (COLLAPSE_AT / EXPAND_AT): zona muerta que evita el titileo cerca del umbral;
+  //   2) el <main> reserva un alto MÍNIMO (min-h abajo) — así recoger el banner NO cambia el alto
+  //      scrollable, y el colapso funciona en cualquier pantalla, incluso con poco contenido.
   const [scrolled, setScrolled] = useState(false);
   useEffect(() => {
     const COLLAPSE_AT = 96;
     const EXPAND_AT = 24;
-    const HERO_DELTA = 260; // cuánto se encoge el banner aprox. (h-80/[22rem] → h-20)
-    const MIN_EXPANDED_SCROLL = HERO_DELTA + COLLAPSE_AT + 48; // margen para no oscilar
     let raf = 0;
     const update = () => {
       raf = 0;
       const y = window.scrollY;
-      const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
-      setScrolled((prev) => {
-        // Alto scrollable equivalente con el banner EXPANDIDO (independiente del estado actual).
-        const maxScrollExpanded = maxScroll + (prev ? HERO_DELTA : 0);
-        if (maxScrollExpanded < MIN_EXPANDED_SCROLL) return false; // muy corto: no colapsar
-        return prev ? y > EXPAND_AT : y > COLLAPSE_AT;
-      });
+      setScrolled((prev) => (prev ? y > EXPAND_AT : y > COLLAPSE_AT));
     };
     const onScroll = () => { if (!raf) raf = requestAnimationFrame(update); };
     onScroll();
     window.addEventListener('scroll', onScroll, { passive: true });
-    window.addEventListener('resize', onScroll, { passive: true });
     return () => {
       window.removeEventListener('scroll', onScroll);
-      window.removeEventListener('resize', onScroll);
       if (raf) cancelAnimationFrame(raf);
     };
   }, []);
@@ -156,7 +145,9 @@ const StoreDetail: React.FC<StoreDetailProps> = ({ storeId: storeIdProp, onBack 
         onItemClick={setActiveSidebarItem}
       />
 
-      <main className="app-shift px-3 pb-28 md:px-6 lg:pb-8">
+      {/* min-h reserva scroll suficiente para que recoger el banner (sticky) no encoja el alto
+          scrollable de la página → el colapso funciona en cualquier pantalla, sin parpadeo. */}
+      <main className="app-shift min-h-[calc(100vh_+_160px)] px-3 pb-28 md:px-6 lg:pb-8">
         <div className="w-full">
           {/* HERO: banner grande y FIJO. Al bajar se "recoge" hacia arriba y se oscurece, quedando
               como una barra compacta oscura. La barra de búsqueda va superpuesta a la altura de la

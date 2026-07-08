@@ -492,6 +492,20 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName,
     flushTimer.current = setTimeout(() => void flushCart(), 250);
   };
 
+  // Llegada desde "¿Y si pruebas algo nuevo?" del Home con ?addProduct=<id>: al cargar el
+  // catálogo se agrega UNA unidad de ese producto al carrito (el draft se crea solo con el
+  // primer flush). El ref garantiza que ocurra una única vez aunque el catálogo se re-sondee.
+  const autoAddProductId = searchParams.get('addProduct');
+  const autoAddedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!autoAddProductId || autoAddedRef.current === autoAddProductId || loading) return;
+    const product = productById.get(autoAddProductId);
+    if (!product) return; // el catálogo aún no lo trae (o ya no existe)
+    autoAddedRef.current = autoAddProductId;
+    if ((quantitiesRef.current[product.id] ?? 0) === 0) changeQuantity(product, 1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoAddProductId, loading, productById]);
+
   /** Líneas de la orden ya cotizadas por products-service (unitPrice/totalAmount autoritativos), por productId. */
   const quotedByProductId = useMemo(() => {
     const map = new Map<string, OrderResponse['items'][number]>();

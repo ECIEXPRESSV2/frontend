@@ -154,7 +154,7 @@ const Sidebar: React.FC<SidebarProps> = ({
               onMessagesClick?.();
               if (!onMessagesClick) navigate('/messages');
             }}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/70 bg-white/55 text-gray-500 backdrop-blur-sm transition hover:border-yellow-200/80 hover:bg-yellow-50/70 hover:text-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-300"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/70 bg-white/55 text-gray-500 backdrop-blur-sm transition hover:border-[var(--accent-200)] hover:bg-[var(--accent-50)] hover:text-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-300"
             title="Mensajes"
             aria-label="Abrir mensajes"
           >
@@ -178,7 +178,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             <button
               type="button"
               onClick={() => setUserMenuOpen((open) => !open)}
-              className="inline-flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-amber-200 via-amber-300 to-orange-300 text-sm font-bold text-gray-900 shadow-[0_2px_8px_rgba(251,191,36,0.35),inset_0_1px_1px_rgba(255,255,255,0.5)] ring-2 ring-white/70 transition hover:ring-amber-200/80 hover:shadow-[0_4px_14px_rgba(251,191,36,0.45)] focus:outline-none focus:ring-2 focus:ring-amber-300"
+              className="inline-flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-amber-200 via-amber-300 to-[var(--accent-soft-to)] text-sm font-bold text-gray-900 shadow-[0_2px_8px_rgb(var(--accent-rgb)/0.35),inset_0_1px_1px_rgba(255,255,255,0.5)] ring-2 ring-white/70 transition hover:ring-[var(--accent-200)] hover:shadow-[0_4px_14px_rgb(var(--accent-rgb)/0.45)] focus:outline-none focus:ring-2 focus:ring-amber-300"
               title={userProfile?.fullName || 'Mi cuenta'}
               aria-haspopup="menu"
               aria-expanded={userMenuOpen}
@@ -229,7 +229,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       )}
 
       <aside
-      className={`fixed left-0 top-0 z-[60] h-screen bg-[linear-gradient(180deg,rgba(255,255,255,0.90)_0%,rgba(255,251,235,0.86)_36%,rgba(254,243,199,0.68)_64%,rgba(255,255,255,0.90)_100%)] backdrop-blur-2xl border-r border-white/60 shadow-xl shadow-amber-200/18 flex flex-col py-6 transition-all duration-300 ease-in-out overflow-hidden
+      className={`fixed left-0 top-0 z-[60] h-screen bg-[linear-gradient(180deg,rgba(255,255,255,0.90)_0%,var(--accent-surface-soft)_36%,var(--accent-surface)_64%,rgba(255,255,255,0.90)_100%)] backdrop-blur-2xl border-r border-white/60 [box-shadow:0_20px_25px_-5px_rgb(var(--accent-rgb)/0.18),0_8px_10px_-6px_rgb(var(--accent-rgb)/0.18)] flex flex-col py-6 transition-all duration-300 ease-in-out overflow-hidden
         ${isExpanded ? 'w-64 max-md:w-16' : 'w-16'}`}
       onMouseEnter={() => {
         if (!lockExpanded && !notifOpen) setIsExpanded(true);
@@ -242,21 +242,21 @@ const Sidebar: React.FC<SidebarProps> = ({
         <button
           type="button"
           onClick={() => setIsExpanded(!isExpanded)}
-          className="inline-flex h-11 w-11 items-center justify-center overflow-hidden rounded-xl border border-amber-200/60 bg-gradient-to-br from-amber-300/90 via-amber-400/85 to-orange-300/90 shadow-[0_4px_14px_rgba(251,191,36,0.28),inset_0_1px_1px_rgba(255,255,255,0.55)] backdrop-blur-sm transition hover:from-amber-300 hover:to-orange-300 hover:shadow-[0_6px_18px_rgba(251,191,36,0.38)] focus:outline-none focus:ring-2 focus:ring-amber-300"
+          className="inline-flex h-11 w-11 items-center justify-center overflow-hidden rounded-xl border border-[color-mix(in_srgb,var(--accent-200)_60%,transparent)] bg-[linear-gradient(135deg,var(--accent-300),var(--accent-400))] shadow-[0_4px_14px_rgb(var(--accent-rgb)/0.28),inset_0_1px_1px_rgba(255,255,255,0.55)] backdrop-blur-sm transition hover:shadow-[0_6px_18px_rgb(var(--accent-rgb)/0.38)] focus:outline-none focus:ring-2 focus:ring-amber-300"
           title={isExpanded ? 'Contraer menú' : 'Abrir menú'}
           aria-label={isExpanded ? 'Contraer menú lateral' : 'Abrir menú lateral'}
         >
           <img
             src="/eci-icon.png"
             alt=""
-            className={`h-full w-full object-cover transition-transform duration-300 ${isExpanded ? 'rotate-0' : 'rotate-90'}`}
+            className={`sidebar-eci-logo h-full w-full object-cover transition-transform duration-300 ${isExpanded ? 'rotate-0' : 'rotate-90'}`}
             aria-hidden="true"
           />
         </button>
         {isExpanded && !showProfile && (
           <div className="ml-3 min-w-0 flex-1">
-            <p className="truncate font-display text-xl font-semibold leading-tight text-amber-600">Hola,</p>
-            <p className="truncate font-display text-xl font-semibold leading-tight text-gray-900">{firstName}</p>
+            <p className="truncate font-display text-xl font-semibold leading-tight text-gray-900">Hola,</p>
+            <p className="truncate font-display text-xl font-semibold leading-tight text-[var(--accent-600)]">{firstName}</p>
           </div>
         )}
         {isExpanded && showProfile && (
