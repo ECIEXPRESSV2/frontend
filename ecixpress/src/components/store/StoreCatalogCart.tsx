@@ -846,7 +846,7 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName,
                       <div className="mt-2 flex items-center justify-between gap-1.5">
                         <span className="text-xs font-bold text-gray-900 shrink-0">{formatCOP(priceToCents(product.price))}</span>
                         <div className="flex items-center gap-1.5 min-w-0">
-                          {product.model3dUrl && product.modelGenerationStatus === 'READY' && (
+                          {product.model3dUrl && product.modelGenerationStatus === 'READY' ? (
                             <button
                               type="button"
                               onClick={(event) => {
@@ -859,7 +859,11 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName,
                             >
                               3D
                             </button>
-                          )}
+                          ) : product.modelGenerationStatus === 'FAILED' ? (
+                            <span className="shrink-0 inline-flex items-center gap-1 rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-400 cursor-default" title="El modelo 3D no está disponible">
+                              3D
+                            </span>
+                          ) : null}
                           {qty > 0 && (
                             <QuantityStepper
                               qty={qty}
