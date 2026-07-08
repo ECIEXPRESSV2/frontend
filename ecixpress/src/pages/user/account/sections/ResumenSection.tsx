@@ -18,8 +18,8 @@ import {
 import { useAuth } from '../../../../context/AuthContext';
 import { useWallet } from '../../../../context/WalletContext';
 import WalletPremiumCard from '../../../../components/wallet/WalletPremiumCard';
-import { updateMe } from '../../../../services/userService';
-import { compressImageToWebp, fileToDataUrl } from '../../../../services/storeAssets';
+import { updateMe, uploadAvatar } from '../../../../services/userService';
+import { compressImageToWebp } from '../../../../services/storeAssets';
 
 const roleLabel = (role: string) => (
   { ADMIN: 'Administrador', VENDOR: 'Vendedor', BUYER: 'Comprador', ANALYST: 'Analista' } as Record<string, string>
@@ -68,7 +68,6 @@ const ResumenSection: React.FC = () => {
       await updateMe({
         fullName: form.fullName || undefined,
         phone: form.phone || undefined,
-        avatarUrl: form.avatarUrl || undefined,
       }, token);
       await refreshProfile();
       toast.success('Informacion actualizada');
@@ -102,9 +101,8 @@ const ResumenSection: React.FC = () => {
     setUploadingAvatar(true);
     try {
       const optimized = (await compressImageToWebp(file, 640, 0.82)) ?? file;
-      const avatarUrl = await fileToDataUrl(optimized);
       const token = await getToken();
-      await updateMe({ avatarUrl }, token);
+      const { avatarUrl } = await uploadAvatar(optimized, token);
       setForm((current) => ({ ...current, avatarUrl }));
       await refreshProfile();
       toast.success('Foto de perfil actualizada');

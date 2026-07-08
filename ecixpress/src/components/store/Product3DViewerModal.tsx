@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import '@google/model-viewer';
 import { Box } from 'lucide-react';
 import ModalShell from '../wallet/ModalShell';
@@ -13,13 +13,29 @@ interface Product3DViewerModalProps {
 const Product3DViewerModal: React.FC<Product3DViewerModalProps> = ({ open, title, src, onClose }) => {
   const [loaded, setLoaded] = useState(false);
   const [failed, setFailed] = useState(false);
-  const ModelViewer = 'model-viewer' as any;
+  const viewerRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     if (!open) return;
     setLoaded(false);
     setFailed(false);
   }, [open, src]);
+
+  useEffect(() => {
+    const el = viewerRef.current;
+    if (!el || !src) return;
+
+    const onLoad = () => setLoaded(true);
+    const onError = () => setFailed(true);
+
+    el.addEventListener('load', onLoad);
+    el.addEventListener('error', onError);
+
+    return () => {
+      el.removeEventListener('load', onLoad);
+      el.removeEventListener('error', onError);
+    };
+  }, [src]);
 
   return (
     <ModalShell
@@ -76,7 +92,8 @@ const Product3DViewerModal: React.FC<Product3DViewerModalProps> = ({ open, title
                   </div>
                 </div>
               ) : (
-                <ModelViewer
+                <model-viewer
+                  ref={viewerRef}
                   src={src}
                   alt={title}
                   className="h-[68vh] w-full"
@@ -87,8 +104,6 @@ const Product3DViewerModal: React.FC<Product3DViewerModalProps> = ({ open, title
                   environment-image="neutral"
                   interaction-prompt="auto"
                   crossOrigin="anonymous"
-                  onLoad={() => setLoaded(true)}
-                  onError={() => setFailed(true)}
                 />
               )}
             </>

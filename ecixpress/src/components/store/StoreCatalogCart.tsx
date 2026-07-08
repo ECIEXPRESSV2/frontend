@@ -1,13 +1,15 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Search, Plus, Minus, ShoppingCart, Loader2, ImageOff, X, Tag, Check, Box, ExternalLink } from 'lucide-react';
+import { Search, Plus, Minus, ShoppingCart, Loader2, ImageOff, X, Tag, Check } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useWallet } from '../../context/WalletContext';
 import { useOrdersApi } from '../../hooks/useOrdersApi';
 import { productsApi, priceToCents, type Product, type ProductCategory } from '../../lib/products-api';
-import type { OrderResponse } from '../../lib/orders-api';
+import type { OrderResponse, CartQuoteResponse } from '../../lib/orders-api';
 import { formatCOP } from '../../lib/format';
 import Product3DViewerModal from './Product3DViewerModal';
+import CheckoutInvoiceModal from '../cart/CheckoutInvoiceModal';
 
 interface StoreCatalogCartProps {
   storeId: string;
@@ -20,9 +22,6 @@ interface StoreCatalogCartProps {
   search?: string;
   onSearchChange?: (value: string) => void;
 }
-
-/** Cuántas fichas de producto se dibujan como máximo dentro de la canasta del carrito. */
-const CART_VISUAL_SLOTS = 12;
 
 /**
  * Umbral por defecto para avisar "últimas unidades" cuando la tienda no configuró un `minStock`
@@ -66,14 +65,14 @@ const QuantityStepper: React.FC<{
   };
 
   return (
-    <div className="flex items-center gap-1.5">
+    <div className="flex items-center gap-1">
       <button
         disabled={disabled}
         onClick={() => onCommit(qty - 1)}
         aria-label="Quitar una unidad"
-        className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 disabled:opacity-50"
+        className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 disabled:opacity-50"
       >
-        <Minus size={14} />
+        <Minus size={11} />
       </button>
       <input
         type="text"
@@ -85,34 +84,20 @@ const QuantityStepper: React.FC<{
         onFocus={(e) => e.currentTarget.select()}
         onBlur={commit}
         onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
-        className="w-10 h-7 text-center text-sm font-semibold rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-yellow-300 focus:border-yellow-300 disabled:opacity-50"
+        className="w-8 h-6 text-center text-[11px] font-semibold rounded-md border border-gray-200 focus:outline-none focus:ring-2 focus:ring-yellow-300 focus:border-yellow-300 disabled:opacity-50"
       />
-      {/* El "+" NO se deshabilita al llegar al tope: así, al intentar pasarse, `changeQuantity`
-          hace vibrar el recuadro en vez de simplemente quedar inerte. Solo se bloquea si hay una
-          mutación en curso (`disabled`). */}
       <button
         disabled={disabled}
         title={atLimit ? `Solo quedan ${max} unidades` : undefined}
         onClick={() => onCommit(qty + 1)}
         aria-label="Agregar una unidad"
-        className="w-7 h-7 rounded-full bg-yellow-400 text-white flex items-center justify-center hover:bg-yellow-500 disabled:opacity-50"
+        className="w-6 h-6 rounded-full bg-yellow-400 text-white flex items-center justify-center hover:bg-yellow-500 disabled:opacity-50"
       >
-        <Plus size={14} />
+        <Plus size={11} />
       </button>
     </div>
   );
 };
-
-/**
- * Posiciones aleatorias (no un patrón de rejilla) para las fichas dentro de la canasta.
- * Se generan una sola vez al cargar el módulo — fuera del render — así son verdaderamente al
- * azar y a la vez estables: las fichas ya colocadas no saltan cuando se agregan más productos.
- */
-const CART_SCATTER = Array.from({ length: CART_VISUAL_SLOTS }, () => ({
-  u: Math.random(),
-  jy: Math.random(),
-  rot: Math.random() * 2 - 1,
-}));
 
 /**
  * Catálogo de la tienda + carrito en vivo. El carrito es una orden DRAFT en
@@ -125,6 +110,7 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName,
   const [searchParams] = useSearchParams();
   const resumeDraftId = searchParams.get('draft');
   const { getToken } = useAuth();
+  const { wallet, refresh: refreshWallet, openRecharge } = useWallet();
   const api = useOrdersApi();
   // Búsqueda: controlada por el contenedor si llega por props, o interna en caso contrario.
   const searchControlled = onSearchChange !== undefined;
@@ -143,7 +129,11 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName,
   const [orderId, setOrderId] = useState<string | null>(null);
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [order, setOrder] = useState<OrderResponse | null>(null);
-  const [checkingOut, setCheckingOut] = useState(false);
+  const [checkingOut, setCheckingOut] = useState(false); // pago (checkout) en curso
+  // Factura del checkout: se abre al "Confirmar" y cotiza de forma síncrona (precio + stock).
+  const [invoiceOpen, setInvoiceOpen] = useState(false);
+  const [quoting, setQuoting] = useState(false);
+  const [quote, setQuote] = useState<CartQuoteResponse | null>(null);
   // Producto cuyo recuadro está "rechazando" un intento de pedir más de lo disponible: se le
   // aplica la clase de sacudida + borde rojo por un instante (feedback en el sitio, sin toasts).
   const [rejectedProductId, setRejectedProductId] = useState<string | null>(null);
@@ -278,7 +268,13 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName,
         orderIdRef.current = existing.id;
         setOrderId(existing.id);
         setOrder(existing);
-        setQuantities(Object.fromEntries(existing.items.map((it) => [it.productId, it.quantity])));
+        const hydratedQuantities = Object.fromEntries(existing.items.map((it) => [it.productId, it.quantity]));
+        quantitiesRef.current = hydratedQuantities; // sync: el reconciliador compara contra estas cantidades
+        setQuantities(hydratedQuantities);
+        // Un draft pudo guardarse antes de que products cotizara (unitPrice=0) o con precio rancio; en
+        // ese caso NADA lo volvería a cotizar hasta tocar el carrito, y "Confirmar y pagar" quedaría
+        // gris al reanudar. Re-cotizamos una vez aquí para que el botón pueda habilitarse solo.
+        if (!isOrderFullyQuoted(existing)) reconcileOrder(existing.id);
       } catch {
         /* el draft ya no existe o no es accesible: se empieza uno nuevo */
       }
@@ -331,18 +327,6 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName,
     [products, appliedCategoryIds],
   );
 
-  /** Refresca la orden para tomar el total autoritativo que cotizó products. */
-  const refreshOrder = async (id: string): Promise<OrderResponse | null> => {
-    try {
-      const fresh = await api.getOrderById(id);
-      setOrder(fresh);
-      return fresh;
-    } catch {
-      /* el broadcast de products puede tardar; se reintenta en la siguiente acción */
-      return null;
-    }
-  };
-
   /**
    * Una línea de la orden está "cotizada en firme" cuando products-service ya devolvió su
    * precio real Y ese precio es coherente con la cantidad actual. orders-service, al cambiar
@@ -367,24 +351,33 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName,
 
   /**
    * Reconcilia la orden con products-service tras un cambio de carrito. products cotiza de
-   * forma ASÍNCRONA (evento de ida y vuelta), así que sondeamos la orden hasta que refleje las
-   * cantidades actuales con precio en firme, en vez de un único refresco a ciegas que podía
-   * quedarse con la cotización vieja. Está protegido por `refreshSeq`: si el usuario vuelve a
-   * tocar el carrito, este poll se cancela y no puede sobrescribir la orden con datos rancios.
+   * forma ASÍNCRONA (evento de ida y vuelta por el bus), así que sondeamos la orden hasta que
+   * refleje las cantidades actuales con precio en firme, en vez de un único refresco a ciegas que
+   * podía quedarse con la cotización vieja. Está protegido por `refreshSeq`: si el usuario vuelve
+   * a tocar el carrito, este poll se cancela y no puede sobrescribir la orden con datos rancios.
+   *
+   * Ventana AMPLIA con backoff progresivo (~30s): la cotización viaja orders→products→orders y,
+   * bajo carga/escalado, puede llegar bastante más tarde que unos cientos de ms. Antes nos
+   * rendíamos a ~4,6s, así que si el precio llegaba tarde el botón "Confirmar y pagar" se quedaba
+   * bloqueado aunque la orden ya estuviera cotizada en el backend. Sondeamos rápido al principio
+   * (caso común) y luego más espaciado, hasta agotar el presupuesto.
    */
   const reconcileOrder = (id: string): void => {
     const seq = ++refreshSeq.current;
-    let attempts = 0;
+    const startedAt = Date.now();
+    const RECONCILE_BUDGET_MS = 30000;
+    const nextDelay = (elapsed: number): number =>
+      elapsed < 3000 ? 500 : elapsed < 10000 ? 1200 : 2500;
     const poll = async (): Promise<void> => {
       if (seq !== refreshSeq.current) return; // lo reemplazó un cambio más nuevo
       const fresh = await api.getOrderById(id).catch(() => null);
       if (seq !== refreshSeq.current) return; // llegó tarde: no pisar el estado actual
       if (fresh) setOrder(fresh);
-      attempts += 1;
       const done = fresh && orderMatchesLocal(fresh, quantitiesRef.current);
-      if (!done && attempts < 8) setTimeout(() => void poll(), 600);
+      const elapsed = Date.now() - startedAt;
+      if (!done && elapsed < RECONCILE_BUDGET_MS) setTimeout(() => void poll(), nextDelay(elapsed));
     };
-    setTimeout(() => void poll(), 400);
+    setTimeout(() => void poll(), 300);
   };
 
   /** Crea el carrito DRAFT la primera vez que se agrega un producto. */
@@ -515,45 +508,34 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName,
 
   const cartLines = useMemo(
     () =>
-      Object.entries(quantities)
-        .map(([productId, qty]) => {
-          const product = productById.get(productId);
-          if (!product) return null;
-          const quoted = quotedByProductId.get(productId);
-          const listUnitPrice = priceToCents(product.price);
-          // Consideramos la línea "cotizada en firme" solo cuando products ya devolvió un precio
-          // COHERENTE con la cantidad actual (ver isItemFreshlyQuoted). Mientras tanto usamos el
-          // precio de lista: así la línea SIEMPRE está internamente cuadrada (total = unidad × cantidad)
-          // y el total del carrito nunca muestra una suma rancia ni "salta" de la nada.
-          const isLineQuoted =
-            !!quoted && quoted.quantity === qty && quoted.unitPrice > 0 && quoted.totalAmount === quoted.unitPrice * qty;
-          const lineUnitPrice = isLineQuoted ? quoted.unitPrice : listUnitPrice;
-          const lineTotal = isLineQuoted ? quoted.totalAmount : lineUnitPrice * qty;
-          const lineListTotal = listUnitPrice * qty;
-          return { product, qty, lineUnitPrice, lineTotal, lineListTotal, isLineQuoted };
-        })
-        .filter(
-          (x): x is { product: Product; qty: number; lineUnitPrice: number; lineTotal: number; lineListTotal: number; isLineQuoted: boolean } =>
-            x !== null,
-        ),
+      Object.entries(quantities).map(([productId, qty]) => {
+        const product = productById.get(productId);
+        const quoted = quotedByProductId.get(productId);
+        // Metadatos de la línea: preferimos el catálogo cargado, pero si el producto NO está en él
+        // (filtro de búsqueda activo, producto desactivado, o catálogo aún cargando) caemos a lo que
+        // guardó la propia orden. Así una línea del carrito NUNCA desaparece por el estado del catálogo
+        // visible — era la causa de "reanudar pedido sin productos" y del botón que quedaba bloqueado.
+        const name = product?.name ?? quoted?.name ?? 'Producto';
+        const imageUrl = product?.imageUrl ?? quoted?.imageUrl ?? null;
+        // Precio de lista: solo el catálogo lo conoce. Sin catálogo usamos el precio que cotizó la
+        // orden como mejor referencia (o 0 si tampoco hay), de modo que la línea siga cuadrada.
+        const listUnitPrice = product ? priceToCents(product.price) : (quoted?.unitPrice ?? 0);
+        // Consideramos la línea "cotizada en firme" solo cuando products ya devolvió un precio
+        // COHERENTE con la cantidad actual (ver isItemFreshlyQuoted). Mientras tanto usamos el
+        // precio de lista: así la línea SIEMPRE está internamente cuadrada (total = unidad × cantidad)
+        // y el total del carrito nunca muestra una suma rancia ni "salta" de la nada.
+        const isLineQuoted =
+          !!quoted && quoted.quantity === qty && quoted.unitPrice > 0 && quoted.totalAmount === quoted.unitPrice * qty;
+        const lineUnitPrice = isLineQuoted ? quoted.unitPrice : listUnitPrice;
+        const lineTotal = isLineQuoted ? quoted.totalAmount : lineUnitPrice * qty;
+        const lineListTotal = listUnitPrice * qty;
+        return { id: productId, name, imageUrl, qty, lineUnitPrice, lineTotal, lineListTotal, isLineQuoted };
+      }),
     [quantities, productById, quotedByProductId],
   );
 
   const itemCount = useMemo(() => cartLines.reduce((sum, { qty }) => sum + qty, 0), [cartLines]);
 
-  // Una "ficha" por unidad en el carrito (con imagen del producto) para llenar visualmente la
-  // canasta del carrito. Se limita para no montar cientos de nodos con carritos grandes.
-  const cartSlots = useMemo(() => {
-    const slots: Product[] = [];
-    for (const { product, qty } of cartLines) {
-      for (let i = 0; i < qty && slots.length < CART_VISUAL_SLOTS; i++) slots.push(product);
-      if (slots.length >= CART_VISUAL_SLOTS) break;
-    }
-    return slots;
-  }, [cartLines]);
-
-  // Todas las líneas cotizadas y el conteo de la orden coincide con el carrito local.
-  const isQuoted = !!order && order.items.length === cartLines.length && cartLines.every((l) => l.isLineQuoted);
   // Los totales se DERIVAN de las líneas del carrito (no del agregado `order.totalAmount`, que
   // orders-service deja rancio hasta que llega la cotización). Al construirlos sumando líneas
   // que siempre están cuadradas (total = unidad × cantidad), el carrito suma bien de forma
@@ -563,39 +545,60 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName,
   const displayTotal = useMemo(() => cartLines.reduce((sum, l) => sum + l.lineTotal, 0), [cartLines]);
   const displayDiscount = Math.max(0, displaySubtotal - displayTotal);
 
-  const handleCheckout = async () => {
+  /**
+   * "Confirmar": persiste lo pendiente y cotiza el carrito de forma SÍNCRONA (precio autoritativo
+   * con promociones + chequeo de stock por línea) vía orders-service, y abre la factura. Ya NO
+   * depende de la cotización asíncrona por eventos, así que no se queda esperando.
+   */
+  const handleConfirm = async () => {
     if (itemCount === 0) return;
-    setCheckingOut(true);
+    setInvoiceOpen(true);
+    setQuote(null);
+    setQuoting(true);
     try {
-      // Vacía de inmediato cualquier cambio pendiente (el debounce) y espera a que se escriban
-      // todos: aquí SÍ hay que esperar la red, porque estamos a punto de validar y reservar stock
-      // (y, solo si hay, cobrar).
+      // Vacía de inmediato cualquier cambio pendiente (el debounce) y espera a que se escriban todos.
       await flushCart();
       await mutationChain.current;
       const id = orderIdRef.current;
       if (!id) {
         toast.error('No se pudo iniciar el carrito');
+        setInvoiceOpen(false);
         return;
       }
+      // Enviamos las cantidades AUTORITATIVAS del carrito (lo que el usuario ve). El backend fija
+      // `order.items` a exactamente esto antes de cotizar, así el modal siempre coincide con el
+      // carrito aunque una escritura incremental previa se hubiera perdido/desordenado.
+      const items = cartLines.map((l) => ({
+        productId: l.id,
+        quantity: l.qty,
+        name: l.name,
+        imageUrl: l.imageUrl ?? undefined,
+      }));
+      const q = await api.quoteCart(id, items);
+      setQuote(q);
+      // Refresca el saldo por si cambió, para que la factura muestre si alcanza.
+      void refreshWallet();
+    } catch (e) {
+      toast.error((e as Error).message || 'No se pudo cotizar el pedido');
+      setInvoiceOpen(false);
+    } finally {
+      setQuoting(false);
+    }
+  };
 
-      // products-service cotiza el carrito de forma asíncrona (evento de ida y vuelta);
-      // reintentamos unas cuantas veces antes de cobrar, en vez de fallar con un 409
-      // apenas el usuario agregó algo y la cotización todavía no llegó.
-      let fresh = await refreshOrder(id);
-      for (let attempt = 0; attempt < 6 && (!fresh || !isOrderFullyQuoted(fresh)); attempt++) {
-        await new Promise((resolve) => setTimeout(resolve, 500));
-        fresh = await refreshOrder(id);
-      }
-      if (!fresh || !isOrderFullyQuoted(fresh)) {
-        toast.error('El carrito todavía se está cotizando, intenta de nuevo en un momento.');
-        return;
-      }
-
+  /**
+   * "Pagar ahora" desde la factura: confirma el carrito y dispara el cobro contra la billetera.
+   * El cobro real y la reserva atómica de stock ocurren en el backend; el resultado llega en vivo
+   * a "Mis pedidos" (WebSocket order:status-updated).
+   */
+  const handlePay = async () => {
+    const id = orderIdRef.current;
+    if (!id) return;
+    setCheckingOut(true);
+    try {
       await api.checkout(id);
-      // El cobro NO ocurre aquí: primero se valida y reserva el stock de forma atómica.
-      // Solo si hay stock se cobra; si no, el pedido se rechaza por falta de stock. El
-      // resultado llega en tiempo real a "Mis pedidos" (WebSocket order:status-updated).
       toast.success('Pedido recibido. Validando disponibilidad de stock…');
+      setInvoiceOpen(false);
       setMobileCartOpen(false);
       navigate('/orders');
     } catch (e) {
@@ -605,155 +608,69 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName,
     }
   };
 
-  // Carrito ilustrado que se llena con la imagen de cada producto añadido. Se dibuja por capas:
-  // los productos van AL FONDO y el carrito ENCIMA (más cerca de la pantalla), de modo que la
-  // rejilla "enjaula" a los productos y se perciben dentro de la canasta.
-  //
-  // TODO (pendiente): en vez de la imagen del producto, mostrar aquí una previsualización del
-  // modelo 3D del producto dentro de la canasta (p. ej. un <canvas>/three.js o <model-viewer>
-  // por cada ficha). Las "fichas" seguirían apilándose al azar, pero cada una renderizaría el
-  // modelo 3D en miniatura en lugar de <img>. Requiere que products-service exponga la URL del
-  // modelo (glTF/GLB) por producto y una estrategia de rendimiento (instanciar pocos, o un
-  // sprite/thumbnail 3D pre-renderizado) para no montar muchos canvas a la vez.
-  const cartVisual = (
-    <div className="relative w-full max-w-[15rem] mx-auto aspect-[6/5] select-none">
-      {/* Capa trasera: fichas de producto tiradas al azar dentro del trapecio de la canasta,
-          recortadas a su forma exacta como red de seguridad para que nunca sobresalgan.
-          TODO (pendiente): reemplazar el <img> de cada ficha por la previsualización del modelo
-          3D del producto (ver nota de arriba). */}
-      <div
-        className="absolute inset-0"
-        style={{ clipPath: 'polygon(16.67% 38%, 86.67% 26%, 75.83% 66%, 25% 66%)' }}
-      >
-        {cartSlots.map((p, i) => {
-          const s = CART_SCATTER[i] ?? { u: 0.5, jy: 0.5, rot: 0 };
-          const perRow = 4;
-          const row = Math.floor(i / perRow);
-          // Se llena de abajo hacia arriba; cada fila sube ~9 unidades, con algo de ruido.
-          const cy = Math.min(61, Math.max(36, 60 - row * 9 + (s.jy - 0.5) * 5));
-          // Bordes de la canasta a esa altura (izq: A→D, der: B→C), con margen para el tamaño de la ficha.
-          const inset = 7;
-          const xLeft = 30 - 10 * ((66 - cy) / 28) + inset;
-          const xRight = 91 + 13 * ((66 - cy) / 40) - inset;
-          const cx = xLeft + s.u * Math.max(0, xRight - xLeft);
-          return (
-            <div
-              key={`${p.id}-${i}`}
-              className="absolute w-6 h-6 rounded-md overflow-hidden bg-yellow-100 ring-1 ring-white shadow-md flex items-center justify-center text-yellow-400"
-              style={{ left: `${(cx / 120) * 100}%`, top: `${cy}%`, transform: `translate(-50%, -50%) rotate(${s.rot * 22}deg)`, zIndex: i }}
-            >
-              {p.imageUrl ? (
-                <img src={p.imageUrl} alt="" className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-              ) : (
-                <ImageOff size={12} />
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Capa frontal: el carrito, con degradado vertical (relieve) y sombra para que "salga" de la pantalla. */}
-      <svg viewBox="0 0 120 100" fill="none" className="absolute inset-0 w-full h-full" style={{ filter: 'drop-shadow(0 3px 3px rgba(0,0,0,0.28))' }}>
-        <defs>
-          <linearGradient id="cartRelief" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor="#4a4a4a" />
-            <stop offset="0.5" stopColor="#232323" />
-            <stop offset="1" stopColor="#0b0b0b" />
-          </linearGradient>
-        </defs>
-        <g stroke="url(#cartRelief)" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
-          {/* Canasta */}
-          <path d="M20 38 L104 26 L91 66 L30 66 Z" />
-          {/* Rejilla vertical */}
-          <path d="M36.8 35.6 L42.2 66 M53.6 33.2 L54.4 66 M70.4 30.8 L66.6 66 M87.2 28.4 L78.8 66" strokeWidth="2.6" />
-          {/* Rejilla horizontal */}
-          <path d="M23.3 47.2 L99.7 39.2 M26.6 56.5 L95.4 52.4" strokeWidth="2.6" />
-          {/* Mango */}
-          <path d="M104 26 L113 15" />
-          {/* Base: patas de la canasta a la barra inferior + frente limpio (sin curvatura sobrante) */}
-          <path d="M30 66 L40 76 L88 76 L91 66" />
-          <path d="M40 76 L22 76" />
-          {/* Ejes de las ruedas */}
-          <path d="M44 76 L44 80 M80 76 L80 80" />
-        </g>
-        {/* Mango (agarradera) y ruedas, rellenos con el mismo relieve */}
-        <circle cx="114" cy="12" r="5" fill="url(#cartRelief)" />
-        <circle cx="44" cy="86" r="6.5" fill="url(#cartRelief)" />
-        <circle cx="80" cy="86" r="6.5" fill="url(#cartRelief)" />
-      </svg>
-    </div>
-  );
-
-  // Resumen de carrito reutilizado por el panel lateral (desktop) y el drawer móvil.
+  // Resumen de carrito — limpio, sin ilustración
   const cartSummary = cartLines.length === 0 ? (
-    <div className="py-2 text-center">
-      {cartVisual}
+    <div className="py-8 text-center">
+      <ShoppingCart size={32} className="mx-auto text-gray-200" />
       <p className="text-sm text-gray-400 mt-3">Añade productos del menú para empezar.</p>
     </div>
   ) : (
-    <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
-      {/* Columna izquierda: el carrito que se llena + totales + botón de confirmar y pagar */}
-      <div className="space-y-4 rounded-2xl bg-white p-5 shadow-[0_0_22px_rgba(250,204,21,0.28)]">
-        <div className="lg:pt-2">{cartVisual}</div>
-
-        <div className="border-t border-gray-100 pt-3.5 space-y-1.5">
-          <div className="flex justify-between text-sm text-gray-500">
-            <span>Subtotal</span>
-            <span>{formatCOP(displaySubtotal)}</span>
-          </div>
-          {displayDiscount > 0 && (
-            <div className="flex justify-between text-sm font-medium text-green-600">
-              <span>Descuento (promos)</span>
-              <span>-{formatCOP(displayDiscount)}</span>
+    <div className="space-y-4">
+      {/* Lista de productos */}
+      <ul className="space-y-2 max-h-[50vh] overflow-y-auto pr-1">
+        {cartLines.map(({ id, name, imageUrl, qty, lineUnitPrice, lineTotal }) => (
+          <li key={id} className="flex items-center gap-3 py-2 border-b border-gray-50 last:border-0">
+            <div className="w-10 h-10 rounded-lg bg-yellow-50 overflow-hidden shrink-0 flex items-center justify-center text-yellow-300">
+              {imageUrl ? (
+                <img src={imageUrl} alt={name} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+              ) : (
+                <ImageOff size={14} />
+              )}
             </div>
-          )}
-          <div className="flex justify-between items-baseline pt-1">
-            <span className="font-bold text-gray-900">Total</span>
-            <span className="text-lg font-bold text-gray-900">{formatCOP(displayTotal)}</span>
-          </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-gray-800 truncate">{name}</p>
+              <p className="text-xs text-gray-400">{qty} × {formatCOP(lineUnitPrice)}</p>
+            </div>
+            <span className="text-sm font-semibold text-gray-900 shrink-0">{formatCOP(lineTotal)}</span>
+          </li>
+        ))}
+      </ul>
+
+      {/* Totales */}
+      <div className="border-t border-gray-100 pt-3 space-y-1.5">
+        <div className="flex justify-between text-sm text-gray-500">
+          <span>Subtotal</span>
+          <span>{formatCOP(displaySubtotal)}</span>
         </div>
-
-        <button
-          onClick={handleCheckout}
-          disabled={checkingOut || itemCount === 0 || !isQuoted}
-          className="w-full py-3 rounded-xl bg-gradient-to-r from-yellow-400 to-yellow-500 text-white font-semibold text-sm shadow-md shadow-yellow-300/50 hover:from-yellow-500 hover:to-yellow-600 hover:shadow-yellow-300/70 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-        >
-          {checkingOut ? <Loader2 size={16} className="animate-spin" /> : null}
-          Confirmar y pagar
-        </button>
+        {displayDiscount > 0 && (
+          <div className="flex justify-between text-sm font-medium text-green-600">
+            <span>Descuento (promos)</span>
+            <span>-{formatCOP(displayDiscount)}</span>
+          </div>
+        )}
+        <div className="flex justify-between items-baseline pt-1">
+          <span className="text-base font-bold text-gray-900">Total</span>
+          <span className="text-lg font-bold text-gray-900">{formatCOP(displayTotal)}</span>
+        </div>
       </div>
 
-      {/* Columna derecha: lista de productos (nombre y precio pegados) con scroll */}
-      <div className="rounded-2xl bg-white p-5 shadow-[0_0_22px_rgba(250,204,21,0.28)]">
-        <ul className="space-y-3 max-h-[26rem] overflow-y-auto pr-1">
-          {cartLines.map(({ product, qty, lineUnitPrice, lineTotal }) => (
-            <li key={product.id} className="flex items-center gap-3 text-sm">
-              <div className="w-12 h-12 rounded-xl bg-yellow-50 overflow-hidden flex-shrink-0 flex items-center justify-center text-yellow-300">
-                {product.imageUrl ? (
-                  <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-                ) : (
-                  <ImageOff size={16} />
-                )}
-              </div>
-              <div className="min-w-0">
-                <p className="truncate">
-                  <span className="text-gray-800 font-medium">{product.name}</span>{' '}
-                  <span className="text-gray-900 font-semibold">{formatCOP(lineTotal)}</span>
-                </p>
-                <p className="text-xs text-gray-400 mt-0.5">{qty} × {formatCOP(lineUnitPrice)}</p>
-              </div>
-            </li>
-          ))}
-        </ul>
-      </div>
+      {/* Botón confirmar */}
+      <button
+        onClick={handleConfirm}
+        disabled={quoting || checkingOut || itemCount === 0}
+        className="w-full py-3 rounded-xl bg-gradient-to-r from-yellow-400 to-yellow-500 text-white font-semibold text-sm shadow-md shadow-yellow-300/50 hover:from-yellow-500 hover:to-yellow-600 hover:shadow-yellow-300/70 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+      >
+        {quoting ? <Loader2 size={16} className="animate-spin" /> : null}
+        Confirmar
+      </button>
     </div>
   );
 
   return (
     <>
-    <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-      {/* Catálogo: más angosto, una sola columna de productos */}
-      <div className="lg:col-span-2 space-y-4">
+    <div className="space-y-4">
+      {/* Catálogo: ancho completo con rejilla de productos */}
+      <div className="space-y-4">
         {/* Barra de búsqueda interna: solo cuando NO está controlada desde afuera (en la página
             de tienda vive arriba). */}
         {!searchControlled && (
@@ -878,7 +795,7 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName,
           // un estado `draggingProductId` que active el overlay/atenuado global, y onDragOver/
           // onDrop en el contenedor del cartVisual como zona de drop. Cuidar accesibilidad
           // (teclado) y touch (los eventos HTML5 drag no funcionan en móvil → usar pointer events).
-          <div className="grid grid-cols-1 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
             {displayProducts.map((product) => {
               const qty = quantities[product.id] ?? 0;
               const available = availableStock(product);
@@ -892,32 +809,15 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName,
               return (
                 <div
                   key={product.id}
-                  /* `isolate` acota los z-index internos (badge "Agotado"/"Quedan N") a la propia
-                     tarjeta, para que NO pasen por encima del banner/búsqueda fijos al hacer scroll. */
                   className={`group relative isolate rounded-2xl bg-white border border-gray-100 shadow-sm transition-shadow overflow-hidden flex flex-col ${
                     outOfStock
-                      ? 'pointer-events-none select-none' // agotado: no seleccionable
+                      ? 'pointer-events-none select-none'
                       : 'hover:shadow-md'
                   } ${rejectedProductId === product.id ? 'animate-stock-reject' : ''}`}
                   aria-disabled={outOfStock}
                 >
-                  {/* Etiqueta de stock — va FUERA del contenido atenuado para que el rojo de
-                      "Agotado" (y el amarillo de "quedan N") se vea nítido y no se apague con el
-                      filtro gris/opacidad que se aplica al resto del recuadro cuando está agotado. */}
-                  {outOfStock ? (
-                    <span className="absolute top-2 right-2 z-20 px-2 py-0.5 rounded-full bg-red-600 text-[11px] font-semibold text-white shadow-sm">
-                      Agotado
-                    </span>
-                  ) : lowStock ? (
-                    <span className="absolute top-2 right-2 z-20 px-2 py-0.5 rounded-full bg-yellow-400 text-[11px] font-semibold text-yellow-950 shadow-sm">
-                      Quedan {available} {available === 1 ? 'unidad' : 'unidades'}
-                    </span>
-                  ) : null}
-
-                  {/* Contenido del producto: se atenúa (muy opaco + gris) cuando está agotado. */}
-                  <div className={`flex flex-1 flex-col ${outOfStock ? 'opacity-40 grayscale' : ''}`}>
-                    {/* Imagen con badges superpuestos */}
-                    <div className="relative h-32 bg-gradient-to-br from-yellow-50 to-yellow-100">
+                  <div className={`flex-1 flex flex-col ${outOfStock ? 'opacity-40 grayscale' : ''}`}>
+                    <div className="relative aspect-square bg-gradient-to-br from-yellow-50 to-yellow-100">
                       {product.frontImageUrl ?? product.imageUrl ? (
                         <img
                           src={product.frontImageUrl ?? product.imageUrl ?? ''}
@@ -927,60 +827,67 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName,
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-yellow-300">
-                          <ShoppingCart size={28} />
+                          <ShoppingCart size={18} />
                         </div>
                       )}
                       {product.category?.name && (
-                        <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-white/90 backdrop-blur-sm text-[11px] font-semibold text-gray-700 shadow-sm">
+                        <span className="absolute top-1.5 left-1.5 px-2 py-0.5 rounded-md bg-white/90 backdrop-blur-sm text-[9px] font-semibold text-gray-700 leading-tight shadow-sm">
                           {product.category.name}
                         </span>
                       )}
-                      {product.model3dUrl && product.modelGenerationStatus === 'READY' && (
-                        <button
-                          type="button"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            setViewerTitle(product.name);
-                            setViewerSrc(productsApi.getModel3dUrl(product.id));
-                            setViewerOpen(true);
-                          }}
-                          className="absolute bottom-2 left-2 z-10 inline-flex items-center gap-1.5 rounded-full bg-gray-900/90 px-2.5 py-1 text-[11px] font-semibold text-white shadow-sm transition hover:bg-gray-800"
-                        >
-                          <Box size={12} />
-                          Ver 3D
-                          <ExternalLink size={10} />
-                        </button>
-                      )}
-                      {/* Botón flotante de añadir, anclado al borde inferior de la imagen */}
                       {qty === 0 && (
                         <button
                           disabled={outOfStock}
                           onClick={() => changeQuantity(product, 1)}
-                          className="absolute -bottom-4 right-3 w-9 h-9 rounded-full bg-yellow-400 text-white flex items-center justify-center shadow-lg shadow-yellow-400/50 hover:bg-yellow-500 hover:scale-105 transition-all disabled:opacity-50 disabled:hover:scale-100"
+                          className="absolute -bottom-3 right-2 w-7 h-7 rounded-full bg-yellow-400 text-white flex items-center justify-center shadow-md shadow-yellow-400/40 hover:bg-yellow-500 hover:scale-105 transition-all disabled:opacity-50 disabled:hover:scale-100"
                         >
-                          <Plus size={18} />
+                          <Plus size={14} />
                         </button>
                       )}
+                      {outOfStock ? (
+                        <span className="absolute top-1.5 right-1.5 z-20 px-2 py-0.5 rounded-md bg-red-600 text-[9px] font-semibold text-white shadow-sm">
+                          Agotado
+                        </span>
+                      ) : lowStock ? (
+                        <span className="absolute top-1.5 right-1.5 z-20 px-2 py-0.5 rounded-md bg-yellow-400 text-[9px] font-semibold text-yellow-950 shadow-sm">
+                          {available}
+                        </span>
+                      ) : null}
                     </div>
 
-                    <div className="flex-1 flex flex-col p-3.5 pt-4">
-                      <h4 className="font-semibold text-gray-900 text-sm truncate">{product.name}</h4>
-                      {product.description ? (
-                        <p className="text-xs text-gray-500 line-clamp-2 mt-0.5 flex-1">{product.description}</p>
-                      ) : (
-                        <div className="flex-1" />
-                      )}
-                      <div className="mt-2.5 flex items-center justify-between">
-                        <span className="text-sm font-bold text-gray-900">{formatCOP(priceToCents(product.price))}</span>
-                        {qty > 0 && (
-                          <QuantityStepper
-                            qty={qty}
-                            max={available}
-                            disabled={false}
-                            atLimit={atStockLimit}
-                            onCommit={(next) => changeQuantity(product, next)}
-                          />
-                        )}
+                    <div className="flex-1 flex flex-col p-2.5">
+                      <h4 className="font-semibold text-gray-900 text-xs leading-tight truncate">{product.name}</h4>
+                      <div className="mt-2 flex items-center justify-between gap-1.5">
+                        <span className="text-xs font-bold text-gray-900 shrink-0">{formatCOP(priceToCents(product.price))}</span>
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          {product.model3dUrl && product.modelGenerationStatus === 'READY' ? (
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                setViewerTitle(product.name);
+                                setViewerSrc(productsApi.getModel3dUrl(product.id));
+                                setViewerOpen(true);
+                              }}
+                              className="shrink-0 inline-flex items-center gap-1 rounded-lg bg-gray-800 px-3 py-1.5 text-xs font-bold text-white shadow-sm transition hover:bg-gray-700 hover:shadow-md hover:scale-105 active:scale-95"
+                            >
+                              3D
+                            </button>
+                          ) : product.modelGenerationStatus === 'FAILED' ? (
+                            <span className="shrink-0 inline-flex items-center gap-1 rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-400 cursor-default" title="El modelo 3D no está disponible">
+                              3D
+                            </span>
+                          ) : null}
+                          {qty > 0 && (
+                            <QuantityStepper
+                              qty={qty}
+                              max={available}
+                              disabled={false}
+                              atLimit={atStockLimit}
+                              onCommit={(next) => changeQuantity(product, next)}
+                            />
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -991,48 +898,37 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName,
         )}
       </div>
 
-      {/* Carrito — panel lateral en desktop, más grande y prominente */}
-      <aside className="hidden lg:block lg:col-span-3">
-        <div className="rounded-2xl bg-white border border-gray-100 shadow-sm p-8 sticky top-6 space-y-6">
-          <div className="flex items-center gap-2">
-            <ShoppingCart size={22} className="text-yellow-500" />
-            <h3 className="font-bold text-gray-900 text-lg">Tu carrito</h3>
-            {itemCount > 0 && <span className="ml-auto text-xs bg-yellow-100 text-yellow-700 font-semibold px-2 py-0.5 rounded-full">{itemCount}</span>}
-          </div>
-          {cartSummary}
-        </div>
-      </aside>
-
-      {/* Carrito — barra flotante + drawer en mobile/tablet */}
+      {/* Carrito — botón flotante + drawer (todas las pantallas) */}
       {itemCount > 0 && (
-        <button
-          onClick={() => setMobileCartOpen(true)}
-          className="lg:hidden fixed bottom-5 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 pl-3 pr-5 py-2.5 rounded-full bg-gradient-to-r from-yellow-400 to-yellow-500 text-white shadow-xl shadow-yellow-400/40 max-w-[calc(100%-2rem)]"
-        >
-          <span className="relative flex items-center justify-center w-9 h-9 rounded-full bg-white/25">
-            <ShoppingCart size={17} />
-            <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-white text-[11px] font-bold flex items-center justify-center text-yellow-600 shadow-sm">{itemCount}</span>
-          </span>
-          <span className="text-sm font-semibold truncate">Ver carrito</span>
-          <span className="text-sm font-bold whitespace-nowrap ml-auto">{formatCOP(displayTotal)}</span>
-        </button>
-      )}
+        <>
+          <button
+            onClick={() => setMobileCartOpen(true)}
+            className="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 pl-3 pr-4 py-2.5 rounded-full bg-gradient-to-r from-yellow-400 to-yellow-500 text-white shadow-xl shadow-yellow-400/40 hover:from-yellow-500 hover:to-yellow-600 hover:shadow-yellow-400/60 transition-all"
+          >
+            <span className="relative flex items-center justify-center w-9 h-9 rounded-full bg-white/25">
+              <ShoppingCart size={17} />
+              <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-white text-[11px] font-bold flex items-center justify-center text-yellow-600 shadow-sm">{itemCount}</span>
+            </span>
+            <span className="text-sm font-bold whitespace-nowrap">{formatCOP(displayTotal)}</span>
+          </button>
 
-      {mobileCartOpen && (
-        <div className="lg:hidden fixed inset-0 z-50 flex flex-col justify-end">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setMobileCartOpen(false)} />
-          <div className="relative bg-white rounded-t-3xl p-5 pb-6 max-h-[85vh] overflow-auto space-y-4">
-            <div className="flex items-center gap-2">
-              <ShoppingCart size={18} className="text-yellow-500" />
-              <h3 className="font-bold text-gray-900">Tu carrito</h3>
-              {itemCount > 0 && <span className="ml-auto text-xs bg-yellow-100 text-yellow-700 font-semibold px-2 py-0.5 rounded-full">{itemCount}</span>}
-              <button onClick={() => setMobileCartOpen(false)} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500">
-                <X size={16} />
-              </button>
+          {mobileCartOpen && (
+            <div className="fixed inset-0 z-50 flex flex-col justify-end">
+              <div className="absolute inset-0 bg-black/40" onClick={() => setMobileCartOpen(false)} />
+              <div className="relative bg-white rounded-t-3xl p-5 pb-6 max-h-[85vh] overflow-auto space-y-4 ml-[var(--sidebar-w)]">
+                <div className="flex items-center gap-2">
+                  <ShoppingCart size={18} className="text-yellow-500" />
+                  <h3 className="font-bold text-gray-900">Tu carrito</h3>
+                  {itemCount > 0 && <span className="ml-auto text-xs bg-yellow-100 text-yellow-700 font-semibold px-2 py-0.5 rounded-full">{itemCount}</span>}
+                  <button onClick={() => setMobileCartOpen(false)} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500">
+                    <X size={16} />
+                  </button>
+                </div>
+                {cartSummary}
+              </div>
             </div>
-            {cartSummary}
-          </div>
-        </div>
+          )}
+        </>
       )}
 
       <Product3DViewerModal
@@ -1040,6 +936,17 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName,
         title={viewerTitle}
         src={viewerSrc}
         onClose={() => setViewerOpen(false)}
+      />
+
+      <CheckoutInvoiceModal
+        open={invoiceOpen}
+        quote={quote}
+        loading={quoting}
+        paying={checkingOut}
+        walletBalance={wallet?.balance ?? 0}
+        onClose={() => setInvoiceOpen(false)}
+        onPay={handlePay}
+        onRecharge={openRecharge}
       />
 
     </div>

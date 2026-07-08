@@ -153,6 +153,8 @@ const ProductsManagementPage: React.FC = () => {
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerSrc, setViewerSrc] = useState<string | null>(null);
   const [viewerTitle, setViewerTitle] = useState('');
+  const [showInactive, setShowInactive] = useState(false);
+  const [aiAvailable, setAiAvailable] = useState<boolean | null>(null);
 
   const categoryName = useMemo(() => {
     const map = new Map(categories.map((c) => [c.id, c.name]));
@@ -183,7 +185,7 @@ const ProductsManagementPage: React.FC = () => {
       const [storeData, cats, prods, lowStock] = await Promise.all([
         getStoreById(storeId, token).catch(() => null),
         productsApi.getCategories(storeId, token).catch(() => []),
-        productsApi.getProducts(storeId, { includeInactive: true }, token).catch(() => []),
+        productsApi.getProducts(storeId, { includeInactive: showInactive }, token).catch(() => []),
         productsApi.getLowStock(storeId, token).catch(() => []),
       ]);
       setStore(storeData);
@@ -197,7 +199,15 @@ const ProductsManagementPage: React.FC = () => {
     }
   };
 
-  useEffect(() => { void load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [storeId]);
+  useEffect(() => { void load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [storeId, showInactive]);
+
+  useEffect(() => {
+    const hasProcessing = products.some((p) => p.modelGenerationStatus === 'PROCESSING');
+    if (!hasProcessing || !storeId) return;
+    const intervalId = setInterval(() => { void load(); }, 3000);
+    return () => clearInterval(intervalId);
+    /* eslint-disable-next-line react-hooks/exhaustive-deps */
+  }, [products, storeId, showInactive]);
 
   useRefreshOnScrollTop(load, { disabled: loading || !storeId });
 
@@ -240,12 +250,28 @@ const ProductsManagementPage: React.FC = () => {
   const resetForm = () => {
     setForm(emptyForm);
     setAssets(emptyAssetState);
+    setAiAvailable(null);
   };
+
+  useEffect(() => {
+    if (!form.open) return;
+    let cancelled = false;
+    productsApi.checkAiHealth().then((res) => {
+      if (!cancelled) setAiAvailable(res.available);
+    }).catch(() => {
+      if (!cancelled) setAiAvailable(false);
+    });
+    return () => { cancelled = true; };
+  }, [form.open]);
 
   const submitForm = async () => {
     const price = Number(form.price);
     if (!form.name.trim() || !form.categoryId || !(price >= 0) || Number.isNaN(price)) {
       toast.error('Completa nombre, categoría y precio válido');
+      return;
+    }
+    if (form.price === '' || form.stock === '' || form.minStock === '') {
+      toast.error('Precio, stock y stock mínimo no pueden estar vacíos');
       return;
     }
     try {
@@ -406,6 +432,13 @@ const ProductsManagementPage: React.FC = () => {
                   {c.name}
                 </button>
               ))}
+              <button
+                onClick={() => setShowInactive((v) => !v)}
+                className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${showInactive ? 'bg-danger/10 text-danger border border-danger/30' : 'bg-surface border border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+              >
+                {showInactive ? <Eye size={13} /> : <EyeOff size={13} />}
+                {showInactive ? 'Ocultar inactivos' : 'Ver inactivos'}
+              </button>
             </div>
           )}
 
@@ -494,20 +527,34 @@ const ProductsManagementPage: React.FC = () => {
                 {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
-            <FormInput label="Precio (COP)" type="number" value={form.price} onChange={(v) => setForm((f) => ({ ...f, price: v }))} />
+            <FormInput label="Precio (COP)" type="number" value={form.price} onChange={(v) => setForm((f) => ({ ...f, price: v }))} min={0} />
             <FormInput label="Descripción (opcional)" value={form.description} onChange={(v) => setForm((f) => ({ ...f, description: v }))} />
           </div>
 
           <div className="space-y-3 pt-3 border-t border-gray-100">
             <p className="text-[11px] font-bold uppercase tracking-wide text-gray-400">Inventario</p>
             <div className="grid grid-cols-2 gap-3">
-              {!form.editingId && <FormInput label="Stock inicial" type="number" value={form.stock} onChange={(v) => setForm((f) => ({ ...f, stock: v }))} />}
-              <FormInput label="Stock mínimo (alerta)" type="number" value={form.minStock} onChange={(v) => setForm((f) => ({ ...f, minStock: v }))} />
+              {!form.editingId && <FormInput label="Stock inicial" type="number" value={form.stock} onChange={(v) => setForm((f) => ({ ...f, stock: v }))} min={0} />}
+              <FormInput label="Stock mínimo (alerta)" type="number" value={form.minStock} onChange={(v) => setForm((f) => ({ ...f, minStock: v }))} min={0} />
             </div>
           </div>
 
           <div className="space-y-3 pt-3 border-t border-gray-100">
-            <p className="text-[11px] font-bold uppercase tracking-wide text-gray-400">Multimedia</p>
+            <div className="flex items-center gap-3">
+              <p className="text-[11px] font-bold uppercase tracking-wide text-gray-400">Multimedia</p>
+              {aiAvailable === true && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 border border-emerald-200">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                  Servicio 3D disponible
+                </span>
+              )}
+              {aiAvailable === false && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-semibold text-red-700 border border-red-200">
+                  <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
+                  Servicio 3D no disponible
+                </span>
+              )}
+            </div>
             {form.editingId ? (
               <div className="space-y-3">
                 <FormInput label="URL de imagen principal (opcional)" value={form.imageUrl} onChange={(v) => setForm((f) => ({ ...f, imageUrl: v }))} />
@@ -559,6 +606,24 @@ const ProductsManagementPage: React.FC = () => {
                           >
                             <ExternalLink size={13} />
                             Abrir 3D
+                          </button>
+                        )}
+                        {editingProduct.modelGenerationStatus === 'FAILED' && (
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              try {
+                                await productsApi.retryModel3d(editingProduct.id);
+                                toast.success('Reintentando generación 3D…');
+                                load();
+                              } catch {
+                                toast.error('No se pudo reintentar la generación 3D');
+                              }
+                            }}
+                            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-red-500 px-3 py-2 text-xs font-semibold text-white hover:bg-red-600"
+                          >
+                            <RefreshCw size={13} />
+                            Reintentar 3D
                           </button>
                         )}
                       </div>
@@ -614,7 +679,7 @@ const ProductsManagementPage: React.FC = () => {
       {/* Modal stock exacto */}
       <ModalShell open={stockModal.open} onClose={() => setStockModal({ open: false, product: null, value: '' })} title="Stock exacto" subtitle={stockModal.product?.name}>
         <div className="space-y-3">
-          <FormInput label="Unidades en inventario" type="number" value={stockModal.value} onChange={(v) => setStockModal((s) => ({ ...s, value: v }))} />
+          <FormInput label="Unidades en inventario" type="number" value={stockModal.value} onChange={(v) => setStockModal((s) => ({ ...s, value: v }))} min={0} />
           <button onClick={submitSetStock} className="w-full py-3 rounded-xl bg-primary text-white font-semibold hover:bg-primary/90">Guardar</button>
         </div>
       </ModalShell>
