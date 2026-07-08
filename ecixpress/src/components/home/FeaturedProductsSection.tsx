@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { productsApi, priceToCents, type Product } from '../../lib/products-api';
 import { formatCOP } from '../../lib/format';
 import type { Store } from '../../services/storeService';
+import { getStoreLogoUrl } from '../../services/storeAssets';
 import type { HomeSection } from './homeSections';
 import TrianglePattern, { TriangleGlyph } from './TrianglePattern';
 
@@ -141,8 +142,19 @@ const FeaturedProductsSection: React.FC<FeaturedProductsSectionProps> = ({
               onClick={() => onOpenStore(featured.store)}
               className="theme-surface inline-flex min-h-10 items-center gap-2 rounded-full border border-white/60 bg-white/70 py-1 pl-1.5 pr-4 text-sm font-bold text-gray-800 shadow-sm backdrop-blur-xl transition hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-ring)]"
             >
-              {featured.store.imageUrl ? (
-                <img src={featured.store.imageUrl} alt="" className="h-7 w-7 rounded-full object-cover" />
+              {getStoreLogoUrl(featured.store.id) || featured.store.imageUrl ? (
+                <img
+                  src={getStoreLogoUrl(featured.store.id) ?? featured.store.imageUrl}
+                  alt=""
+                  className="h-7 w-7 rounded-full object-cover"
+                  onError={(e) => {
+                    // Logo aún no subido al Blob: caer a la imagen de la tienda una sola vez.
+                    const img = e.currentTarget;
+                    const fb = featured.store.imageUrl;
+                    if (fb && img.src !== fb) img.src = fb;
+                    else img.style.visibility = 'hidden';
+                  }}
+                />
               ) : (
                 <span className="theme-surface flex h-7 w-7 items-center justify-center rounded-full bg-[var(--accent-400)] text-xs font-black text-gray-950">
                   {featured.store.name.trim()[0]?.toUpperCase()}

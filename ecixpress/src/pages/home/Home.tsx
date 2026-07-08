@@ -16,7 +16,6 @@ import { useAuth } from '../../context/AuthContext';
 import { useOrdersApi } from '../../hooks/useOrdersApi';
 import type { OrderResponse } from '../../lib/orders-api';
 import { getAvailableStores, type Store } from '../../services/storeService';
-import { getStoreLogoUrl } from '../../services/storeAssets';
 import { useFavorites } from '../../hooks/useFavorites';
 import { useRefreshOnScrollTop } from '../../hooks/useRefreshOnScrollTop';
 
@@ -180,98 +179,6 @@ const Home: React.FC<HomeProps> = ({ onUserClick, onCartClick, onOrdersClick, on
             />
           ) : null}
 
-<<<<<<< Updated upstream
-          {shownFavoriteStores.length > 0 && (
-            <section>
-              <h2 className="mb-4 flex items-center gap-2 text-xl font-bold text-gray-900">
-                <Heart size={20} className="fill-red-500 text-red-500" />
-                Tus tiendas favoritas
-              </h2>
-              <div className="flex flex-wrap gap-6 py-4 px-1">
-                {shownFavoriteStores.map((store) => {
-                  const fallback = store.imageUrl || STORE_FALLBACK_IMAGE;
-                  return (
-                    <StoreItem
-                      key={store.id}
-                      id={store.id as unknown as number}
-                      name={store.name}
-                      imageUrl={getStoreLogoUrl(store.id) ?? fallback}
-                      fallbackUrl={fallback}
-                      onClick={() => {
-                        if (onStoreClick) onStoreClick(Number(store.id));
-                        else navigate(`/store/${store.id}`);
-                      }}
-                    />
-                  );
-                })}
-              </div>
-            </section>
-          )}
-
-          <section>
-            <h2 className="text-xl font-bold text-gray-900 mb-4">
-              {query ? `Resultados para "${storeQuery.trim()}"` : 'Tiendas Disponibles'}
-            </h2>
-            {loadingStores ? (
-              <div className="flex justify-center py-8">
-                <div className="w-8 h-8 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin" />
-              </div>
-            ) : shownStores.length === 0 ? (
-              <p className="text-gray-500 text-sm py-4">
-                {query ? 'No se encontraron tiendas con ese nombre.' : 'No hay tiendas disponibles en esta categoría.'}
-              </p>
-            ) : (
-              <div className="flex flex-wrap gap-6 py-4 px-1">
-                {shownStores.map((store, index) => {
-                  const fallback = store.imageUrl || STORE_FALLBACK_IMAGE;
-                  return (
-                    <StoreItem
-                      key={store.id}
-                      id={store.id as unknown as number}
-                      name={store.name}
-                      imageUrl={getStoreLogoUrl(store.id) ?? fallback}
-                      fallbackUrl={fallback}
-                      isActive={activeStore === index}
-                      onClick={() => {
-                        setActiveStore(index);
-                        if (onStoreClick) {
-                          onStoreClick(Number(store.id));
-                        } else {
-                          navigate(`/store/${store.id}`);
-                        }
-                      }}
-                    />
-                  );
-                })}
-              </div>
-            )}
-          </section>
-
-          <section>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-gray-900">Productos Destacados</h2>
-              <div className="flex gap-2">
-                <button className="px-4 py-2 rounded-lg bg-yellow-400 text-white font-medium text-sm">
-                  Populares
-                </button>
-              </div>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {FALLBACK_PRODUCTS.map((product) => (
-                <ProductCard
-                  key={product.id}
-                  title={product.title}
-                  description={product.description}
-                  imageUrl={product.imageUrl}
-                  price={product.price}
-                  rating={product.rating}
-                  estimatedTime={product.estimatedTime}
-                  onAdd={() => toast.info(`${product.title} agregado`)}
-                />
-              ))}
-            </div>
-          </section>
-=======
           <FeaturedProductsSection
             key={`featured-${activeSection}`}
             section={section}
@@ -281,7 +188,6 @@ const Home: React.FC<HomeProps> = ({ onUserClick, onCartClick, onOrdersClick, on
           />
 
           <AppPromoSection />
->>>>>>> Stashed changes
         </div>
       </main>
 
