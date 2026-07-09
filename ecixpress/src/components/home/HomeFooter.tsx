@@ -80,7 +80,7 @@ const HomeFooter: React.FC<HomeFooterProps> = ({ onOpenMap }) => {
     <footer className="app-shift mt-6">
       {/* Franja de acento: marca + contactos + redes */}
       <div className="theme-surface flex flex-wrap items-center justify-between gap-x-8 gap-y-3 bg-[linear-gradient(135deg,var(--accent-400),var(--accent-500))] px-5 py-4 text-gray-950 md:px-10">
-        <span className="font-display text-2xl font-semibold tracking-wide">ECIEXPRESS</span>
+        <img src="/ecixpress-logo.svg" alt="ECIEXPRESS" className="h-7 brightness-0 invert md:h-8" />
 
         <div className="flex flex-wrap items-center gap-x-8 gap-y-2 text-sm font-semibold">
           <a href="https://wa.me/573186188826" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 transition hover:opacity-75">

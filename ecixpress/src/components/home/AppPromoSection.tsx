@@ -69,7 +69,7 @@ const AppPhoneMockup: React.FC<AppPhoneMockupProps> = ({ variant, className = ''
     {/* Cabecera de la app con el logo */}
     <div className="theme-surface bg-[linear-gradient(135deg,var(--accent-400),var(--accent-500))] px-3 pb-2.5 pt-4">
       <div className="mx-auto mb-2 h-1 w-10 rounded-full bg-gray-900/70" />
-      <img src="/logotipoEcixpress.svg" alt="" className="mx-auto h-4 brightness-0 invert" />
+      <img src="/ecixpress-logo.svg" alt="" className="mx-auto h-4 brightness-0 invert" />
     </div>
 
     {variant === 'menu' ? (

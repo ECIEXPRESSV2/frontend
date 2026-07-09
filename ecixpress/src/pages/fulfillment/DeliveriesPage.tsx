@@ -197,7 +197,7 @@ const DeliveriesPage: React.FC<DeliveriesPageProps> = ({ onBack }) => {
     <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-white to-yellow-100">
       <Sidebar activeItem="deliveries" />
 
-      <main className="app-shift px-6 pb-6 pt-20 md:px-8 md:pb-8">
+      <main className="app-shift px-6 pb-28 pt-20 md:px-8 md:pb-8">
         <div className="w-full space-y-6">
           {/* Header */}
           <div className="flex items-center gap-3">

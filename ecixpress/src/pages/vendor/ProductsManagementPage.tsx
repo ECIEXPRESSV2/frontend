@@ -367,7 +367,7 @@ const ProductsManagementPage: React.FC = () => {
     <>
     <div className="min-h-screen bg-background">
       <Sidebar activeItem="vendor-stores" />
-      <main className="app-shift px-4 pb-6 pt-20 md:px-8 md:pb-8 lg:px-10">
+      <main className="app-shift px-4 pb-28 pt-20 md:px-8 md:pb-8 lg:px-10">
         <div className="relative mx-auto max-w-6xl space-y-6">
           {/* Header */}
           <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -395,7 +395,7 @@ const ProductsManagementPage: React.FC = () => {
 
           {/* Resumen rápido */}
           {!loading && products.length > 0 && (
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="rounded-2xl bg-surface border border-gray-100 p-4">
                 <p className="text-2xl font-display font-semibold text-gray-900 tabular-nums">{activeCount}</p>
                 <p className="text-xs text-gray-500">Productos activos</p>

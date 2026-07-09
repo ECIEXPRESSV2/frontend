@@ -12,6 +12,14 @@ interface ModalShellProps {
   header?: React.ReactNode;
   /** Clases del contenedor del cuerpo (por defecto `px-6 py-5`). */
   bodyClassName?: string;
+  /** Clases de fondo/blur de la tarjeta del modal (por defecto sólido `bg-white`);
+      úsalo para un panel "liquid glass" (`bg-white/85 backdrop-blur-2xl`) puntual
+      sin afectar a los demás modales que usan `ModalShell`. */
+  panelClassName?: string;
+  /** Clases del botón "cerrar" cuando se usa `header` custom (por defecto claro,
+      pensado para encabezados oscuros/de color). Si tu `header` es claro, pásale
+      una variante oscura (p. ej. `text-gray-500 hover:bg-gray-900/5 hover:text-gray-800`). */
+  closeButtonClassName?: string;
 }
 
 /** Overlay + tarjeta centrada, con el estilo glass/amarillo de la app. */
@@ -24,6 +32,8 @@ const ModalShell: React.FC<ModalShellProps> = ({
   maxWidth = 'max-w-md',
   header,
   bodyClassName = 'px-6 py-5',
+  panelClassName = 'bg-white',
+  closeButtonClassName = 'text-white/80 hover:bg-white/20 hover:text-white',
 }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -65,7 +75,7 @@ const ModalShell: React.FC<ModalShellProps> = ({
       onClick={onClose}
     >
       <div
-        className={`mx-auto w-full ${maxWidth} max-h-[min(90vh,900px)] flex flex-col overflow-hidden rounded-[32px] bg-white shadow-2xl border border-white/60`}
+        className={`mx-auto w-full ${maxWidth} max-h-[min(90vh,900px)] flex flex-col overflow-hidden rounded-[32px] ${panelClassName} shadow-2xl border border-white/60`}
         role="dialog"
         aria-modal="true"
         data-modal-root="true"
@@ -77,14 +87,14 @@ const ModalShell: React.FC<ModalShellProps> = ({
             {header}
             <button
               onClick={onClose}
-              className="absolute top-4 right-4 p-1.5 rounded-lg text-white/80 hover:bg-white/20 hover:text-white transition"
+              className={`absolute top-4 right-4 p-1.5 rounded-lg transition ${closeButtonClassName}`}
               aria-label="Cerrar"
             >
               <X size={20} />
             </button>
           </div>
         ) : (
-          <div className="shrink-0 flex items-start justify-between gap-4 border-b border-gray-100 bg-white px-6 pb-4 pt-6">
+          <div className="shrink-0 flex items-start justify-between gap-4 border-b border-gray-100 px-6 pb-4 pt-6">
             <div>
               <h2 className="text-lg font-bold text-gray-800">{title}</h2>
               {subtitle && <p className="text-sm text-gray-500 mt-0.5">{subtitle}</p>}

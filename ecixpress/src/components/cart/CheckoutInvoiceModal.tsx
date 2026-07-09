@@ -94,7 +94,7 @@ const CheckoutInvoiceModal: React.FC<CheckoutInvoiceModalProps> = ({
           {/* Logo eciexpress */}
           <div className="flex flex-col items-center text-center">
             <img
-              src="/logotipoEcixpress.svg"
+              src="/ecixpress-logo.svg"
               alt="eciexpress"
               className="h-12 w-auto"
               onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
