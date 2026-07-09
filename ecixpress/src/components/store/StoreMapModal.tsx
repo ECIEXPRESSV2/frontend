@@ -249,7 +249,7 @@ const StoreMapModal: React.FC<Props> = ({ open, onClose }) => {
     const el = containerRef.current;
     const map = new maplibregl.Map({
       container: el,
-      style: '/campus-style.json',
+      style: '/campus-map-style.json',
       center: [-74.043725, 4.782866],
       zoom: 16.7,
       pitch: 55,
@@ -265,7 +265,7 @@ const StoreMapModal: React.FC<Props> = ({ open, onClose }) => {
     let disposed = false;
 
     map.on('load', () => {
-      fetch('/campus.geojson')
+      fetch('/campus-map.geojson')
         .then((r) => r.json())
         .then((campus: CampusGeoJson) => {
           if (disposed) return;

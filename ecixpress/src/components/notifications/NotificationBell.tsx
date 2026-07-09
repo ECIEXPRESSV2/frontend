@@ -148,7 +148,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
         className="flex items-center gap-2 px-4 py-3 border-b border-gray-100 cursor-move select-none bg-white"
       >
         <img
-          src="/eci-icon.png"
+          src="/ecixpress-icon.png"
           alt="ECIExpress"
           className="w-7 h-7 rounded-md flex-shrink-0"
         />

@@ -57,7 +57,7 @@ const WalletCard: React.FC = () => {
       <div className="relative flex-1 min-w-0 rounded-[26px] bg-gradient-to-br from-yellow-400 to-yellow-500 px-6 py-8 flex flex-col items-center justify-center text-center shadow-lg shadow-yellow-200/50 overflow-hidden">
         <div className="absolute -right-8 -top-8 w-40 h-40 rounded-full bg-yellow-300/40 blur-2xl pointer-events-none" />
         <img
-          src="/eciexpress.svg"
+          src="/ecixpress-mark.svg"
           alt="ECIExpress"
           className="w-14 mb-3 brightness-0 invert opacity-95"
         />

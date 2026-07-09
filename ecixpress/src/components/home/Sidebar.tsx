@@ -272,7 +272,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           aria-label={isExpanded ? 'Contraer menú lateral' : 'Abrir menú lateral'}
         >
           <img
-            src="/eci-icon.png"
+            src="/ecixpress-icon.png"
             alt=""
             className={`sidebar-eci-logo h-full w-full object-cover transition-transform duration-300 ${isExpanded ? 'rotate-0' : 'rotate-90'}`}
             aria-hidden="true"

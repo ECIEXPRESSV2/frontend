@@ -6,7 +6,7 @@ interface LogoProps {
 const Logo = ({ className = "", size = 80 }: LogoProps) => {
     return (
         <img
-            src="/logotipoEcixpress.svg"
+            src="/ecixpress-logo.svg"
             alt="ECIXPRESS Logo"
             className={className}
             style={{ width: size, height: "auto" }}

@@ -162,7 +162,7 @@ const LocationPickerModal: React.FC<Props> = ({ open, initial, onClose, onSelect
     // El estilo y los datos viven en /public — edítalos sin tocar este componente.
     const map = new maplibregl.Map({
       container: el,
-      style: '/campus-style.json',
+      style: '/campus-map-style.json',
       center: [-74.043725, 4.782866],
       zoom: 16.7,
       pitch: 55,
@@ -180,7 +180,7 @@ const LocationPickerModal: React.FC<Props> = ({ open, initial, onClose, onSelect
 
     map.on('load', () => {
       // Calcula los bounds desde el GeoJSON público para encuadrar todos los edificios.
-      fetch('/campus.geojson')
+      fetch('/campus-map.geojson')
         .then((r) => r.json())
         .then((campus: CampusGeoJson) => {
           if (disposed) return;
