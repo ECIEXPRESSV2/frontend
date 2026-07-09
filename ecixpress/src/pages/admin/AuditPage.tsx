@@ -6,6 +6,7 @@ import { TableSkeleton } from '../../components/common/LoadingSkeleton';
 import { useAuth } from '../../context/AuthContext';
 import { getAuditLogs, type AuditLog } from '../../services/auditService';
 import { getPageCache, pageCacheKeys, setPageCache } from '../../services/pageCache';
+import { useRefreshOnScrollTop } from '../../hooks/useRefreshOnScrollTop';
 
 type AuditCache = {
   logs: AuditLog[];
@@ -56,6 +57,8 @@ const AuditPage: React.FC = () => {
   };
 
   useEffect(() => { load(1, { showLoading: !initialCache }); }, []);
+
+  useRefreshOnScrollTop(() => load(page, { actionValue: action }), { disabled: loading });
 
   const totalPages = Math.max(1, Math.ceil(total / limit));
 

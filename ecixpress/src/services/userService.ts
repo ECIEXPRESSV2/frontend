@@ -37,6 +37,15 @@ export const updateMe = (data: UpdateProfileDto, token: string) =>
     body: JSON.stringify(data),
   });
 
+export const uploadAvatar = (file: File, token: string) => {
+  const form = new FormData();
+  form.append('file', file);
+  return apiFetch<{ avatarUrl: string }>('/users/me/avatar', token, {
+    method: 'POST',
+    body: form,
+  });
+};
+
 export const getUsers = (token: string, params?: Record<string, string>) => {
   const qs = params ? '?' + new URLSearchParams(params).toString() : '';
   return apiFetch<PaginatedUsers>(`/users${qs}`, token);
@@ -48,11 +57,12 @@ export const getUserById = (id: string, token: string) =>
 export const updateUserStatus = (
   id: string,
   status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED',
-  token: string
+  token: string,
+  reason?: string,
 ) =>
   apiFetch<UserItem>(`/users/${id}/status`, token, {
     method: 'PATCH',
-    body: JSON.stringify({ status }),
+    body: JSON.stringify(reason?.trim() ? { status, reason: reason.trim() } : { status }),
   });
 
 export const assignRole = (userId: string, roleId: string, token: string) =>

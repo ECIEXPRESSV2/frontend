@@ -6,6 +6,7 @@ import Sidebar from '../../components/home/Sidebar';
 import ModalShell from '../../components/wallet/ModalShell';
 import FormInput from '../../components/ui/FormInput';
 import { useAuth } from '../../context/AuthContext';
+import { useRefreshOnScrollTop } from '../../hooks/useRefreshOnScrollTop';
 import { getStoreById, type Store } from '../../services/storeService';
 import { productsApi, categoriesApi, priceToCents, type Product, type ProductCategory } from '../../lib/products-api';
 import {
@@ -81,6 +82,8 @@ const PromotionsPage: React.FC = () => {
   };
 
   useEffect(() => { void load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [storeId]);
+
+  useRefreshOnScrollTop(load, { disabled: loading || !storeId });
 
   const visiblePromotions = includeInactive ? promotions : promotions.filter((p) => p.isActive);
 

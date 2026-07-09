@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { io, Socket } from 'socket.io-client';
-import { Archive, ArchiveRestore, ArrowLeft, Check, CheckCheck, Inbox, MessageSquare, Send } from 'lucide-react';
+import { ArrowLeft, Check, CheckCheck, ChevronDown, ChevronRight, MessageSquare, ReceiptText, Send } from 'lucide-react';
 import Sidebar from '../../components/home/Sidebar';
+import OrderDetailModal from '../../components/orders/OrderDetailModal';
 import { useAuth } from '../../context/AuthContext';
 import { useOrdersApi } from '../../hooks/useOrdersApi';
 import { getMyStores } from '../../services/storeService';
@@ -37,26 +38,25 @@ const formatChatTime = (value?: string) => {
 };
 
 /**
- * Avatar circular con iniciales y degradado, consistente con administración de usuarios.
- * `online` pinta una bolita verde/roja indicando si hay conexión para chatear.
+ * Avatar circular: foto real (logo de tienda o del cliente) si se conoce, si no
+ * iniciales con degradado, consistente con administración de usuarios.
  */
-const ChatAvatar: React.FC<{ name?: string; size?: 'md' | 'lg'; online?: boolean }> = ({ name, size = 'md', online }) => {
+const ChatAvatar: React.FC<{ name?: string; imageUrl?: string; size?: 'md' | 'lg' }> = ({ name, imageUrl, size = 'md' }) => {
   const sizeClass = size === 'lg' ? 'h-12 w-12 text-base' : 'h-11 w-11 text-sm';
-  const dotClass = size === 'lg' ? 'h-3.5 w-3.5' : 'h-3 w-3';
   return (
     <div className="relative flex-shrink-0">
-      <div
-        className={`${sizeClass} flex items-center justify-center rounded-full border border-white/70 bg-gradient-to-br from-cyan-100 via-white to-yellow-100 font-bold text-gray-900 shadow-md shadow-gray-200/60`}
-      >
-        {getInitials(name)}
-      </div>
-      {online !== undefined && (
-        <span
-          className={`absolute -bottom-0.5 -right-0.5 ${dotClass} rounded-full border-2 border-white shadow-sm transition-colors duration-500 ${
-            online ? 'bg-emerald-500' : 'bg-rose-500'
-          }`}
-          title={online ? 'En línea' : 'Desconectado'}
+      {imageUrl ? (
+        <img
+          src={imageUrl}
+          alt=""
+          className={`${sizeClass} rounded-full border border-white/70 object-cover shadow-md shadow-gray-200/60`}
         />
+      ) : (
+        <div
+          className={`${sizeClass} flex items-center justify-center rounded-full border border-white/70 bg-gradient-to-br from-cyan-100 via-white to-yellow-100 font-bold text-gray-900 shadow-md shadow-gray-200/60`}
+        >
+          {getInitials(name)}
+        </div>
       )}
     </div>
   );
@@ -75,12 +75,14 @@ const MessagesPage: React.FC<MessagesPageProps> = ({ onBack }) => {
   const chatRole = vendor ? 'vendor' : 'customer';
 
   const [conversations, setConversations] = useState<ConversationResponse[]>([]);
-  const [storeNames, setStoreNames] = useState<Record<string, string>>({});
   const [selectedId, setSelectedId] = useState<string>('');
-  const [view, setView] = useState<'active' | 'archived'>('active');
+  const [notice, setNotice] = useState<string | null>(null);
+  // Grupos (cliente/tienda) desplegados en la bandeja.
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+  // Pedido cuyo detalle (recibo) se está viendo en el modal; null = cerrado.
+  const [detailOrderId, setDetailOrderId] = useState<string | null>(null);
   const [messages, setMessages] = useState<MessageResponse[]>([]);
   const [draft, setDraft] = useState('');
-  const [connected, setConnected] = useState(false);
   const [otherTyping, setOtherTyping] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -95,23 +97,38 @@ const MessagesPage: React.FC<MessagesPageProps> = ({ onBack }) => {
   const patchConversation = (conv: ConversationResponse) =>
     setConversations((prev) => (prev.some((c) => c.id === conv.id) ? prev.map((c) => (c.id === conv.id ? conv : c)) : [conv, ...prev]));
 
-  /** Nombre legible de una conversación: nombre de la tienda o "Pedido XXXX…". */
-  const conversationName = (c: ConversationResponse) => storeNames[c.orderId] ?? `Pedido ${c.orderId.slice(0, 8)}…`;
+  // Nombre/foto de "con quién estoy hablando": el vendedor ve al cliente que le escribe
+  // (antes veía el nombre de su propia tienda repetido en cada fila); el cliente ve la
+  // tienda. Vienen denormalizados en la propia conversación (identity-service, al confirmarse).
+  const conversationName = (c: ConversationResponse) =>
+    vendor ? (c.customerName ?? 'Cliente') : (c.storeName ?? `Pedido ${c.orderId.slice(0, 8)}…`);
+  const conversationAvatar = (c: ConversationResponse) => (vendor ? c.customerAvatarUrl : c.storeLogoUrl);
 
   const unreadFor = (c: ConversationResponse) =>
     c.participants.find((p) => p.userId === userProfile?.id)?.unreadCount ?? 0;
+
+  /**
+   * Chats del vendedor de TODAS sus tiendas. Usa allSettled: si una tienda falla (p. ej.
+   * 403 puntual, o una tienda sin chats), NO se pierde la lista completa; se ignora esa
+   * tienda y se muestran las demás.
+   */
+  const loadVendorConversations = async (extra: { orderId?: string } = {}) => {
+    const stores = await getMyStores(await getToken());
+    const results = await Promise.allSettled(stores.map((s) => api.getConversations({ storeId: s.id, ...extra })));
+    return results.flatMap((r) => (r.status === 'fulfilled' ? r.value : []));
+  };
 
   // Cargar conversaciones (y auto-seleccionar por orderId si viene en la URL)
   useEffect(() => {
     if (!userProfile?.id) return;
     (async () => {
       try {
-        const list = vendor
-          ? (await Promise.all((await getMyStores(await getToken())).map((s) => api.getConversations({ storeId: s.id })))).flat()
-          : await api.getConversations({ customerId: userProfile.id });
+        const list = vendor ? await loadVendorConversations() : await api.getConversations({});
         setConversations(list);
         if (orderIdParam) {
-          const byOrder = await api.getConversations({ orderId: orderIdParam });
+          const byOrder = vendor
+            ? await loadVendorConversations({ orderId: orderIdParam })
+            : await api.getConversations({ orderId: orderIdParam });
           if (byOrder[0]) { setSelectedId(byOrder[0].id); return; }
         }
         const firstActive = list.find((c) => c.status !== 'archived');
@@ -122,20 +139,6 @@ const MessagesPage: React.FC<MessagesPageProps> = ({ onBack }) => {
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userProfile?.id, orderIdParam, vendor]);
-
-  // Enriquecer la lista con el nombre real de la tienda (best-effort).
-  useEffect(() => {
-    if (!userProfile?.id) return;
-    (async () => {
-      try {
-        const orders = vendor
-          ? (await Promise.all((await getMyStores(await getToken())).map((s) => api.getOrders({ storeId: s.id })))).flat()
-          : await api.getOrders({ customerId: userProfile.id });
-        setStoreNames(Object.fromEntries(orders.map((o) => [o.id, o.storeName])));
-      } catch { /* la lista funciona sin nombres de tienda */ }
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userProfile?.id, vendor]);
 
   // Cargar mensajes al cambiar de conversación + marcar como leído
   useEffect(() => {
@@ -179,20 +182,36 @@ const MessagesPage: React.FC<MessagesPageProps> = ({ onBack }) => {
       // HTTP upgrade. También en auth.token para conexión directa al servicio sin gateway.
       // Riesgo aceptado: el token aparece en la URL del upgrade (visible en logs de red).
       // Los tokens de Firebase expiran en ~1 h; getToken() siempre devuelve uno vigente.
-      socket = io(ORDERS_WS_URL, { path: '/orders/socket.io', transports: ['websocket'], auth: { token }, query: { token } });
+      // userId: en modo local (AUTH_DISABLED) orders NO valida el token, así que necesita
+      // el userId real en el handshake; sin él usaría el socket.id y el control de acceso
+      // del chat rechazaría el join (no habría tiempo real). En producción se ignora: el
+      // userId sale del token validado.
+      const userId = userProfile?.id;
+      socket = io(ORDERS_WS_URL, { path: '/orders/socket.io', transports: ['websocket'], auth: { token, userId }, query: { token, userId } });
       socketRef.current = socket;
       socket.on('connect', () => {
-        setConnected(true);
         if (selectedIdRef.current) socket?.emit('conversation:joined', { conversationId: selectedIdRef.current, role: chatRole });
       });
-      socket.on('disconnect', () => setConnected(false));
       socket.on('message:new', (msg: MessageResponse) => {
         if (msg.conversationId !== selectedIdRef.current) return;
         upsertMessage(msg);
         if (msg.senderId !== userProfile?.id) void markRead(msg.conversationId);
       });
-      // Actualización de la lista en vivo (preview, hora, no leídos, archivado).
-      socket.on('conversation:updated', (conv: ConversationResponse) => patchConversation(conv));
+      // Actualización de la lista en vivo (preview, hora, no leídos, archivado). Si el
+      // pedido se entregó o canceló, el chat se cierra para siempre: se saca de la lista
+      // y, si estaba abierto, se limpia la selección (nadie vuelve a verlo).
+      socket.on('conversation:updated', (conv: ConversationResponse) => {
+        if (conv.status === 'closed') {
+          setConversations((prev) => prev.filter((c) => c.id !== conv.id));
+          if (selectedIdRef.current === conv.id) {
+            setSelectedId('');
+            setMessages([]);
+            setNotice('Este chat se cerró porque el pedido finalizó.');
+          }
+          return;
+        }
+        patchConversation(conv);
+      });
       // El otro participante leyó: pinta doble check en mis mensajes.
       socket.on('conversation:read', (p: { readerId: string; messageIds: string[] }) => {
         if (p.readerId === userProfile?.id) return;
@@ -233,27 +252,63 @@ const MessagesPage: React.FC<MessagesPageProps> = ({ onBack }) => {
     }
   };
 
-  const handleArchiveToggle = async (e: React.MouseEvent, c: ConversationResponse) => {
+  const openOrderDetail = (e: React.MouseEvent, orderId: string) => {
     e.stopPropagation();
-    const archiving = c.status !== 'archived';
-    // Actualización optimista; el evento en vivo confirma.
-    patchConversation({ ...c, status: archiving ? 'archived' : 'active' });
-    if (archiving && selectedId === c.id) setSelectedId('');
-    try {
-      if (archiving) await api.archiveConversation(c.id);
-      else await api.unarchiveConversation(c.id);
-    } catch (err) {
-      patchConversation(c); // revertir
-      setError(err instanceof Error ? err.message : 'No se pudo actualizar el chat');
-    }
+    setDetailOrderId(orderId);
   };
 
-  // Conversaciones por sección, ordenadas por actividad reciente (estilo mensajería).
+  // Conversaciones ordenadas por actividad reciente (el backend ya excluye las cerradas).
   const sortByRecent = (a: ConversationResponse, b: ConversationResponse) =>
     new Date(b.lastMessageAt ?? b.updatedAt).getTime() - new Date(a.lastMessageAt ?? a.updatedAt).getTime();
-  const activeConversations = useMemo(() => conversations.filter((c) => c.status !== 'archived').sort(sortByRecent), [conversations]);
-  const archivedConversations = useMemo(() => conversations.filter((c) => c.status === 'archived').sort(sortByRecent), [conversations]);
-  const visibleConversations = view === 'archived' ? archivedConversations : activeConversations;
+  const visibleConversations = useMemo(() => [...conversations].sort(sortByRecent), [conversations]);
+
+  // Agrupa la bandeja por la contraparte (vendedor → cliente; cliente → tienda), para que
+  // varios pedidos con la misma persona no llenen la lista de filas repetidas. Cada grupo
+  // se despliega en sus chats por pedido.
+  interface ChatGroup {
+    key: string;
+    name: string;
+    avatar?: string;
+    convs: ConversationResponse[];
+    unread: number;
+    lastAt: string;
+    preview: string;
+  }
+  const groups = useMemo<ChatGroup[]>(() => {
+    const byKey = new Map<string, ConversationResponse[]>();
+    for (const c of visibleConversations) {
+      const key = (vendor ? c.customerId : c.storeId) || c.id;
+      const list = byKey.get(key) ?? [];
+      list.push(c);
+      byKey.set(key, list);
+    }
+    const result: ChatGroup[] = [];
+    byKey.forEach((convs, key) => {
+      const sorted = [...convs].sort(sortByRecent);
+      const head = sorted[0];
+      result.push({
+        key,
+        name: conversationName(head),
+        avatar: conversationAvatar(head),
+        convs: sorted,
+        unread: sorted.reduce((sum, c) => sum + unreadFor(c), 0),
+        lastAt: head.lastMessageAt ?? head.updatedAt,
+        preview: head.lastMessagePreview ?? 'Sin mensajes aún',
+      });
+    });
+    return result.sort((a, b) => new Date(b.lastAt).getTime() - new Date(a.lastAt).getTime());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visibleConversations, vendor]);
+
+  const toggleGroup = (key: string) =>
+    setExpandedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+
+  // Etiqueta corta del pedido para distinguir chats dentro de un mismo grupo.
+  const orderLabel = (c: ConversationResponse) => `Pedido ${c.orderId.slice(0, 8)}…`;
 
   const selected = conversations.find((c) => c.id === selectedId);
 
@@ -271,77 +326,144 @@ const MessagesPage: React.FC<MessagesPageProps> = ({ onBack }) => {
           </div>
 
           {error && <div className="rounded-xl bg-red-50/80 backdrop-blur-xl border border-red-200/70 px-4 py-3 text-sm text-red-700">{error}</div>}
+          {notice && (
+            <div className="rounded-xl bg-yellow-50/80 backdrop-blur-xl border border-yellow-200/70 px-4 py-3 text-sm text-yellow-800 flex items-center justify-between gap-3">
+              {notice}
+              <button onClick={() => setNotice(null)} className="text-yellow-700/70 hover:text-yellow-900 text-xs font-medium">Cerrar</button>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             {/* Lista de conversaciones */}
             <section className="lg:col-span-4">
               <div className="rounded-3xl bg-white/45 backdrop-blur-2xl border border-white/50 shadow-xl shadow-gray-200/40 p-2.5">
-                {/* Toggle Chats / Archivados */}
-                <div className="flex items-center gap-1 p-1 mb-1.5 rounded-2xl bg-white/40 border border-white/50">
-                  {([
-                    { key: 'active' as const, label: 'Chats', count: activeConversations.length, icon: Inbox },
-                    { key: 'archived' as const, label: 'Archivados', count: archivedConversations.length, icon: Archive },
-                  ]).map(({ key, label, count, icon: Icon }) => (
-                    <button
-                      key={key}
-                      onClick={() => setView(key)}
-                      className={`flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold transition-all duration-300 ${
-                        view === key ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-                      }`}
-                    >
-                      <Icon size={14} /> {label}
-                      {count > 0 && <span className="text-[10px] text-gray-400">({count})</span>}
-                    </button>
-                  ))}
-                </div>
-
                 <div className="space-y-1.5">
-                  {visibleConversations.length === 0 && (
+                  {groups.length === 0 && (
                     <div className="rounded-2xl p-6 text-center text-gray-500 text-sm">
-                      {view === 'archived'
-                        ? 'No tienes chats archivados.'
-                        : 'No tienes conversaciones. Crea un pedido para chatear con la tienda.'}
+                      No tienes conversaciones. Crea un pedido para chatear con la tienda.
                     </div>
                   )}
-                  {visibleConversations.map((c) => {
-                    const unread = unreadFor(c);
-                    const isActive = selectedId === c.id;
-                    const archived = c.status === 'archived';
-                    return (
-                      <div
-                        key={c.id}
-                        onClick={() => setSelectedId(c.id)}
-                        className={`group glass-spotlight glass-spotlight-soft relative w-full text-left rounded-2xl border p-3 flex items-center gap-3 cursor-pointer transition-all duration-300 ${
-                          isActive
-                            ? 'bg-white/80 border-yellow-300/80 shadow-md shadow-yellow-100/60'
-                            : 'bg-white/0 border-transparent hover:bg-white/60 hover:border-white/60 hover:shadow-sm'
-                        }`}
-                      >
-                        <ChatAvatar name={conversationName(c)} online={connected} />
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center justify-between gap-2">
-                            <p className="font-semibold text-gray-900 text-sm truncate">{conversationName(c)}</p>
-                            <span className="text-[10px] text-gray-400 shrink-0">{formatChatTime(c.lastMessageAt)}</span>
-                          </div>
-                          <div className="flex items-center justify-between gap-2 mt-0.5">
-                            <p className={`text-xs truncate ${unread > 0 ? 'text-gray-700 font-medium' : 'text-gray-500'}`}>
-                              {c.lastMessagePreview ?? 'Sin mensajes aún'}
-                            </p>
-                            {unread > 0 && (
-                              <span className="inline-flex min-w-[18px] h-[18px] px-1 items-center justify-center rounded-full bg-yellow-400 text-white text-[10px] font-bold shadow-sm">
-                                {unread > 99 ? '99+' : unread}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        {/* Acción archivar / desarchivar */}
-                        <button
-                          onClick={(e) => handleArchiveToggle(e, c)}
-                          title={archived ? 'Restaurar chat' : 'Archivar chat'}
-                          className="absolute right-2 top-2 inline-flex h-7 w-7 items-center justify-center rounded-lg bg-white/80 text-gray-500 opacity-0 shadow-sm transition-all duration-200 hover:bg-white hover:text-yellow-600 group-hover:opacity-100"
+                  {groups.map((g) => {
+                    // Un solo pedido con esta persona: fila directa (sin desplegable).
+                    if (g.convs.length === 1) {
+                      const c = g.convs[0];
+                      const unread = unreadFor(c);
+                      const isActive = selectedId === c.id;
+                      return (
+                        <div
+                          key={c.id}
+                          onClick={() => setSelectedId(c.id)}
+                          className={`group glass-spotlight glass-spotlight-soft relative w-full text-left rounded-2xl border p-3 flex items-center gap-3 cursor-pointer transition-all duration-200 ${
+                            isActive
+                              ? 'bg-white/80 border-yellow-300/80 shadow-md shadow-yellow-100/60'
+                              : 'bg-white/0 border-transparent hover:bg-yellow-50/90 hover:border-yellow-200/80 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-yellow-200/50 hover:ring-2 hover:ring-yellow-200/50'
+                          }`}
                         >
-                          {archived ? <ArchiveRestore size={14} /> : <Archive size={14} />}
-                        </button>
+                          <ChatAvatar name={g.name} imageUrl={g.avatar} />
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center justify-between gap-2">
+                              <p className="font-semibold text-gray-900 text-sm truncate">{g.name}</p>
+                              <span className="text-[10px] text-gray-400 shrink-0">{formatChatTime(c.lastMessageAt)}</span>
+                            </div>
+                            <div className="flex items-center justify-between gap-2 mt-0.5">
+                              <p className={`text-xs truncate ${unread > 0 ? 'text-gray-700 font-medium' : 'text-gray-500'}`}>
+                                {c.lastMessagePreview ?? 'Sin mensajes aún'}
+                              </p>
+                              {unread > 0 && (
+                                <span className="inline-flex min-w-[18px] h-[18px] px-1 items-center justify-center rounded-full bg-yellow-400 text-white text-[10px] font-bold shadow-sm">
+                                  {unread > 99 ? '99+' : unread}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <button
+                            onClick={(e) => openOrderDetail(e, c.orderId)}
+                            title="Ver detalle del pedido"
+                            className="absolute right-2 top-2 inline-flex h-7 w-7 items-center justify-center rounded-lg bg-white/80 text-gray-500 opacity-0 shadow-sm transition-all duration-200 hover:bg-white hover:text-yellow-600 group-hover:opacity-100"
+                          >
+                            <ReceiptText size={14} />
+                          </button>
+                        </div>
+                      );
+                    }
+
+                    // Varios pedidos con la misma persona: cabecera de grupo desplegable.
+                    // Se abre manualmente o de forma automática si el chat abierto es de este grupo.
+                    const activeInGroup = g.convs.some((c) => c.id === selectedId);
+                    const isOpen = expandedGroups.has(g.key) || activeInGroup;
+                    return (
+                      <div key={g.key} className="space-y-1">
+                        <div
+                          onClick={() => toggleGroup(g.key)}
+                          className={`relative w-full text-left rounded-2xl border p-3 flex items-center gap-3 cursor-pointer transition-all duration-300 ${
+                            activeInGroup && !isOpen
+                              ? 'bg-white/70 border-yellow-300/70 shadow-sm'
+                              : 'bg-white/0 border-transparent hover:bg-white/60 hover:border-white/60'
+                          }`}
+                        >
+                          <ChatAvatar name={g.name} imageUrl={g.avatar} />
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center justify-between gap-2">
+                              <p className="font-semibold text-gray-900 text-sm truncate">{g.name}</p>
+                              <span className="text-[10px] text-gray-400 shrink-0">{formatChatTime(g.lastAt)}</span>
+                            </div>
+                            <div className="flex items-center justify-between gap-2 mt-0.5">
+                              <p className="text-xs text-gray-500 truncate">
+                                {g.convs.length} pedidos · {g.preview}
+                              </p>
+                              {g.unread > 0 && (
+                                <span className="inline-flex min-w-[18px] h-[18px] px-1 items-center justify-center rounded-full bg-yellow-400 text-white text-[10px] font-bold shadow-sm">
+                                  {g.unread > 99 ? '99+' : g.unread}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          {isOpen ? <ChevronDown size={16} className="text-gray-400 shrink-0" /> : <ChevronRight size={16} className="text-gray-400 shrink-0" />}
+                        </div>
+
+                        {isOpen && (
+                          <div className="ml-4 space-y-1 border-l-2 border-yellow-100 pl-2">
+                            {g.convs.map((c) => {
+                              const unread = unreadFor(c);
+                              const isActive = selectedId === c.id;
+                              return (
+                                <div
+                                  key={c.id}
+                                  onClick={() => setSelectedId(c.id)}
+                                  className={`group relative w-full text-left rounded-xl border p-2.5 flex items-center gap-2 cursor-pointer transition-all duration-200 ${
+                                    isActive
+                                      ? 'bg-white/80 border-yellow-300/80 shadow-sm'
+                                      : 'bg-white/0 border-transparent hover:bg-yellow-50/90 hover:border-yellow-200/80 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-yellow-200/50 hover:ring-2 hover:ring-yellow-200/50'
+                                  }`}
+                                >
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex items-center justify-between gap-2">
+                                      <p className="font-medium text-gray-800 text-xs truncate">{orderLabel(c)}</p>
+                                      <span className="text-[10px] text-gray-400 shrink-0">{formatChatTime(c.lastMessageAt)}</span>
+                                    </div>
+                                    <div className="flex items-center justify-between gap-2 mt-0.5">
+                                      <p className={`text-xs truncate ${unread > 0 ? 'text-gray-700 font-medium' : 'text-gray-500'}`}>
+                                        {c.lastMessagePreview ?? 'Sin mensajes aún'}
+                                      </p>
+                                      {unread > 0 && (
+                                        <span className="inline-flex min-w-[16px] h-4 px-1 items-center justify-center rounded-full bg-yellow-400 text-white text-[10px] font-bold shadow-sm">
+                                          {unread > 99 ? '99+' : unread}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <button
+                                    onClick={(e) => openOrderDetail(e, c.orderId)}
+                                    title="Ver detalle del pedido"
+                                    className="inline-flex h-6 w-6 items-center justify-center rounded-lg bg-white/80 text-gray-400 opacity-0 shadow-sm transition-all duration-200 hover:bg-white hover:text-yellow-600 group-hover:opacity-100"
+                                  >
+                                    <ReceiptText size={13} />
+                                  </button>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
                     );
                   })}
@@ -355,26 +477,21 @@ const MessagesPage: React.FC<MessagesPageProps> = ({ onBack }) => {
                 {selected ? (
                   <>
                     <div className="px-5 py-4 border-b border-white/50 bg-white/30 backdrop-blur-xl flex items-center gap-3">
-                      <ChatAvatar name={conversationName(selected)} size="lg" online={connected} />
+                      <ChatAvatar name={conversationName(selected)} imageUrl={conversationAvatar(selected)} size="lg" />
                       <div className="min-w-0 flex-1">
                         <p className="font-bold text-gray-900 truncate">{conversationName(selected)}</p>
-                        <p className="text-xs">
-                          {otherTyping ? (
-                            <span className="text-emerald-600">escribiendo…</span>
-                          ) : (
-                            <span className={`inline-flex items-center gap-1.5 transition-colors duration-500 ${connected ? 'text-emerald-600' : 'text-rose-500'}`}>
-                              <span className={`h-1.5 w-1.5 rounded-full transition-colors duration-500 ${connected ? 'bg-emerald-500' : 'bg-rose-500'}`} />
-                              {connected ? 'En línea' : 'Desconectado'}
-                            </span>
-                          )}
+                        {/* Pedido al que pertenece este chat (clave cuando la persona tiene varios). */}
+                        <p className="text-[11px] text-gray-400 truncate">{orderLabel(selected)}</p>
+                        <p className="text-xs text-emerald-600 min-h-[1rem]">
+                          {otherTyping ? 'escribiendo…' : ''}
                         </p>
                       </div>
                       <button
-                        onClick={(e) => handleArchiveToggle(e, selected)}
-                        title={selected.status === 'archived' ? 'Restaurar chat' : 'Archivar chat'}
+                        onClick={(e) => openOrderDetail(e, selected.orderId)}
+                        title="Ver detalle del pedido"
                         className="inline-flex items-center gap-1.5 rounded-xl bg-white/60 border border-white/60 px-3 py-2 text-xs font-medium text-gray-600 shadow-sm transition-all duration-300 hover:bg-white hover:text-yellow-600"
                       >
-                        {selected.status === 'archived' ? <><ArchiveRestore size={14} /> Restaurar</> : <><Archive size={14} /> Archivar</>}
+                        <ReceiptText size={14} /> Ver pedido
                       </button>
                     </div>
 
@@ -446,6 +563,8 @@ const MessagesPage: React.FC<MessagesPageProps> = ({ onBack }) => {
           </div>
         </div>
       </main>
+
+      <OrderDetailModal open={!!detailOrderId} orderId={detailOrderId} onClose={() => setDetailOrderId(null)} />
     </div>
   );
 };

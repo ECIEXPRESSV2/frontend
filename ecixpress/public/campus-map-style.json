@@ -36,6 +36,7 @@
       "paint": {
         "fill-extrusion-color": [
           "case",
+          ["boolean", ["feature-state", "selStore"], false], "#22c55e",
           ["boolean", ["feature-state", "sel"], false], "#e23b3b",
           "#3b4252"
         ],

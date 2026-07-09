@@ -5,7 +5,9 @@ import { MapPin, Clock, RefreshCw, Tag, Package } from 'lucide-react';
 import Sidebar from '../../components/home/Sidebar';
 import { CardSkeleton } from '../../components/common/LoadingSkeleton';
 import { useAuth } from '../../context/AuthContext';
+import { useRefreshOnScrollTop } from '../../hooks/useRefreshOnScrollTop';
 import { getMyStores, getDayName, type Store, type StoreSchedule } from '../../services/storeService';
+import StoreGalleryManager from '../../components/store/StoreGalleryManager';
 
 const isWithinSchedule = (schedules: StoreSchedule[]): boolean => {
   const now = new Date();
@@ -41,6 +43,8 @@ const VendorStoresPage: React.FC = () => {
   };
 
   useEffect(() => { load(); }, []);
+
+  useRefreshOnScrollTop(load, { disabled: loading });
 
   const typeLabel = (type: string) =>
     type === 'CAFETERIA' ? 'Cafetería' : type === 'PAPELERIA' ? 'Papelería' : 'Restaurante';
@@ -133,6 +137,11 @@ const VendorStoresPage: React.FC = () => {
                             ))}
                         </div>
                       )}
+
+                      {/* Galería de fotos de la tienda (dueño / ADMIN pueden agregar y eliminar) */}
+                      <div className="mt-6 border-t border-gray-100 pt-5">
+                        <StoreGalleryManager storeId={store.id} />
+                      </div>
                     </div>
                   )}
                 </div>

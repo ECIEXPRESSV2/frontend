@@ -9,6 +9,7 @@ import {
   ChevronRight,
   Clock,
   ImagePlus,
+  Images,
   Map,
   MapPin,
   Pencil,
@@ -26,7 +27,7 @@ import { CardSkeleton, TableSkeleton } from '../../components/common/LoadingSkel
 const LocationPickerModal = lazy(() => import('../../components/admin/LocationPickerModal'));
 import { useAuth } from '../../context/AuthContext';
 import {
-  getStores, createStore, updateStore, updateStoreStatus,
+  getStores, createStore, updateStore, updateStoreStatus, uploadStoreLogo, uploadStoreBanner,
   getStoreSchedules, createSchedule, updateSchedule, deleteSchedule,
   getStoreClosures, createClosure, cancelClosure,
   assignStaff, removeStaff, getStoreById,
@@ -35,9 +36,11 @@ import {
 } from '../../services/storeService';
 import { getUsers, type UserItem } from '../../services/userService';
 import { deletePageCache, getPageCache, pageCacheKeys, setPageCache } from '../../services/pageCache';
-import { getStoreImage, setStoreImage, fileToDataUrl } from '../../services/storeImageStore';
+import { fileToDataUrl, compressImageToWebp } from '../../services/storeAssets';
+import StoreGalleryManager from '../../components/store/StoreGalleryManager';
+import { useRefreshOnScrollTop } from '../../hooks/useRefreshOnScrollTop';
 
-type TabType = 'schedules' | 'staff' | 'menu';
+type TabType = 'schedules' | 'staff' | 'gallery' | 'menu';
 type StatusAction = { store: Store; nextStatus: Store['status'] } | null;
 
 type StoreDetailCache = {
@@ -98,6 +101,7 @@ const STATUS_META: Record<Store['status'], {
 const DETAIL_TABS: Array<{ id: TabType; label: string; icon: typeof StoreIcon }> = [
   { id: 'schedules', label: 'Horario', icon: Clock },
   { id: 'staff', label: 'Vendedores', icon: Users },
+  { id: 'gallery', label: 'Galería', icon: Images },
   { id: 'menu', label: 'Menú', icon: Tag },
 ];
 
@@ -136,7 +140,18 @@ const getStoreInitials = (name: string) =>
     .map(part => part[0]?.toUpperCase())
     .join('') || 'EC';
 
-const getStoreVisual = (store: Store) => getStoreImage(store.id) ?? store.imageUrl ?? '';
+// Imagen de la tienda: la URL pública del Blob (imageUrl, seteada por el backend), con cache-bust
+// por updatedAt para reflejar reemplazos al instante (el nombre del blob es fijo: imagen.png).
+const getStoreVisual = (store: Store): string =>
+  store.imageUrl
+    ? `${store.imageUrl}?v=${encodeURIComponent(store.updatedAt ?? '')}`
+    : '';
+
+// Formatos que acepta el backend (ver ALLOWED_IMAGE_TYPES en identity). La optimización convierte a
+// WebP; si el navegador no soportara la conversión, se sube el original y debe ser uno de estos.
+const ACCEPTED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
+// Tope tras optimizar (red de seguridad). Con la compresión a WebP casi nunca se alcanza.
+const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 
 
 const formatDaySet = (days: number[]) => {
@@ -298,18 +313,26 @@ const StoresPage: React.FC = () => {
   const [showCreate, setShowCreate] = useState(false);
   const [createForm, setCreateForm] = useState<CreateStoreDto>({ name: '', type: 'CAFETERIA', location: '' });
   const [createImage, setCreateImage] = useState<string | undefined>(undefined);
+  const [createImageFile, setCreateImageFile] = useState<File | null>(null);
+  const [createBanner, setCreateBanner] = useState<string | undefined>(undefined);
+  const [createBannerFile, setCreateBannerFile] = useState<File | null>(null);
   const [creating, setCreating] = useState(false);
 
   // Edit store
   const [editingStore, setEditingStore] = useState<Store | null>(null);
   const [editForm, setEditForm] = useState<Partial<CreateStoreDto>>({});
   const [editImage, setEditImage] = useState<string | undefined>(undefined);
+  const [editImageFile, setEditImageFile] = useState<File | null>(null);
+  const [editBanner, setEditBanner] = useState<string | undefined>(undefined);
+  const [editBannerFile, setEditBannerFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
 
   // Selector de ubicación (mapa 3D); 'create' | 'edit' indica a qué formulario aplica.
   const [locationPickerFor, setLocationPickerFor] = useState<'create' | 'edit' | null>(null);
   const createFileRef = useRef<HTMLInputElement>(null);
   const editFileRef = useRef<HTMLInputElement>(null);
+  const createBannerRef = useRef<HTMLInputElement>(null);
+  const editBannerRef = useRef<HTMLInputElement>(null);
 
   // Edit schedule
   const [editingSchedule, setEditingSchedule] = useState<StoreSchedule | null>(null);
@@ -400,6 +423,8 @@ const StoresPage: React.FC = () => {
     setRefreshing(false);
   };
 
+  useRefreshOnScrollTop(handleRefresh, { disabled: loading || refreshing });
+
   const openStoreProfile = (store: Store) => {
     navigate(`/admin/stores/${encodeURIComponent(store.id)}`);
   };
@@ -485,17 +510,22 @@ const StoresPage: React.FC = () => {
 
   const handleCreateStore = async () => {
     if (!createForm.name || !createForm.location) return;
+    // Logo y banner son OBLIGATORIOS al crear (el backend los exige en la misma petición).
+    if (!createImageFile) { toast.error('El logo de la tienda es obligatorio.'); return; }
+    if (!createBannerFile) { toast.error('El banner de la tienda es obligatorio.'); return; }
     setCreating(true);
     try {
       const token = await getToken();
-      const created = await createStore(createForm, token);
-      // La imagen elegida desde el dispositivo se guarda localmente (ver storeImageStore).
-      // TODO: subirla a un Blob Storage y mandar la URL al backend cuando exista el servicio.
-      if (createImage && created?.id) setStoreImage(created.id, createImage);
+      // Una sola petición multipart: el backend sube logo+banner al Blob y devuelve la tienda con
+      // imageUrl y bannerUrl ya poblados.
+      await createStore(createForm, createImageFile, createBannerFile, token);
       toast.success('Tienda creada correctamente.');
       setShowCreate(false);
       setCreateForm({ name: '', type: 'CAFETERIA', location: '' });
       setCreateImage(undefined);
+      setCreateImageFile(null);
+      setCreateBanner(undefined);
+      setCreateBannerFile(null);
       await loadStores();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'No fue posible crear la tienda.');
@@ -506,7 +536,8 @@ const StoresPage: React.FC = () => {
 
   const handleImageFile = async (
     file: File | undefined,
-    set: (v: string | undefined) => void,
+    setPreview: (v: string | undefined) => void,
+    setFile: (f: File | null) => void,
   ) => {
     if (!file) return;
     if (!file.type.startsWith('image/')) {
@@ -514,9 +545,20 @@ const StoresPage: React.FC = () => {
       return;
     }
     try {
-      set(await fileToDataUrl(file));
+      // Redimensiona y recomprime a WebP en el navegador para que el peso no sea problema.
+      const optimized = (await compressImageToWebp(file)) ?? file;
+      if (!ACCEPTED_IMAGE_TYPES.includes(optimized.type)) {
+        toast.error('Formato no soportado. Usa PNG, JPG o WebP.');
+        return;
+      }
+      if (optimized.size > MAX_UPLOAD_BYTES) {
+        toast.error('La imagen es demasiado grande (máx. 5 MB tras optimizar).');
+        return;
+      }
+      setPreview(await fileToDataUrl(optimized)); // vista previa = lo que realmente se subirá
+      setFile(optimized);                          // archivo optimizado que se sube al guardar
     } catch {
-      toast.error('No se pudo leer la imagen');
+      toast.error('No se pudo procesar la imagen');
     }
   };
 
@@ -526,9 +568,11 @@ const StoresPage: React.FC = () => {
       name: store.name,
       description: store.description ?? undefined,
       location: store.location,
-      imageUrl: store.imageUrl ?? undefined,
     });
-    setEditImage(getStoreImage(store.id) ?? store.imageUrl ?? undefined);
+    setEditImage(store.imageUrl ?? undefined);   // vista previa del logo actual (si existe)
+    setEditImageFile(null);
+    setEditBanner(store.bannerUrl ?? undefined); // vista previa del banner actual (si existe)
+    setEditBannerFile(null);
     setEditingStore(store);
   };
 
@@ -541,12 +585,24 @@ const StoresPage: React.FC = () => {
         Object.entries(editForm).filter(([, v]) => v !== '' && v !== undefined)
       ) as Partial<CreateStoreDto>;
       await updateStore(editingStore.id, payload, token);
-      // Imagen local (TODO: migrar a Blob Storage).
-      if (editImage) setStoreImage(editingStore.id, editImage);
-      toast.success('Tienda actualizada correctamente.');
+      // Si el usuario eligió nuevas imágenes, se suben al Blob vía backend.
+      const failed: string[] = [];
+      if (editImageFile) {
+        try { await uploadStoreLogo(editingStore.id, editImageFile, token); }
+        catch { failed.push('el logo'); }
+      }
+      if (editBannerFile) {
+        try { await uploadStoreBanner(editingStore.id, editBannerFile, token); }
+        catch { failed.push('el banner'); }
+      }
+      if (failed.length) toast.warning(`Datos guardados, pero no se pudo subir ${failed.join(' ni ')}.`);
+      else toast.success('Tienda actualizada correctamente.');
       deletePageCache(pageCacheKeys.adminStoreDetail(editingStore.id));
       setEditingStore(null);
       setEditImage(undefined);
+      setEditImageFile(null);
+      setEditBanner(undefined);
+      setEditBannerFile(null);
       await loadStores();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'No fue posible guardar los cambios.');
@@ -718,6 +774,14 @@ const StoresPage: React.FC = () => {
       { day: 6, label: 'Sá' },
       { day: 0, label: 'Do' },
     ];
+
+    if (activeTab === 'gallery') {
+      return (
+        <div className="rounded-2xl border border-gray-100 bg-white p-4 md:p-5">
+          <StoreGalleryManager storeId={selectedStore.id} />
+        </div>
+      );
+    }
 
     if (activeTab === 'schedules') {
       return (
@@ -1081,7 +1145,7 @@ const StoresPage: React.FC = () => {
                   </label>
                   <button
                     type="button"
-                    onClick={() => setShowCreate(true)}
+                    onClick={() => { setCreateImage(undefined); setCreateImageFile(null); setCreateBanner(undefined); setCreateBannerFile(null); setShowCreate(true); }}
                     className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-yellow-400 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-300"
                   >
                     <Plus size={16} aria-hidden="true" />
@@ -1296,7 +1360,7 @@ const StoresPage: React.FC = () => {
                   </div>
                   <h3 className="text-lg font-bold text-gray-950">No hay tiendas registradas</h3>
                   <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-gray-500">Crea la primera tienda para empezar a configurar horarios, responsables y disponibilidad.</p>
-                  <button type="button" onClick={() => setShowCreate(true)} className="mt-5 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-yellow-400 px-4 py-2 text-sm font-bold text-gray-950 transition hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-300">
+                  <button type="button" onClick={() => { setCreateImage(undefined); setCreateImageFile(null); setCreateBanner(undefined); setCreateBannerFile(null); setShowCreate(true); }} className="mt-5 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-yellow-400 px-4 py-2 text-sm font-bold text-gray-950 transition hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-300">
                     <Plus size={16} aria-hidden="true" />
                     Nueva tienda
                   </button>
@@ -1428,7 +1492,8 @@ const StoresPage: React.FC = () => {
 
       {statusAction && (
         <div className="fixed inset-0 z-[80] flex items-center justify-center bg-gray-950/45 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-lg rounded-2xl border border-white/80 bg-white p-6 shadow-2xl shadow-gray-900/20">
+          <div className="relative w-full max-w-lg overflow-hidden rounded-2xl border border-white/80 bg-white p-6 shadow-2xl shadow-gray-900/20" role="dialog" aria-modal="true" data-modal-root="true">
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-[#F4B942]" />
             {(() => {
               const copy = getConfirmationCopy(statusAction.store, statusAction.nextStatus);
               const danger = copy.tone === 'danger';
@@ -1482,7 +1547,7 @@ const StoresPage: React.FC = () => {
       {/* Edit store modal */}
       {editingStore && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-gray-950/45 p-4 backdrop-blur-sm">
-          <div className="flex max-h-[92vh] w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-white/80 bg-white shadow-2xl shadow-gray-900/20">
+          <div className="flex max-h-[92vh] w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-white/80 bg-white shadow-2xl shadow-gray-900/20" role="dialog" aria-modal="true" data-modal-root="true">
           <div className="h-1 flex-shrink-0 bg-[#F4B942]" />
           <div className="overflow-y-auto p-6">
             <div className="mb-5 flex items-start justify-between gap-4">
@@ -1490,7 +1555,7 @@ const StoresPage: React.FC = () => {
                 <p className="text-xs font-bold uppercase tracking-wide text-amber-600">Editar tienda</p>
                 <h3 className="mt-1 text-xl font-bold text-gray-950">{editingStore.name}</h3>
               </div>
-              <button type="button" onClick={() => { setEditingStore(null); setEditImage(undefined); }} className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 transition hover:bg-gray-50 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-yellow-300" aria-label="Cerrar">
+              <button type="button" onClick={() => { setEditingStore(null); setEditImage(undefined); setEditImageFile(null); setEditBanner(undefined); setEditBannerFile(null); }} className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 transition hover:bg-gray-50 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-yellow-300" aria-label="Cerrar">
                 <X size={16} aria-hidden="true" />
               </button>
             </div>
@@ -1519,15 +1584,22 @@ const StoresPage: React.FC = () => {
                 onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))}
               />
               <div>
-                <input ref={editFileRef} type="file" accept="image/*" className="hidden" onChange={e => { handleImageFile(e.target.files?.[0], setEditImage); e.target.value = ''; }} />
+                <input ref={editFileRef} type="file" accept="image/*" className="hidden" onChange={e => { handleImageFile(e.target.files?.[0], setEditImage, setEditImageFile); e.target.value = ''; }} />
                 <button type="button" onClick={() => editFileRef.current?.click()} className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-gray-300 px-3 py-4 text-sm font-bold text-gray-500 transition hover:border-yellow-400 hover:text-amber-700 focus:outline-none focus:ring-2 focus:ring-yellow-300">
-                  <ImagePlus size={16} aria-hidden="true" /> {editImage ? 'Cambiar imagen' : 'Subir imagen (opcional)'}
+                  <ImagePlus size={16} aria-hidden="true" /> {editImage ? 'Cambiar logo' : 'Subir logo (opcional)'}
                 </button>
-                {editImage && <img src={editImage} alt="Vista previa" className="mt-3 h-36 w-full rounded-xl border border-gray-100 object-cover" />}
+                {editImage && <img src={editImage} alt="Vista previa del logo" className="mt-3 h-36 w-full rounded-xl border border-gray-100 object-cover" />}
+              </div>
+              <div>
+                <input ref={editBannerRef} type="file" accept="image/*" className="hidden" onChange={e => { handleImageFile(e.target.files?.[0], setEditBanner, setEditBannerFile); e.target.value = ''; }} />
+                <button type="button" onClick={() => editBannerRef.current?.click()} className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-gray-300 px-3 py-4 text-sm font-bold text-gray-500 transition hover:border-yellow-400 hover:text-amber-700 focus:outline-none focus:ring-2 focus:ring-yellow-300">
+                  <ImagePlus size={16} aria-hidden="true" /> {editBanner ? 'Cambiar banner' : 'Subir banner (opcional)'}
+                </button>
+                {editBanner && <img src={editBanner} alt="Vista previa del banner" className="mt-3 h-24 w-full rounded-xl border border-gray-100 object-cover" />}
               </div>
             </div>
             <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row">
-              <button onClick={() => { setEditingStore(null); setEditImage(undefined); }} className="inline-flex min-h-11 flex-1 items-center justify-center rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700 transition hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-yellow-300">
+              <button onClick={() => { setEditingStore(null); setEditImage(undefined); setEditImageFile(null); setEditBanner(undefined); setEditBannerFile(null); }} className="inline-flex min-h-11 flex-1 items-center justify-center rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700 transition hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-yellow-300">
                 Cancelar
               </button>
               <button
@@ -1546,13 +1618,14 @@ const StoresPage: React.FC = () => {
       {/* Create modal */}
       {showCreate && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-gray-950/45 p-4 backdrop-blur-sm">
-          <div className="max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-2xl border border-white/80 bg-white p-6 shadow-2xl shadow-gray-900/20">
+          <div className="relative max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-2xl border border-white/80 bg-white p-6 shadow-2xl shadow-gray-900/20" role="dialog" aria-modal="true" data-modal-root="true">
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-[#F4B942]" />
             <div className="mb-5 flex items-start justify-between gap-4">
               <div>
                 <p className="text-xs font-bold uppercase tracking-wide text-amber-600">Nuevo punto de venta</p>
                 <h3 className="mt-1 text-xl font-bold text-gray-950">Crear tienda</h3>
               </div>
-              <button type="button" onClick={() => { setShowCreate(false); setCreateImage(undefined); }} className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 transition hover:bg-gray-50 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-yellow-300" aria-label="Cerrar">
+              <button type="button" onClick={() => { setShowCreate(false); setCreateImage(undefined); setCreateImageFile(null); setCreateBanner(undefined); setCreateBannerFile(null); }} className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 transition hover:bg-gray-50 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-yellow-300" aria-label="Cerrar">
                 <X size={16} aria-hidden="true" />
               </button>
             </div>
@@ -1571,18 +1644,25 @@ const StoresPage: React.FC = () => {
               </div>
               <input className="w-full rounded-xl border border-gray-200 px-3 py-3 text-sm outline-none transition focus:border-yellow-400 focus:ring-2 focus:ring-yellow-100" placeholder="Descripción (opcional)" value={createForm.description || ''} onChange={e => setCreateForm(f => ({ ...f, description: e.target.value }))} />
               <div>
-                <input ref={createFileRef} type="file" accept="image/*" className="hidden" onChange={e => { handleImageFile(e.target.files?.[0], setCreateImage); e.target.value = ''; }} />
+                <input ref={createFileRef} type="file" accept="image/*" className="hidden" onChange={e => { handleImageFile(e.target.files?.[0], setCreateImage, setCreateImageFile); e.target.value = ''; }} />
                 <button type="button" onClick={() => createFileRef.current?.click()} className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-gray-300 px-3 py-4 text-sm font-bold text-gray-500 transition hover:border-yellow-400 hover:text-amber-700 focus:outline-none focus:ring-2 focus:ring-yellow-300">
-                  <ImagePlus size={16} aria-hidden="true" /> {createImage ? 'Cambiar imagen' : 'Subir imagen (opcional)'}
+                  <ImagePlus size={16} aria-hidden="true" /> {createImage ? 'Cambiar logo' : 'Subir logo *'}
                 </button>
-                {createImage && <img src={createImage} alt="Vista previa" className="mt-3 h-36 w-full rounded-xl border border-gray-100 object-cover" />}
+                {createImage && <img src={createImage} alt="Vista previa del logo" className="mt-3 h-36 w-full rounded-xl border border-gray-100 object-cover" />}
+              </div>
+              <div>
+                <input ref={createBannerRef} type="file" accept="image/*" className="hidden" onChange={e => { handleImageFile(e.target.files?.[0], setCreateBanner, setCreateBannerFile); e.target.value = ''; }} />
+                <button type="button" onClick={() => createBannerRef.current?.click()} className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-gray-300 px-3 py-4 text-sm font-bold text-gray-500 transition hover:border-yellow-400 hover:text-amber-700 focus:outline-none focus:ring-2 focus:ring-yellow-300">
+                  <ImagePlus size={16} aria-hidden="true" /> {createBanner ? 'Cambiar banner' : 'Subir banner *'}
+                </button>
+                {createBanner && <img src={createBanner} alt="Vista previa del banner" className="mt-3 h-24 w-full rounded-xl border border-gray-100 object-cover" />}
               </div>
             </div>
             <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row">
-              <button onClick={() => { setShowCreate(false); setCreateImage(undefined); }} className="inline-flex min-h-11 flex-1 items-center justify-center rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700 transition hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-yellow-300">
+              <button onClick={() => { setShowCreate(false); setCreateImage(undefined); setCreateImageFile(null); setCreateBanner(undefined); setCreateBannerFile(null); }} className="inline-flex min-h-11 flex-1 items-center justify-center rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700 transition hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-yellow-300">
                 Cancelar
               </button>
-              <button onClick={handleCreateStore} disabled={creating || !createForm.name || !createForm.location} className="inline-flex min-h-11 flex-1 items-center justify-center rounded-xl bg-yellow-400 px-4 py-2 text-sm font-bold text-gray-950 transition hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-300 disabled:cursor-not-allowed disabled:opacity-50">
+              <button onClick={handleCreateStore} disabled={creating || !createForm.name || !createForm.location || !createImageFile || !createBannerFile} className="inline-flex min-h-11 flex-1 items-center justify-center rounded-xl bg-yellow-400 px-4 py-2 text-sm font-bold text-gray-950 transition hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-300 disabled:cursor-not-allowed disabled:opacity-50">
                 {creating ? 'Creando...' : 'Crear tienda'}
               </button>
             </div>

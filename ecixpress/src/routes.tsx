@@ -7,8 +7,7 @@ import StoreDetail from './pages/store/StoreDetail';
 import CartPage from './pages/cart/CartPage';
 import AccountLayout from './pages/user/account/AccountLayout';
 import ResumenSection from './pages/user/account/sections/ResumenSection';
-import InformacionSection from './pages/user/account/sections/InformacionSection';
-import BilleteraSection from './pages/user/account/sections/BilleteraSection';
+import PagosSection from './pages/user/account/sections/PagosSection';
 import SeguridadSection from './pages/user/account/sections/SeguridadSection';
 import PlaceholderSection from './pages/user/account/sections/PlaceholderSection';
 import ProtectedRoute from './components/common/ProtectedRoute';
@@ -16,6 +15,7 @@ import UsersPage from './pages/admin/UsersPage';
 import RolesPage from './pages/admin/RolesPage';
 import StoresPage from './pages/admin/StoresPage';
 import AuditPage from './pages/admin/AuditPage';
+import MonitoringPage from './pages/admin/MonitoringPage';
 import VendorStoresPage from './pages/vendor/VendorStoresPage';
 import VendorOrdersPage from './pages/vendor/VendorOrdersPage';
 import ProductsManagementPage from './pages/vendor/ProductsManagementPage';
@@ -24,6 +24,7 @@ import OrdersPage from './pages/orders/OrdersPage';
 import MessagesPage from './pages/messages/MessagesPage';
 import PickupCodePage from './pages/fulfillment/PickupCodePage';
 import DeliveriesPage from './pages/fulfillment/DeliveriesPage';
+import InfoPage from './pages/info/InfoPage';
 
 const AppRoutes: React.FC = () => {
   const navigate = useNavigate();
@@ -46,9 +47,9 @@ const AppRoutes: React.FC = () => {
       <Route path="/profile" element={<ProtectedRoute><AccountLayout /></ProtectedRoute>}>
         <Route index element={<Navigate to="/profile/resumen" replace />} />
         <Route path="resumen" element={<ResumenSection />} />
-        <Route path="informacion" element={<InformacionSection />} />
-        <Route path="billetera" element={<BilleteraSection />} />
-        <Route path="pagos" element={<Navigate to="/profile/billetera" replace />} />
+        <Route path="informacion" element={<Navigate to="/profile/resumen" replace />} />
+        <Route path="billetera" element={<Navigate to="/profile/pagos" replace />} />
+        <Route path="pagos" element={<PagosSection />} />
         <Route path="pedidos" element={<Navigate to="/orders" replace />} />
         <Route path="notificaciones" element={<Navigate to="/profile/resumen" replace />} />
         <Route path="seguridad" element={<SeguridadSection />} />
@@ -68,12 +69,16 @@ const AppRoutes: React.FC = () => {
       <Route path="/admin/stores" element={<ProtectedRoute requireAdmin><StoresPage /></ProtectedRoute>} />
       <Route path="/admin/stores/:storeId" element={<ProtectedRoute requireAdmin><StoresPage /></ProtectedRoute>} />
       <Route path="/admin/audit" element={<ProtectedRoute requireAdmin><AuditPage /></ProtectedRoute>} />
+      <Route path="/admin/monitoring" element={<ProtectedRoute requireRoles={['ANALYST']}><MonitoringPage /></ProtectedRoute>} />
 
       {/* Vendor */}
       <Route path="/vendor/stores" element={<ProtectedRoute requireVendor><VendorStoresPage /></ProtectedRoute>} />
       <Route path="/vendor/orders" element={<ProtectedRoute requireVendor><VendorOrdersPage onBack={goHome} /></ProtectedRoute>} />
       <Route path="/vendor/stores/:storeId/products" element={<ProtectedRoute requireVendor><ProductsManagementPage /></ProtectedRoute>} />
       <Route path="/vendor/stores/:storeId/promotions" element={<ProtectedRoute requireVendor><PromotionsPage /></ProtectedRoute>} />
+
+      {/* Páginas informativas (pie de página) — públicas */}
+      <Route path="/info/:slug" element={<InfoPage />} />
 
       {/* Catch all */}
       <Route path="*" element={<Navigate to="/" replace />} />

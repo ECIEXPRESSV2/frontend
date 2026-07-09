@@ -30,6 +30,47 @@ html {
   }
 }
 
+/* ── Tokens semánticos de acento ──────────────────────────────────────────────
+   Rampa del color de acento de la app. Por defecto (sección "Comida") replica la rampa
+   ámbar de Tailwind, así el resto de páginas queda idéntico; bajo [data-theme="tienda"]
+   toda la rampa pasa al azul equivalente. El código nuevo del Home consume SIEMPRE estos
+   tokens (via valores arbitrarios, p. ej. bg-[var(--accent-400)]) en vez de utilidades
+   yellow/amber con opacidad, para no depender de la lista de parches de más abajo.
+   --accent-rgb permite sombras/tintes con cualquier alpha: rgb(var(--accent-rgb) / 0.3). */
+:root {
+  --accent-50: #fffbeb;
+  --accent-100: #fef3c7;
+  --accent-200: #fde68a;
+  --accent-300: #fcd34d;
+  --accent-400: #fbbf24;
+  --accent-500: #f59e0b;
+  --accent-600: #d97706;
+  --accent-700: #b45309;
+  --accent-rgb: 251 191 36;
+  --accent-ring: #fcd34d;
+  /* Extremo cálido del gradiente del avatar (hoy orange-300). */
+  --accent-soft-to: #fdba74;
+  /* Tintes translúcidos del gradiente del sidebar (hoy amber-50/86% y amber-100/68%). */
+  --accent-surface-soft: rgba(255, 251, 235, 0.86);
+  --accent-surface: rgba(254, 243, 199, 0.68);
+}
+
+[data-theme="tienda"] {
+  --accent-50: #eff9fc;
+  --accent-100: #d6eff6;
+  --accent-200: #b3e2ee;
+  --accent-300: #86d0e2;
+  --accent-400: #5ec1d9;
+  --accent-500: #3fa7c2;
+  --accent-600: #2f8ba3;
+  --accent-700: #276f83;
+  --accent-rgb: 94 193 217;
+  --accent-ring: #86d0e2;
+  --accent-soft-to: #7cc9de;
+  --accent-surface-soft: rgba(239, 249, 252, 0.86);
+  --accent-surface: rgba(214, 239, 246, 0.68);
+}
+
 @keyframes scrollVertical {
   0% {
     transform: translateY(0%);
@@ -297,6 +338,51 @@ html {
   }
 }
 
+/* ── Tema "Tienda": todo lo amarillo/ámbar del Home pasa a azul ──
+   Tailwind v4 genera las utilidades de color como var(--color-<nombre>-<tono>). Redefiniendo
+   esas variables dentro de este alcance, TODAS las utilidades (incluidas las de opacidad y los
+   degradados from/via/to) que usan amarillo/ámbar se vuelven azules automáticamente, sin tocar
+   cada clase. El atributo data-theme="tienda" vive en el div RAÍZ del Home, así que cubre
+   también al Sidebar y a la cápsula superior (hijos DOM del raíz aunque sean fixed). El resto
+   de páginas nunca pone el atributo y queda intacto. */
+[data-theme="tienda"] {
+  --color-yellow-50: #eff9fc;
+  --color-yellow-100: #d6eff6;
+  --color-yellow-200: #b3e2ee;
+  --color-yellow-300: #86d0e2;
+  --color-yellow-400: #5ec1d9;
+  --color-yellow-500: #3fa7c2;
+  --color-yellow-600: #2f8ba3;
+  --color-yellow-700: #276f83;
+  --color-yellow-800: #1f5866;
+  --color-amber-50: #eff9fc;
+  --color-amber-100: #d6eff6;
+  --color-amber-200: #b3e2ee;
+  --color-amber-300: #86d0e2;
+  --color-amber-400: #5ec1d9;
+  --color-amber-500: #3fa7c2;
+  --color-amber-600: #2f8ba3;
+  --color-amber-700: #276f83;
+  --color-amber-800: #1f5866;
+}
+
+/* El logo del sidebar es un PNG amarillo: bajo el tema Tienda se vira al azul de la rampa
+   girando el matiz (amarillo ~48° → cian ~195°). El blanco del fondo no se ve afectado. */
+[data-theme="tienda"] .sidebar-eci-logo {
+  filter: hue-rotate(150deg) saturate(0.9);
+}
+
+/* Las utilidades con opacidad (p. ej. bg-amber-50/70) Tailwind las precompila a un hex fijo, así
+   que no pasan por la variable: se reemplazan aquí una a una con el azul equivalente. El código
+   nuevo del Home debe usar los tokens --accent-* y NO engrosar esta lista. */
+[data-theme="tienda"] .bg-amber-50\/40 { background-color: #eff9fc66; }
+[data-theme="tienda"] .bg-amber-50\/50 { background-color: #eff9fc80; }
+[data-theme="tienda"] .bg-amber-50\/70 { background-color: #eff9fcb3; }
+[data-theme="tienda"] .bg-yellow-400\/20 { background-color: #5ec1d933; }
+[data-theme="tienda"] .border-yellow-200\/80 { border-color: #b3e2eecc; }
+[data-theme="tienda"] .shadow-yellow-200\/40 { --tw-shadow-color: #b3e2ee66; }
+[data-theme="tienda"] .shadow-yellow-200\/60 { --tw-shadow-color: #b3e2ee99; }
+
 .building-pin {
   pointer-events: none;
 }
@@ -424,7 +510,7 @@ html {
   background: radial-gradient(
     var(--glow-size, 280px) circle at var(--mx, 50%) var(--my, 50%),
     rgba(255, 255, 255, 0.6),
-    rgba(244, 185, 66, 0.18) 40%,
+    rgb(var(--accent-rgb) / 0.18) 40%,
     transparent 62%
   );
   opacity: 0;
@@ -490,4 +576,43 @@ html {
 }
 .scrollbar-auto-hide.is-scrolling::-webkit-scrollbar-thumb:hover {
   background-color: rgba(17, 24, 39, 0.45);
+}
+
+/* ── Carrusel de tiendas: scroll nativo sin barra visible (las flechas son la
+   affordance en desktop; en táctil se desliza con el dedo) ── */
+.scrollbar-hidden {
+  scrollbar-width: none; /* Firefox */
+}
+.scrollbar-hidden::-webkit-scrollbar {
+  display: none;
+}
+
+/* ── Crossfade del tema Comida↔Tienda: las superficies que consumen los tokens
+   --accent-* transicionan suavemente en vez de saltar de color ── */
+.theme-surface {
+  transition:
+    background-color 0.4s ease,
+    border-color 0.4s ease,
+    box-shadow 0.4s ease,
+    color 0.4s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .theme-surface {
+    transition: none;
+  }
+  .scrollbar-hidden {
+    scroll-behavior: auto !important;
+  }
+  .animate-float,
+  .animate-float-delay,
+  .animate-fade-in-up,
+  .animate-fade-in-up-delay-1,
+  .animate-fade-in-up-delay-2,
+  .animate-slide-up,
+  .animate-slide-up-delay-1,
+  .animate-slide-up-delay-2,
+  .animate-slide-up-delay-3 {
+    animation: none !important;
+  }
 }

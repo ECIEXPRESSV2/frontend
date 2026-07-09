@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import React, { useCallback, useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { MapPin, Clock, Tag, Search, Store as StoreIcon, Heart } from 'lucide-react';
 import { toast } from 'react-toastify';
@@ -6,9 +6,8 @@ import Sidebar from '../../components/home/Sidebar';
 import StoreCatalogCart from '../../components/store/StoreCatalogCart';
 import { useAuth } from '../../context/AuthContext';
 import { useFavorites } from '../../hooks/useFavorites';
+import { useRefreshOnScrollTop } from '../../hooks/useRefreshOnScrollTop';
 import { getStoreById, getStoreSchedules, getDayName, type Store, type StoreSchedule } from '../../services/storeService';
-import { getStoreImage } from '../../services/storeImageStore';
-import { getStoreLogoUrl } from '../../services/storeAssets';
 
 const STATUS_LABELS: Record<string, { label: string; dot: string; color: string }> = {
   OPEN: { label: 'Abierto', dot: 'bg-green-500', color: 'text-green-700 bg-green-50 ring-1 ring-green-200' },
@@ -52,34 +51,55 @@ const StoreDetail: React.FC<StoreDetailProps> = ({ storeId: storeIdProp, onBack 
   // La barra de búsqueda se expande hacia los lados al enfocarla.
   const [searchFocused, setSearchFocused] = useState(false);
   // Al bajar, el banner se "recoge" hacia arriba y se oscurece (queda fijo como barra compacta).
+  // Recoger el banner reduce su alto (es sticky); antes eso encogía el alto scrollable de la página
+  // y realimentaba el scroll → o parpadeaba, o directamente no se recogía si había poco contenido.
+  // Se resuelve con:
+  //   1) histéresis (COLLAPSE_AT / EXPAND_AT): zona muerta que evita el titileo cerca del umbral;
+  //   2) el <main> reserva un alto MÍNIMO (min-h abajo) — así recoger el banner NO cambia el alto
+  //      scrollable, y el colapso funciona en cualquier pantalla, incluso con poco contenido.
   const [scrolled, setScrolled] = useState(false);
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 60);
+    const COLLAPSE_AT = 96;
+    const EXPAND_AT = 24;
+    let raf = 0;
+    const update = () => {
+      raf = 0;
+      const y = window.scrollY;
+      setScrolled((prev) => (prev ? y > EXPAND_AT : y > COLLAPSE_AT));
+    };
+    const onScroll = () => { if (!raf) raf = requestAnimationFrame(update); };
     onScroll();
     window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      if (raf) cancelAnimationFrame(raf);
+    };
   }, []);
   const storeId = routeStoreId ?? (storeIdProp !== undefined ? String(storeIdProp) : undefined);
 
-  useEffect(() => {
+  const loadStore = useCallback(async ({ showLoading = false } = {}) => {
     if (!storeId) return;
-    const load = async () => {
-      try {
-        const token = await getToken().catch(() => null);
-        const [storeData, schedulesData] = await Promise.all([
-          getStoreById(storeId, token),
-          getStoreSchedules(storeId, token).catch(() => []),
-        ]);
-        setStore(storeData);
-        setSchedules(schedulesData);
-      } catch {
-        toast.error('No se pudo cargar la tienda');
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
-  }, [storeId]);
+    if (showLoading) setLoading(true);
+    try {
+      const token = await getToken().catch(() => null);
+      const [storeData, schedulesData] = await Promise.all([
+        getStoreById(storeId, token),
+        getStoreSchedules(storeId, token).catch(() => []),
+      ]);
+      setStore(storeData);
+      setSchedules(schedulesData);
+    } catch {
+      toast.error('No se pudo cargar la tienda');
+    } finally {
+      setLoading(false);
+    }
+  }, [getToken, storeId]);
+
+  useEffect(() => {
+    void loadStore({ showLoading: true });
+  }, [loadStore]);
+
+  useRefreshOnScrollTop(loadStore, { disabled: loading || !storeId });
 
   if (loading) {
     return (
@@ -112,8 +132,9 @@ const StoreDetail: React.FC<StoreDetailProps> = ({ storeId: storeIdProp, onBack 
   }
 
   const statusInfo = STATUS_LABELS[store.status] || { label: store.status, dot: 'bg-gray-400', color: 'text-gray-600 bg-gray-50 ring-1 ring-gray-200' };
-  const storeImage = store.imageUrl || getStoreImage(store.id);
-  const logoUrl = getStoreLogoUrl(store.id);
+  const storeImage = store.imageUrl;
+  const bannerUrl = store.bannerUrl ?? null;
+  const logoUrl = store.imageUrl ?? null;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-white to-yellow-100">
@@ -123,7 +144,9 @@ const StoreDetail: React.FC<StoreDetailProps> = ({ storeId: storeIdProp, onBack 
         onItemClick={setActiveSidebarItem}
       />
 
-      <main className="app-shift px-3 pb-28 md:px-6 lg:pb-8">
+      {/* min-h reserva scroll suficiente para que recoger el banner (sticky) no encoja el alto
+          scrollable de la página → el colapso funciona en cualquier pantalla, sin parpadeo. */}
+      <main className="app-shift min-h-[calc(100vh_+_160px)] px-3 pb-28 md:px-6 lg:pb-8">
         <div className="w-full">
           {/* HERO: banner grande y FIJO. Al bajar se "recoge" hacia arriba y se oscurece, quedando
               como una barra compacta oscura. La barra de búsqueda va superpuesta a la altura de la
@@ -133,12 +156,20 @@ const StoreDetail: React.FC<StoreDetailProps> = ({ storeId: storeIdProp, onBack 
               scrolled ? 'h-20 rounded-b-2xl shadow-xl' : 'h-80 rounded-b-[32px] md:h-[22rem]'
             }`}
           >
-            {/* Fondo: imagen del banner de la tienda o degradado de marca (placeholder). */}
+            {/* Fondo: banner remoto de la tienda, o imagen local temporal, o degradado de marca. */}
             <div className="absolute inset-0 bg-[linear-gradient(135deg,#F4B942_0%,#FBBF24_48%,#FDE68A_100%)]" />
             {storeImage && (
               <img
                 src={storeImage}
                 alt={store.name}
+                className="absolute inset-0 h-full w-full object-cover"
+                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+              />
+            )}
+            {bannerUrl && (
+              <img
+                src={bannerUrl}
+                alt={`Banner de ${store.name}`}
                 className="absolute inset-0 h-full w-full object-cover"
                 onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
               />
@@ -155,7 +186,7 @@ const StoreDetail: React.FC<StoreDetailProps> = ({ storeId: storeIdProp, onBack 
             <div className="absolute inset-x-0 top-3 z-10 flex items-center justify-center gap-2 px-3 pr-16 md:pr-20">
               {/* Búsqueda: más angosta por defecto y se expande hacia los lados al enfocarla. */}
               <div className={`relative transition-all duration-300 ease-out ${searchFocused ? 'w-full max-w-2xl' : 'w-full max-w-md'}`}>
-                <Search size={18} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                <Search size={18} className="pointer-events-none absolute left-4 top-1/2 z-10 -translate-y-1/2 text-gray-400" />
                 <input
                   value={productSearch}
                   onChange={(e) => setProductSearch(e.target.value)}
@@ -228,7 +259,7 @@ const StoreDetail: React.FC<StoreDetailProps> = ({ storeId: storeIdProp, onBack 
                   <Clock size={16} />
                 </span>
                 <h2 className="font-bold text-gray-900">Horarios de Atención</h2>
-                <span className="ml-auto text-xs text-gray-400 group-open:rotate-180 transition-transform">▾</span>
+                <span className="ml-auto text-xs text-gray-400 group-open:rotate-180 transition-transform">?</span>
               </summary>
               <div className="px-6 pb-5">
                 {schedules.length === 0 ? (
@@ -288,3 +319,5 @@ const StoreDetail: React.FC<StoreDetailProps> = ({ storeId: storeIdProp, onBack 
 };
 
 export default StoreDetail;
+
+

@@ -6,6 +6,7 @@ import {
   type CreateOrderRequest,
   type OrderStatus,
   type ParticipantRole,
+  type QuoteCartItem,
   type RequestReturnRequest,
   type UpsertCartItemRequest,
 } from '../lib/orders-api';
@@ -27,18 +28,21 @@ export function useOrdersApi() {
     createDraft: async (payload: CreateDraftRequest) => ordersApi.createDraft(payload, await getToken()),
     setCartItem: async (orderId: string, payload: UpsertCartItemRequest) =>
       ordersApi.setCartItem(orderId, payload, await getToken()),
+    quoteCart: async (orderId: string, items: QuoteCartItem[]) =>
+      ordersApi.quoteCart(orderId, items, await getToken()),
     checkout: async (orderId: string) => ordersApi.checkout(orderId, await getToken()),
     requestReturn: async (orderId: string, payload: RequestReturnRequest) =>
       ordersApi.requestReturn(orderId, payload, await getToken()),
     cancelOrder: async (id: string, payload: { actorType?: string; reason?: string }) =>
       ordersApi.cancelOrder(id, payload, await getToken()),
+    deleteOrder: async (id: string) => ordersApi.deleteOrder(id, await getToken()),
     updateOrderStatus: async (
       id: string,
       payload: { status: OrderStatus; actorType: string; actorId?: string; reason?: string },
     ) => ordersApi.updateOrderStatus(id, payload, await getToken()),
     rateOrder: async (id: string, payload: { score: number; comment?: string }) =>
       ordersApi.rateOrder(id, payload, await getToken()),
-    getConversations: async (params?: { orderId?: string; customerId?: string; vendorId?: string; storeId?: string }) =>
+    getConversations: async (params?: { orderId?: string; storeId?: string }) =>
       ordersApi.getConversations(await getToken(), params),
     getConversationById: async (id: string) => ordersApi.getConversationById(id, await getToken()),
     markConversationRead: async (id: string) => ordersApi.markConversationRead(id, await getToken()),

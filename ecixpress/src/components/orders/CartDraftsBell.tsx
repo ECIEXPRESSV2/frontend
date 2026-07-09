@@ -153,9 +153,11 @@ const CartDraftsBell: React.FC<CartDraftsBellProps> = ({ onOpenChange, onHasDraf
         title="Carritos pendientes"
         className={`relative inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/70 bg-white/55 text-gray-500 backdrop-blur-sm transition hover:border-yellow-200/80 hover:bg-yellow-50/70 hover:text-amber-700 focus:outline-none focus:ring-2 focus:ring-yellow-300${open ? ' border-yellow-200/80 bg-yellow-50/70 text-amber-700' : ''}`}
       >
-        <ShoppingCart size={21} strokeWidth={2.2} />
-        <span className="absolute -right-1.5 -top-1.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
-          {drafts.length > 9 ? '9+' : drafts.length}
+        <span className="relative flex-shrink-0">
+          <ShoppingCart size={20} strokeWidth={2.2} />
+          <span className="absolute -top-1.5 -right-1.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white">
+            {drafts.length > 9 ? '9+' : drafts.length}
+          </span>
         </span>
       </button>
 

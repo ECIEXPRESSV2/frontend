@@ -5,6 +5,7 @@ import { ArrowLeft, RefreshCw, MessageCircle, Store as StoreIcon, User, ChevronR
 import Sidebar from '../../components/home/Sidebar';
 import { useAuth } from '../../context/AuthContext';
 import { useOrdersApi } from '../../hooks/useOrdersApi';
+import { useRefreshOnScrollTop } from '../../hooks/useRefreshOnScrollTop';
 import { getMyStores } from '../../services/storeService';
 import { ORDERS_API_BASE_URL, type OrderResponse, type OrderStatus } from '../../lib/orders-api';
 import { formatCOP, formatDateTime } from '../../lib/format';
@@ -78,6 +79,8 @@ const VendorOrdersPage: React.FC<VendorOrdersPageProps> = ({ onBack }) => {
     if (userProfile?.id) void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userProfile?.id]);
+
+  useRefreshOnScrollTop(load, { disabled: loading || !userProfile?.id });
 
   // Tiempo real: el socket se une solo a la sala personal `user:<id>` del vendedor;
   // orders-service empuja `order:new` al crearse un pedido y `order:status-updated`
