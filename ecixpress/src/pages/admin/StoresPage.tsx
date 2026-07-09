@@ -14,7 +14,6 @@ import {
   MapPin,
   Pencil,
   Plus,
-  RefreshCw,
   Search,
   Store as StoreIcon,
   Tag,
@@ -22,6 +21,7 @@ import {
   X,
 } from 'lucide-react';
 import Sidebar from '../../components/home/Sidebar';
+import AdminHeroBanner from '../../components/admin/AdminHeroBanner';
 import { CardSkeleton, TableSkeleton } from '../../components/common/LoadingSkeleton';
 // Carga diferida: incluye maplibre-gl, solo se descarga al abrir el selector de mapa.
 const LocationPickerModal = lazy(() => import('../../components/admin/LocationPickerModal'));
@@ -1105,7 +1105,13 @@ const StoresPage: React.FC = () => {
         <div className="relative mx-auto max-w-6xl space-y-6">
           {!isStoreProfileRoute && (
             <>
-              <header className="relative overflow-hidden rounded-[28px] border border-yellow-200/70 bg-[linear-gradient(135deg,#F4B942_0%,#FBBF24_48%,#FDE68A_100%)] p-5 shadow-lg shadow-yellow-200/60 md:p-6">
+              <AdminHeroBanner
+                section="Tiendas"
+                title="Gestion de"
+                accent="tiendas"
+                sidebarExpanded={sidebarExpanded}
+              />
+              <header className="hidden relative overflow-hidden rounded-[28px] border border-yellow-200/70 bg-[linear-gradient(135deg,#F4B942_0%,#FBBF24_48%,#FDE68A_100%)] p-5 shadow-lg shadow-yellow-200/60 md:p-6">
                 <div className="relative flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
                   <div className="max-w-3xl">
                     <nav className="mb-3 inline-flex items-center rounded-xl border border-white/70 bg-white/80 px-3 py-1.5 text-sm font-semibold text-gray-700 shadow-sm backdrop-blur" aria-label="Ruta de navegación">
@@ -1120,29 +1126,34 @@ const StoresPage: React.FC = () => {
               </header>
 
               <section className="sticky top-20 z-30 rounded-2xl border border-white/70 bg-white/90 p-4 shadow-lg shadow-gray-200/60 backdrop-blur-xl md:p-5">
-                <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto_auto_auto] lg:items-center">
-                  <label className="relative block">
-                    <span className="sr-only">Buscar por nombre o ubicación</span>
-                    <input
-                      className="min-h-12 w-full rounded-2xl border border-gray-100 bg-gray-50 py-3 pl-5 pr-24 text-base font-medium text-gray-900 outline-none transition placeholder:text-gray-400 hover:border-yellow-200 focus:border-yellow-400 focus:bg-white focus:ring-4 focus:ring-yellow-100"
-                      placeholder="Buscar por nombre o ubicación"
-                      value={search}
-                      onChange={event => setSearch(event.target.value)}
-                    />
-                    {search && (
-                      <button
-                        type="button"
-                        onClick={() => setSearch('')}
-                        className="absolute right-12 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 focus:outline-none"
-                        aria-label="Limpiar búsqueda"
-                      >
-                        <X size={14} aria-hidden="true" />
-                      </button>
-                    )}
-                    <span className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex h-8 w-8 items-center justify-center rounded-xl bg-yellow-400 text-white" aria-hidden="true">
-                      <Search size={16} />
-                    </span>
-                  </label>
+                <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
+                  <div>
+                    <label className="relative block">
+                      <span className="sr-only">Buscar por nombre o ubicación</span>
+                      <input
+                        className="min-h-12 w-full rounded-2xl border border-gray-100 bg-gray-50 py-3 pl-5 pr-24 text-base font-medium text-gray-900 outline-none transition placeholder:text-gray-400 hover:border-yellow-200 focus:border-yellow-400 focus:bg-white focus:ring-4 focus:ring-yellow-100"
+                        placeholder="Buscar por nombre o ubicación"
+                        value={search}
+                        onChange={event => setSearch(event.target.value)}
+                      />
+                      {search && (
+                        <button
+                          type="button"
+                          onClick={() => setSearch('')}
+                          className="absolute right-12 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 focus:outline-none"
+                          aria-label="Limpiar búsqueda"
+                        >
+                          <X size={14} aria-hidden="true" />
+                        </button>
+                      )}
+                      <span className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex h-8 w-8 items-center justify-center rounded-xl bg-yellow-400 text-white" aria-hidden="true">
+                        <Search size={16} />
+                      </span>
+                    </label>
+                    <p className="mt-2 pl-1 text-sm font-semibold text-gray-500">
+                      {visibleStores.length} resultado{visibleStores.length === 1 ? '' : 's'}
+                    </p>
+                  </div>
                   <button
                     type="button"
                     onClick={() => { setCreateImage(undefined); setCreateImageFile(null); setCreateBanner(undefined); setCreateBannerFile(null); setShowCreate(true); }}
@@ -1151,20 +1162,6 @@ const StoresPage: React.FC = () => {
                     <Plus size={16} aria-hidden="true" />
                     Nueva tienda
                   </button>
-                  <button
-                    type="button"
-                    onClick={handleRefresh}
-                    disabled={refreshing}
-                    title={refreshing ? 'Actualizando...' : 'Actualizar datos'}
-                    aria-label="Actualizar datos"
-                    className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-amber-200 bg-amber-50/80 px-4 py-3 text-sm font-bold text-amber-800 shadow-sm transition hover:border-amber-300 hover:bg-amber-100 focus:outline-none focus:ring-2 focus:ring-yellow-300 disabled:cursor-wait disabled:opacity-60"
-                  >
-                    <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} aria-hidden="true" />
-                    Actualizar
-                  </button>
-                  <span className="text-sm font-semibold text-gray-500">
-                    {visibleStores.length} resultado{visibleStores.length === 1 ? '' : 's'}
-                  </span>
                 </div>
               </section>
             </>

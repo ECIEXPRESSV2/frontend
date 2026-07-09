@@ -12,7 +12,6 @@ import SeguridadSection from './pages/user/account/sections/SeguridadSection';
 import PlaceholderSection from './pages/user/account/sections/PlaceholderSection';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import UsersPage from './pages/admin/UsersPage';
-import RolesPage from './pages/admin/RolesPage';
 import StoresPage from './pages/admin/StoresPage';
 import AuditPage from './pages/admin/AuditPage';
 import MonitoringPage from './pages/admin/MonitoringPage';
@@ -65,7 +64,7 @@ const AppRoutes: React.FC = () => {
 
       {/* Admin */}
       <Route path="/admin/users" element={<ProtectedRoute requireAdmin><UsersPage /></ProtectedRoute>} />
-      <Route path="/admin/roles" element={<ProtectedRoute requireAdmin><RolesPage /></ProtectedRoute>} />
+      <Route path="/admin/roles" element={<ProtectedRoute requireAdmin><Navigate to="/admin/users" replace /></ProtectedRoute>} />
       <Route path="/admin/stores" element={<ProtectedRoute requireAdmin><StoresPage /></ProtectedRoute>} />
       <Route path="/admin/stores/:storeId" element={<ProtectedRoute requireAdmin><StoresPage /></ProtectedRoute>} />
       <Route path="/admin/audit" element={<ProtectedRoute requireAdmin><AuditPage /></ProtectedRoute>} />

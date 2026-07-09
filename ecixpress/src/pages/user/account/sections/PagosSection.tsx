@@ -113,7 +113,7 @@ const PagosSection: React.FC = () => {
         <button
           type="button"
           onClick={openMethodPicker}
-          className="inline-flex items-center gap-2 rounded-xl border border-white/70 bg-white/20 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/30 focus:outline-none focus:ring-2 focus:ring-white"
+          className="inline-flex items-center gap-2 rounded-xl border border-white/70 bg-white/55 px-4 py-2.5 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-white/75 hover:text-amber-700 focus:outline-none focus:ring-2 focus:ring-white"
         >
           <CreditCard size={15} aria-hidden="true" /> Metodo predeterminado
         </button>

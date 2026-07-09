@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useOutletContext } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
   Calendar,
@@ -18,6 +18,7 @@ import {
 import { useAuth } from '../../../../context/AuthContext';
 import { useWallet } from '../../../../context/WalletContext';
 import WalletPremiumCard from '../../../../components/wallet/WalletPremiumCard';
+import TrianglePattern from '../../../../components/home/TrianglePattern';
 import { updateMe, uploadAvatar } from '../../../../services/userService';
 import { compressImageToWebp } from '../../../../services/storeAssets';
 
@@ -43,6 +44,7 @@ const InfoRow: React.FC<{ icon: React.ElementType; label: string; children: Reac
 
 const ResumenSection: React.FC = () => {
   const navigate = useNavigate();
+  const { sidebarExpanded = false } = useOutletContext<{ sidebarExpanded?: boolean }>() ?? {};
   const { userProfile, getToken, refreshProfile } = useAuth();
   const { balanceLabel, loading: walletLoading, openRecharge } = useWallet();
   const [editing, setEditing] = useState(false);
@@ -124,18 +126,23 @@ const ResumenSection: React.FC = () => {
 
   return (
     <>
-      <header className="relative overflow-visible rounded-[28px] border border-yellow-200/70 bg-[linear-gradient(135deg,#F4B942_0%,#FBBF24_48%,#FDE68A_100%)] p-5 shadow-lg shadow-yellow-200/60 md:p-6">
-        <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[28px]">
-          <div className="absolute -left-20 -top-24 h-64 w-64 rounded-full bg-white/22 blur-3xl" />
-          <div className="absolute right-[-90px] top-[-110px] h-72 w-72 rounded-full bg-[#FB923C]/22 blur-3xl" />
+      <header
+        className={`admin-hero-banner theme-surface relative overflow-visible rounded-[32px] border border-white/60 bg-[linear-gradient(140deg,rgb(var(--accent-rgb)/0.32)_0%,rgba(255,255,255,0.62)_42%,rgb(var(--accent-rgb)/0.14)_72%,rgb(var(--accent-rgb)/0.36)_100%)] p-5 backdrop-blur-2xl [box-shadow:0_28px_50px_-28px_rgb(var(--accent-rgb)/0.45)] md:p-6 ${
+          sidebarExpanded ? 'admin-hero-expanded' : ''
+        }`}
+      >
+        <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[32px]">
+          <div aria-hidden="true" className="theme-surface absolute -right-16 -top-24 h-72 w-72 rounded-full bg-[rgb(var(--accent-rgb)/0.32)] blur-3xl" />
+          <div aria-hidden="true" className="theme-surface absolute -bottom-28 left-1/4 h-64 w-64 rounded-full bg-[rgb(var(--accent-rgb)/0.20)] blur-3xl" />
+          <TrianglePattern className={`admin-hero-triangles ${sidebarExpanded ? 'admin-hero-triangles-expanded' : ''}`} />
         </div>
-        <div className="relative flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+        <div className="relative z-10 flex min-h-[112px] flex-col justify-center gap-5 lg:flex-row lg:items-start lg:justify-between">
           <div className="flex items-center gap-4">
             <div className="relative flex-shrink-0">
               <button
                 type="button"
                 onClick={() => setAvatarMenuOpen((open) => !open)}
-                className="group relative flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border-4 border-white/80 bg-white/30 text-white shadow-lg transition hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-white"
+                className="group relative flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border-4 border-white/80 bg-white/45 text-[var(--accent-600)] shadow-lg transition hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-white"
                 aria-label="Opciones de perfil"
                 aria-haspopup="menu"
                 aria-expanded={avatarMenuOpen}
@@ -205,8 +212,8 @@ const ResumenSection: React.FC = () => {
                 Mi cuenta <span className="mx-2 text-gray-400">/</span>
                 <span className="text-gray-950">Perfil</span>
               </nav>
-              <h1 className="text-2xl font-bold text-white md:text-3xl">{userProfile?.fullName || '-'}</h1>
-              <p className="text-sm text-white/85">{userProfile?.email}</p>
+              <h1 className="font-display text-2xl font-semibold text-gray-900 md:text-3xl">{userProfile?.fullName || '-'}</h1>
+              <p className="text-sm font-medium text-gray-600">{userProfile?.email}</p>
               <div className="mt-2 flex flex-wrap items-center gap-1.5">
                 {userProfile?.phone && (
                   <span className="inline-flex items-center gap-1 rounded-full bg-white/85 px-2.5 py-0.5 text-xs font-semibold text-amber-800">
@@ -224,7 +231,7 @@ const ResumenSection: React.FC = () => {
                     <CheckCircle size={12} aria-hidden="true" /> Cuenta activa
                   </span>
                 )}
-                <span className="text-xs text-white/75">Miembro desde {memberSince}</span>
+                <span className="text-xs font-medium text-gray-500">Miembro desde {memberSince}</span>
               </div>
             </div>
           </div>
