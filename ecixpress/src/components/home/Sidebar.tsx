@@ -154,7 +154,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         <>
         {/* Cápsula flotante estilo liquid glass — anclada a la derecha */}
         <div
-          className={`fixed top-3 right-4 z-[70] flex h-14 w-auto items-center justify-end overflow-hidden border border-white/55 bg-white/65 backdrop-blur-2xl transition-all duration-300 ease-in-out [box-shadow:0_8px_32px_rgba(0,0,0,0.07),0_1px_0_rgba(255,255,255,0.85)_inset,0_-1px_0_rgba(0,0,0,0.04)_inset] md:right-5 ${
+          className={`fixed top-3 right-4 z-[70] flex h-14 w-auto items-center justify-end overflow-hidden border border-white/55 bg-white/65 backdrop-blur-2xl transition-all duration-300 ease-in-out [box-shadow:0_8px_32px_rgba(0,0,0,0.07),0_1px_0_rgba(255,255,255,0.85)_inset,0_-1px_0_rgba(0,0,0,0.04)_inset] [transform:translateZ(0)] [-webkit-transform:translateZ(0)] [backface-visibility:hidden] will-change-transform md:right-5 ${
             isTopbarOpen ? 'max-w-[340px] gap-2 rounded-full px-2.5' : 'max-w-[3.5rem] rounded-full px-2'
           }`}
           role="banner"
@@ -260,7 +260,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       )}
 
       <aside
-      className={`fixed left-0 top-0 z-[60] hidden h-screen bg-[linear-gradient(180deg,rgba(255,255,255,0.90)_0%,var(--accent-surface-soft)_36%,var(--accent-surface)_64%,rgba(255,255,255,0.90)_100%)] backdrop-blur-2xl border-r border-white/60 [box-shadow:0_20px_25px_-5px_rgb(var(--accent-rgb)/0.18),0_8px_10px_-6px_rgb(var(--accent-rgb)/0.18)] md:flex flex-col py-6 transition-all duration-300 ease-in-out overflow-hidden
+      className={`fixed left-0 top-0 z-[60] hidden h-screen bg-[linear-gradient(180deg,rgba(255,255,255,0.90)_0%,var(--accent-surface-soft)_36%,var(--accent-surface)_64%,rgba(255,255,255,0.90)_100%)] backdrop-blur-2xl border-r border-white/60 [box-shadow:0_20px_25px_-5px_rgb(var(--accent-rgb)/0.18),0_8px_10px_-6px_rgb(var(--accent-rgb)/0.18)] [transform:translateZ(0)] [-webkit-transform:translateZ(0)] [backface-visibility:hidden] will-change-transform md:flex flex-col py-6 transition-all duration-300 ease-in-out overflow-hidden
         ${isExpanded ? 'w-64 max-md:w-16' : 'w-16'}`}
       onMouseEnter={() => {
         if (!lockExpanded && !notifOpen) setIsExpanded(true);
@@ -457,7 +457,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           acción central elevada, y las secciones de vendedor/admin/monitoreo (si aplican)
           se agrupan en la pestaña "Más". ── */}
       <nav
-        className="fixed inset-x-0 bottom-0 z-[60] flex items-stretch justify-around border-t border-white/60 bg-[linear-gradient(180deg,rgba(255,255,255,0.92)_0%,var(--accent-surface-soft)_100%)] backdrop-blur-2xl [box-shadow:0_-8px_24px_rgba(0,0,0,0.08)] pb-[env(safe-area-inset-bottom)] md:hidden"
+        className="fixed inset-x-0 bottom-0 z-[60] flex items-stretch justify-around border-t border-white/60 bg-[linear-gradient(180deg,rgba(255,255,255,0.92)_0%,var(--accent-surface-soft)_100%)] backdrop-blur-2xl [box-shadow:0_-8px_24px_rgba(0,0,0,0.08)] [transform:translateZ(0)] [-webkit-transform:translateZ(0)] [backface-visibility:hidden] will-change-transform pb-[env(safe-area-inset-bottom)] md:hidden"
         aria-label="Navegación principal"
       >
         <button
