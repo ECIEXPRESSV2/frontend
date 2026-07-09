@@ -2,13 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
-  Calendar,
   CheckCircle,
   CreditCard,
   Edit,
   ImagePlus,
   Lock,
-  Mail,
   Phone,
   Save,
   User,
@@ -22,23 +20,13 @@ import TrianglePattern from '../../../../components/home/TrianglePattern';
 import { updateMe, uploadAvatar } from '../../../../services/userService';
 import { compressImageToWebp } from '../../../../services/storeAssets';
 
-const roleLabel = (role: string) => (
-  { ADMIN: 'Administrador', VENDOR: 'Vendedor', BUYER: 'Comprador', ANALYST: 'Analista' } as Record<string, string>
-)[role] ?? role;
-
-const InfoRow: React.FC<{ icon: React.ElementType; label: string; children: React.ReactNode }> = ({
-  icon: Icon,
+const ProfileField: React.FC<{ label: string; children: React.ReactNode; wide?: boolean }> = ({
   label,
   children,
 }) => (
-  <div className="flex items-start gap-3 border-b border-gray-100 py-4 last:border-0">
-    <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
-      <Icon size={16} aria-hidden="true" />
-    </span>
-    <div className="min-w-0 flex-1">
-      <p className="text-xs text-gray-400">{label}</p>
-      <div className="mt-0.5 text-sm font-medium text-gray-900">{children}</div>
-    </div>
+  <div className="min-w-0 py-3">
+    <p className="text-sm font-medium text-gray-400">{label}</p>
+    <div className="mt-1 text-base font-semibold text-gray-900">{children}</div>
   </div>
 );
 
@@ -46,7 +34,7 @@ const ResumenSection: React.FC = () => {
   const navigate = useNavigate();
   const { sidebarExpanded = false } = useOutletContext<{ sidebarExpanded?: boolean }>() ?? {};
   const { userProfile, getToken, refreshProfile } = useAuth();
-  const { balanceLabel, loading: walletLoading, openRecharge } = useWallet();
+  const { openRecharge } = useWallet();
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
@@ -116,12 +104,6 @@ const ResumenSection: React.FC = () => {
     }
   };
 
-  const memberSince = userProfile?.createdAt
-    ? new Date(userProfile.createdAt).toLocaleDateString('es-CO', { year: 'numeric', month: 'long' })
-    : '-';
-  const memberSinceFull = userProfile?.createdAt
-    ? new Date(userProfile.createdAt).toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' })
-    : '-';
   const activeAccount = userProfile?.status === 'ACTIVE';
 
   return (
@@ -214,24 +196,18 @@ const ResumenSection: React.FC = () => {
               </nav>
               <h1 className="font-display text-2xl font-semibold text-gray-900 md:text-3xl">{userProfile?.fullName || '-'}</h1>
               <p className="text-sm font-medium text-gray-600">{userProfile?.email}</p>
-              <div className="mt-2 flex flex-wrap items-center gap-1.5">
+              <div className="mt-3 flex flex-wrap items-center gap-1.5">
                 {userProfile?.phone && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-white/85 px-2.5 py-0.5 text-xs font-semibold text-amber-800">
+                  <span className="inline-flex items-center gap-1 rounded-full border border-white/70 bg-white/75 px-2.5 py-1 text-xs font-semibold text-gray-600 shadow-sm">
                     <Phone size={11} aria-hidden="true" />
                     {userProfile.phone}
                   </span>
                 )}
-                {(userProfile?.roles ?? []).map((role) => (
-                  <span key={role} className="rounded-full bg-white/85 px-2.5 py-0.5 text-xs font-semibold text-amber-800">
-                    {roleLabel(role)}
-                  </span>
-                ))}
                 {activeAccount && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">
+                  <span className="inline-flex items-center gap-1 rounded-full border border-emerald-100 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
                     <CheckCircle size={12} aria-hidden="true" /> Cuenta activa
                   </span>
                 )}
-                <span className="text-xs font-medium text-gray-500">Miembro desde {memberSince}</span>
               </div>
             </div>
           </div>
@@ -239,11 +215,10 @@ const ResumenSection: React.FC = () => {
       </header>
 
       <section className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(340px,420px)]">
-        <div className="rounded-3xl border border-white/70 bg-white/82 p-5 shadow-lg shadow-gray-200/60 backdrop-blur-xl md:p-6">
-          <div className="mb-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="rounded-3xl border border-white/70 bg-white/90 p-5 shadow-lg shadow-gray-200/60 backdrop-blur-xl md:p-6">
+          <div className="mb-4 flex items-center justify-between gap-3 border-b border-gray-100 pb-4">
             <div>
               <h2 className="text-lg font-bold text-gray-900">Informacion personal</h2>
-              <p className="mt-1 text-xs text-gray-500">Datos principales de tu cuenta ECIxpress.</p>
             </div>
             {editing ? (
               <div className="flex flex-wrap gap-2">
@@ -263,74 +238,89 @@ const ResumenSection: React.FC = () => {
                   <X size={15} aria-hidden="true" /> Cancelar
                 </button>
               </div>
-            ) : null}
+            ) : (
+              <button
+                type="button"
+                onClick={() => setEditing(true)}
+                className="inline-flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl text-gray-400 transition hover:bg-yellow-50 hover:text-amber-700 focus:outline-none focus:ring-2 focus:ring-yellow-300"
+                aria-label="Editar informacion personal"
+                title="Editar informacion personal"
+              >
+                <Edit size={18} aria-hidden="true" />
+              </button>
+            )}
           </div>
 
-          <InfoRow icon={User} label="Nombre completo">
-            {editing ? (
-              <input
-                aria-label="Nombre completo"
-                value={form.fullName}
-                onChange={(event) => setForm((current) => ({ ...current, fullName: event.target.value }))}
-                className="w-full max-w-sm rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm focus:border-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-300"
-              />
-            ) : (
-              userProfile?.fullName || '-'
-            )}
-          </InfoRow>
-          <InfoRow icon={Mail} label="Correo electronico">
-            <span className="flex flex-wrap items-center gap-2">
-              {userProfile?.email}
-              <span
-                className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-gray-100 text-gray-500"
-                title="Correo no editable"
-                aria-label="Correo no editable"
-              >
-                <Lock size={12} aria-hidden="true" />
+          <div className="grid gap-x-12 gap-y-1 sm:grid-cols-2">
+            <ProfileField label="Nombre completo">
+              {editing ? (
+                <input
+                  aria-label="Nombre completo"
+                  value={form.fullName}
+                  onChange={(event) => setForm((current) => ({ ...current, fullName: event.target.value }))}
+                  className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm focus:border-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-300"
+                />
+              ) : (
+                userProfile?.fullName || '-'
+              )}
+            </ProfileField>
+
+            <ProfileField label="Telefono">
+              {editing ? (
+                <input
+                  aria-label="Telefono"
+                  value={form.phone}
+                  placeholder="+57 300 000 0000"
+                  onChange={(event) => setForm((current) => ({ ...current, phone: event.target.value }))}
+                  className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm focus:border-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-300"
+                />
+              ) : (
+                userProfile?.phone || '-'
+              )}
+            </ProfileField>
+
+            <ProfileField label="Correo electronico">
+              <span className="flex min-w-0 flex-wrap items-center gap-2">
+                <span className="truncate">{userProfile?.email || '-'}</span>
+                <span
+                  className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-gray-100 text-gray-500"
+                  title="Correo no editable"
+                  aria-label="Correo no editable"
+                >
+                  <Lock size={12} aria-hidden="true" />
+                </span>
               </span>
-            </span>
-          </InfoRow>
-          <InfoRow icon={Phone} label="Telefono">
-            {editing ? (
-              <input
-                aria-label="Telefono"
-                value={form.phone}
-                placeholder="+57 300 000 0000"
-                onChange={(event) => setForm((current) => ({ ...current, phone: event.target.value }))}
-                className="w-full max-w-sm rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm focus:border-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-300"
-              />
-            ) : (
-              <span className="inline-flex items-center gap-2 rounded-full bg-amber-50 px-3 py-1 text-sm font-semibold text-amber-800">
-                <Phone size={14} aria-hidden="true" />
-                {userProfile?.phone || '-'}
-              </span>
-            )}
-          </InfoRow>
-          <InfoRow icon={Calendar} label="Miembro desde">{memberSinceFull}</InfoRow>
+            </ProfileField>
+
+            <ProfileField label="Estado de cuenta">
+              {activeAccount ? 'Activa' : userProfile?.status || '-'}
+            </ProfileField>
+          </div>
         </div>
 
         <div className="grid content-start gap-4 lg:grid-cols-[minmax(300px,420px)_1fr] xl:grid-cols-1">
           <WalletPremiumCard className="mx-auto lg:mx-0" />
-          <div className="flex min-h-[178px] flex-col justify-center gap-4 rounded-3xl border border-white/70 bg-white/82 p-5 shadow-lg shadow-gray-200/60 backdrop-blur-xl">
+          <div className="flex min-h-[178px] flex-col justify-center gap-5 rounded-3xl border border-white/70 bg-white/90 p-5 shadow-lg shadow-gray-200/60 backdrop-blur-xl">
             <div>
               <p className="text-sm font-bold text-gray-900">Billetera ECIxpress</p>
-              <p className="mt-1 text-xs text-gray-500">Saldo y pagos disponibles para tus compras en campus.</p>
-              <p className="mt-3 text-2xl font-black leading-none text-gray-950">{walletLoading ? 'Cargando...' : balanceLabel}</p>
+              <p className="mt-1 text-sm leading-6 text-gray-500">Administra tus recargas y revisa el historial de pagos cuando lo necesites.</p>
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="grid gap-3 sm:grid-cols-[7fr_3fr]">
               <button
                 type="button"
                 onClick={openRecharge}
-                className="inline-flex items-center gap-2 rounded-xl bg-yellow-400 px-4 py-2.5 text-sm font-semibold text-gray-950 transition hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-300"
+                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-[linear-gradient(135deg,var(--accent-300),var(--accent-400))] px-5 py-3 text-sm font-bold text-white shadow-sm shadow-yellow-500/20 transition hover:brightness-105 focus:outline-none focus:ring-2 focus:ring-yellow-300"
               >
                 <WalletIcon size={15} aria-hidden="true" /> Recargar
               </button>
               <button
                 type="button"
                 onClick={() => navigate('/profile/pagos')}
-                className="inline-flex items-center gap-2 rounded-xl border border-amber-200 bg-white px-4 py-2.5 text-sm font-semibold text-amber-700 transition hover:bg-yellow-50 focus:outline-none focus:ring-2 focus:ring-yellow-300"
+                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-amber-200/80 bg-white/80 px-4 py-3 text-sm font-bold text-amber-700 shadow-sm transition hover:bg-yellow-50 focus:outline-none focus:ring-2 focus:ring-yellow-300"
               >
-                <CreditCard size={15} aria-hidden="true" /> Gestionar pagos
+                <CreditCard size={15} aria-hidden="true" />
+                <span className="hidden lg:inline xl:hidden 2xl:inline">Pagos</span>
+                <span className="lg:hidden xl:inline 2xl:hidden">Pagos</span>
               </button>
             </div>
           </div>
