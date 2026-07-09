@@ -54,7 +54,7 @@ const DAILY_CHECKLIST = [
 ];
 
 const CAMPUS_IMAGE = {
-  src: '/campus-people.jpg',
+  src: '/campus-people.webp',
   alt: 'Estudiantes de la Escuela Colombiana de Ingeniería compartiendo en el campus',
 };
 

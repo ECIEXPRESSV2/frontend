@@ -9,12 +9,12 @@ const IMAGES = [
   "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400&q=80",
   // Stationery images from Unsplash
   ...STATIONERY_IMAGES,
-  // Real university images from public folder
-  "/campus-building.jpg",
-  "/campus-cafeteria.jpg",
-  "/campus-students-group.jpg",
-  "/campus-sign-night.jpg",
-  "/campus-community-oswaldo.jpg",
+  // Real university images from public folder (optimized WebP copies)
+  "/campus-building.webp",
+  "/campus-cafeteria.webp",
+  "/campus-students-group.webp",
+  "/campus-sign-night.webp",
+  "/campus-community-oswaldo.webp",
 ];
 
 const splitIntoRows = (items: string[], rows: number): string[][] =>

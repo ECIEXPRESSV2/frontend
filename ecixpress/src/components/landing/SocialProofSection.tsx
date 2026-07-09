@@ -13,21 +13,21 @@ const SocialProofSection: React.FC = () => {
         'Uso ECIXPRESS casi todos los días para pedir en el descanso entre clases. Ya no llego tarde a la siguiente por hacer fila en la cafetería.',
       name: 'Elizabeth Rodríguez',
       designation: 'Estudiante de Ingeniería de Sistemas · Escuela Colombiana de Ingeniería Julio Garavito',
-      src: '/testimonial-elizabeth.png',
+      src: '/testimonial-elizabeth.webp',
     },
     {
       quote:
         'Lo que más me sirve es poder pedir desde el salón y que me avise cuando ya está listo, así no me quedo esperando en el mostrador.',
       name: 'Marlio Jose Charry',
       designation: 'Estudiante de Ingeniería de Sistemas · Escuela Colombiana de Ingeniería Julio Garavito',
-      src: '/testimonial-marlio.png',
+      src: '/testimonial-marlio.webp',
     },
     {
       quote:
         'Antes coordinaba con mis compañeros quién hacía la fila. Ahora cada uno pide desde su celular y nos encontramos ya con la comida lista.',
       name: 'Sebastián Ortega',
       designation: 'Estudiante de Ingeniería de Sistemas · Escuela Colombiana de Ingeniería Julio Garavito',
-      src: '/testimonial-sebastian.png',
+      src: '/testimonial-sebastian.webp',
     },
   ];
 
