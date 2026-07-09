@@ -71,7 +71,7 @@ const CreditCard: React.FC<CreditCardProps> = ({
       <div
         className="absolute rounded-[26px]"
         style={{
-          width,
+          width: `clamp(220px, 88vw, ${width}px)`,
           aspectRatio: '1.586/1',
           background: 'linear-gradient(135deg, #b45309, #92400e)',
           transform: `perspective(1000px) rotateX(${tilt.x * 0.6}deg) rotateY(${tilt.y * 0.6}deg) translateY(10px) scale(0.96)`,
@@ -86,7 +86,7 @@ const CreditCard: React.FC<CreditCardProps> = ({
         ref={cardRef}
         className="relative cursor-pointer"
         style={{
-          width,
+          width: `clamp(220px, 88vw, ${width}px)`,
           transform: `perspective(1000px) rotateX(${tilt.x}deg) rotateY(${tilt.y}deg) translateZ(0)`,
           transition: isHovered ? `transform 0.1s linear` : `transform 0.6s ${SPRING}`,
           transformStyle: 'preserve-3d',
@@ -109,7 +109,8 @@ const CreditCard: React.FC<CreditCardProps> = ({
               0 20px 60px rgba(245,158,11,0.4),
               0 8px 24px rgba(0,0,0,0.3)
             `,
-            padding: '36px 48px 36px',
+            padding: '6.667cqw 8.889cqw 6.667cqw',
+            containerType: 'inline-size',
           }}
         >
           {/* Noise texture */}
@@ -165,7 +166,7 @@ const CreditCard: React.FC<CreditCardProps> = ({
           />
 
           {/* Card content */}
-          <div className="relative z-10 flex flex-col h-full p-8">
+          <div className="relative z-10 flex flex-col h-full" style={{ padding: '5.926cqw' }}>
             {/* Top row */}
             <div className="flex items-center justify-between mb-10">
               <div className="flex items-center gap-3">
@@ -173,13 +174,14 @@ const CreditCard: React.FC<CreditCardProps> = ({
                 <img
                   src={logoSrc}
                   alt="ECIExpress"
-                  className="h-20 brightness-0 invert"
+                  className="brightness-0 invert"
+                  style={{ height: '14.815cqw' }}
                 />
               </div>
               <Wifi
                 className="text-white/80"
                 size={44}
-                style={{ transform: 'rotate(90deg)' }}
+                style={{ transform: 'rotate(90deg)', width: '8.148cqw', height: '8.148cqw' }}
               />
             </div>
 
@@ -187,13 +189,13 @@ const CreditCard: React.FC<CreditCardProps> = ({
             <div className="mt-auto">
               <p
                 className="uppercase tracking-widest mb-3"
-                style={{ fontSize: 18, color: 'rgba(255,255,255,0.8)' }}
+                style={{ fontSize: '3.333cqw', color: 'rgba(255,255,255,0.8)' }}
               >
                 Saldo disponible
               </p>
               <p
                 className="text-white font-extrabold tracking-tight"
-                style={{ fontSize: 64, textShadow: '0 2px 4px rgba(0,0,0,0.15)' }}
+                style={{ fontSize: '11.852cqw', textShadow: '0 2px 4px rgba(0,0,0,0.15)' }}
               >
                 {balance}
               </p>

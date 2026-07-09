@@ -16,7 +16,7 @@ const Navbar: React.FC<NavbarProps> = ({ onLoginClick, onSignUpClick }) => {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <nav className="sticky top-3 z-50 w-full bg-gradient-to-r from-white/80 to-yellow-50/60 backdrop-blur-xl border border-white/40 shadow-lg rounded-xl mx-6 mt-4">
+    <nav className="sticky top-3 z-50 w-full bg-gradient-to-r from-white/80 to-yellow-50/60 backdrop-blur-xl border border-white/40 shadow-lg rounded-xl mx-6 mt-4 [transform:translateZ(0)] [-webkit-transform:translateZ(0)] [backface-visibility:hidden] will-change-transform">
       <div className="w-full px-6 md:px-12 py-3 md:py-4 gap-12">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 transition">

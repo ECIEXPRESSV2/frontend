@@ -78,7 +78,7 @@ const CTAFinal: React.FC<CTAFinalProps> = ({ onSignUpClick }) => {
             ].map((item, index) => (
                 <div
                     key={index}
-                    className="p-6 text-center hover:bg-gray-50 transition-colors duration-300"
+                    className="p-3 sm:p-6 text-center hover:bg-gray-50 transition-colors duration-300"
                 >
                   <p className="font-display text-2xl md:text-3xl font-semibold text-gray-900">
                     {item.value}
