@@ -19,7 +19,7 @@ const NOISE_BG = `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='ht
 // ─── Component ─────────────────────────────────────────────────────────────
 const CreditCard: React.FC<CreditCardProps> = ({
   balance,
-  logoSrc = '/eciexpress.svg',
+  logoSrc = '/ecixpress-mark.svg',
   width = 540,
 }) => {
   const cardRef = useRef<HTMLDivElement>(null);
