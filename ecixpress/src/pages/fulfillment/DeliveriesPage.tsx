@@ -1,8 +1,6 @@
 ﻿import React, { useCallback, useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
-  ArrowLeft,
   ScanLine,
   CheckCircle2,
   XCircle,
@@ -16,6 +14,7 @@ import {
   Camera,
 } from 'lucide-react';
 import Sidebar from '../../components/home/Sidebar';
+import AdminHeroBanner from '../../components/admin/AdminHeroBanner';
 import ModalShell from '../../components/wallet/ModalShell';
 import QrScannerModal from '../../components/fulfillment/QrScannerModal';
 import FormInput from '../../components/ui/FormInput';
@@ -35,7 +34,7 @@ import {
   validationErrorLabel,
 } from '../../lib/fulfillment-ui';
 import { formatDateTime } from '../../lib/format';
-import { getStoreById } from '../../services/storeService';
+import { getMyStores, getStoreById } from '../../services/storeService';
 
 interface DeliveriesPageProps {
   onBack?: () => void;
@@ -53,10 +52,10 @@ const PAGE_SIZE = 10;
  * validar (UC-03) y confirmar (UC-04) por código, entrega manual (UC-05) y fallida (UC-06)
  * por pedido, e historial paginado por tienda (UC-10).
  */
-const DeliveriesPage: React.FC<DeliveriesPageProps> = ({ onBack }) => {
-  const navigate = useNavigate();
-  const { userProfile } = useAuth();
+const DeliveriesPage: React.FC<DeliveriesPageProps> = () => {
+  const { userProfile, getToken } = useAuth();
   const api = useFulfillmentApi();
+  const [sidebarExpanded, setSidebarExpanded] = useState(false);
 
   // ── Validar / confirmar ──────────────────────────────────────
   const [code, setCode] = useState('');
@@ -79,6 +78,7 @@ const DeliveriesPage: React.FC<DeliveriesPageProps> = ({ onBack }) => {
   const [page, setPage] = useState(1);
   const [history, setHistory] = useState<PaginatedDeliveries | null>(null);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [historyError, setHistoryError] = useState<string | null>(null);
 
   const resetValidation = () => {
@@ -153,8 +153,8 @@ const DeliveriesPage: React.FC<DeliveriesPageProps> = ({ onBack }) => {
   };
 
   const loadHistory = useCallback(
-    async (toPage: number) => {
-      const store = storeId.trim();
+    async (toPage: number, storeOverride = storeId) => {
+      const store = storeOverride.trim();
       if (!store) {
         setHistoryError('Ingresa el ID de la tienda para ver su historial.');
         return;
@@ -182,6 +182,23 @@ const DeliveriesPage: React.FC<DeliveriesPageProps> = ({ onBack }) => {
     [api, storeId, orderDir, methodFilter],
   );
 
+  const resolveHistoryStoreId = useCallback(async () => {
+    const currentStore = storeId.trim();
+    if (currentStore) return currentStore;
+
+    const profileStore = (userProfile as { storeId?: string } | null)?.storeId?.trim();
+    if (profileStore) {
+      setStoreId(profileStore);
+      return profileStore;
+    }
+
+    const token = await getToken();
+    const stores = await getMyStores(token);
+    const firstStore = stores[0]?.id ?? '';
+    if (firstStore) setStoreId(firstStore);
+    return firstStore;
+  }, [getToken, storeId, userProfile]);
+
   // Prefill del store del vendedor si el perfil lo trae (mejor recognition que recall).
   useEffect(() => {
     const profileStore = (userProfile as { storeId?: string } | null)?.storeId;
@@ -189,29 +206,46 @@ const DeliveriesPage: React.FC<DeliveriesPageProps> = ({ onBack }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userProfile]);
 
-  useRefreshOnScrollTop(() => loadHistory(page), { disabled: historyLoading || !storeId.trim() });
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      const refreshStoreId = await resolveHistoryStoreId();
+      if (!refreshStoreId) {
+        setHistoryError('No tienes tiendas asignadas para refrescar el historial.');
+        return;
+      }
+      await loadHistory(page, refreshStoreId);
+    } catch (e) {
+      setHistoryError(e instanceof Error ? e.message : 'No pudimos refrescar el historial de entregas.');
+    } finally {
+      setRefreshing(false);
+    }
+  }, [loadHistory, page, resolveHistoryStoreId]);
+
+  useRefreshOnScrollTop(handleRefresh, {
+    disabled: historyLoading || refreshing,
+    refreshOnReachTop: true,
+  });
 
   const totalPages = history ? Math.max(1, Math.ceil(history.total / history.limit)) : 1;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-white to-yellow-100">
-      <Sidebar activeItem="deliveries" />
+    <div className="min-h-screen bg-gradient-to-b from-white via-gray-50 to-white text-gray-900">
+      <Sidebar
+        activeItem="deliveries"
+        expanded={sidebarExpanded}
+        onExpandedChange={setSidebarExpanded}
+      />
 
-      <main className="app-shift px-4 pb-6 pt-20 md:px-8 md:pb-8 lg:px-10">
-        <div className="relative mx-auto w-full max-w-7xl space-y-6">
-          {/* Header */}
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => (onBack ? onBack() : navigate('/home'))}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/60 backdrop-blur-xl border border-white/40 text-gray-700 font-medium text-sm hover:bg-yellow-50 hover:text-yellow-600 transition-all"
-            >
-              <ArrowLeft size={16} /> Volver
-            </button>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Centro de entregas</h1>
-              <p className="text-sm text-gray-500">Valida códigos, confirma entregas y revisa el historial de tu tienda.</p>
-            </div>
-          </div>
+      <main className="relative z-[51] app-shift min-h-screen px-4 pb-6 pt-20 md:px-8 md:pb-8 lg:px-10">
+        <div className="relative mx-auto w-full max-w-6xl space-y-6">
+          <AdminHeroBanner
+            rootLabel="Operaciones"
+            section="Entregas"
+            title="Centro de"
+            accent="entregas"
+            sidebarExpanded={sidebarExpanded}
+          />
 
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
             {/* ── Columna izquierda: operación ── */}
@@ -222,44 +256,43 @@ const DeliveriesPage: React.FC<DeliveriesPageProps> = ({ onBack }) => {
                   <ScanLine size={20} className="text-yellow-500" />
                   <h2 className="text-lg font-bold text-gray-900">Validar código de retiro</h2>
                 </div>
-                <p className="text-sm text-gray-500">
-                  Escanea el QR con la cámara o pide al cliente su código corto (formato <code className="text-gray-700">XXXX-XXXX</code>).
-                  Validar no confirma la entrega.
-                </p>
 
-                {/* Camino principal: escanear con la cámara real del dispositivo */}
-                <button
-                  onClick={() => setScannerOpen(true)}
-                  className="w-full inline-flex items-center justify-center gap-2 py-3 rounded-xl bg-gradient-to-r from-yellow-400 to-yellow-500 text-white font-semibold shadow-md shadow-yellow-200/60 hover:from-yellow-500 hover:to-yellow-600 transition-all"
-                >
-                  <Camera size={18} /> Escanear QR con la cámara
-                </button>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="flex min-h-[150px] flex-col justify-between rounded-2xl border border-yellow-100 bg-yellow-50/60 p-4">
+                    <div className="flex items-center gap-2 text-sm font-bold text-amber-700">
+                      <Camera size={17} aria-hidden="true" />
+                      Cámara
+                    </div>
+                    <button
+                      onClick={() => setScannerOpen(true)}
+                      className="mt-4 inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-yellow-400 to-yellow-500 px-4 py-3 text-sm font-bold text-white shadow-md shadow-yellow-200/60 transition-all hover:from-yellow-500 hover:to-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-300"
+                    >
+                      <Camera size={18} /> Escanear QR
+                    </button>
+                  </div>
 
-                {/* Separador hacia el ingreso manual */}
-                <div className="flex items-center gap-3 text-xs text-gray-400">
-                  <span className="h-px flex-1 bg-gray-200" />
-                  o escribe el código a mano
-                  <span className="h-px flex-1 bg-gray-200" />
-                </div>
-
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <input
-                    value={code}
-                    onChange={(e) => {
-                      setCode(e.target.value);
-                      if (validation.kind !== 'idle') resetValidation();
-                    }}
-                    onKeyDown={(e) => e.key === 'Enter' && handleValidate()}
-                    placeholder="Token del QR o A7K9-P2MX"
-                    className="flex-1 px-4 py-3 rounded-xl border border-gray-200 text-sm bg-white/60 outline-none focus:border-yellow-400 focus:ring-2 focus:ring-yellow-100"
-                  />
-                  <button
-                    onClick={() => handleValidate()}
-                    disabled={validating || !code.trim()}
-                    className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-white border border-gray-200 text-gray-700 font-semibold hover:bg-yellow-50 hover:text-yellow-600 transition-all disabled:opacity-50"
-                  >
-                    <Search size={16} /> {validating ? 'Validando…' : 'Validar'}
-                  </button>
+                  <div className="flex min-h-[150px] flex-col justify-between rounded-2xl border border-gray-100 bg-white/65 p-4">
+                    <label className="block text-sm font-bold text-gray-700">
+                      Código manual
+                      <input
+                        value={code}
+                        onChange={(e) => {
+                          setCode(e.target.value);
+                          if (validation.kind !== 'idle') resetValidation();
+                        }}
+                        onKeyDown={(e) => e.key === 'Enter' && handleValidate()}
+                        placeholder="A7K9-P2MX"
+                        className="mt-3 min-h-12 w-full rounded-xl border border-gray-200 bg-white/80 px-4 py-3 text-sm font-medium text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-100"
+                      />
+                    </label>
+                    <button
+                      onClick={() => handleValidate()}
+                      disabled={validating || !code.trim()}
+                      className="mt-3 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-bold text-gray-700 transition-all hover:bg-yellow-50 hover:text-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-200 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <Search size={16} /> {validating ? 'Validando…' : 'Validar'}
+                    </button>
+                  </div>
                 </div>
 
                 {/* Resultado de la validación */}

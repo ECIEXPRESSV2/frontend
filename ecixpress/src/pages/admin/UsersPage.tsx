@@ -6,17 +6,21 @@ import {
   Ban,
   Calendar,
   Check,
+  CheckSquare,
   CheckCircle,
   ChevronDown,
   Clock,
   Eye,
   Grid2X2,
   List,
+  Lock,
   Mail,
   Phone,
+  Plus,
   RefreshCw,
   Search,
   Shield,
+  Sliders,
   Store,
   Trash2,
   UserCheck,
@@ -24,10 +28,19 @@ import {
   X,
 } from 'lucide-react';
 import Sidebar from '../../components/home/Sidebar';
+import AdminHeroBanner from '../../components/admin/AdminHeroBanner';
 import { TableSkeleton } from '../../components/common/LoadingSkeleton';
 import { useAuth } from '../../context/AuthContext';
 import { assignRole, bulkAssignRole, bulkUpdateStatus, getUsers, revokeRole, updateUserStatus, type UserItem } from '../../services/userService';
-import { getRoles, type Role } from '../../services/roleService';
+import {
+  createRole,
+  getPermissions,
+  getRolePermissions,
+  getRoles,
+  setRolePermissions,
+  type Permission,
+  type Role,
+} from '../../services/roleService';
 import { getPageCache, pageCacheKeys, setPageCache } from '../../services/pageCache';
 import { getStoresByUser, type Store as StoreData } from '../../services/storeService';
 import { useRefreshOnScrollTop } from '../../hooks/useRefreshOnScrollTop';
@@ -35,9 +48,13 @@ import { useRefreshOnScrollTop } from '../../hooks/useRefreshOnScrollTop';
 type UsersCache = {
   users: UserItem[];
   roles: Role[];
+  permissions?: Permission[];
 };
 
 type ViewMode = 'table' | 'cards';
+type RoleDialogState =
+  | { mode: 'create'; selectAfterCreate?: boolean }
+  | { mode: 'edit'; role: Role };
 type ConfirmAction = {
   user: UserItem;
   status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED';
@@ -72,6 +89,20 @@ const ROLE_META: Record<string, { label: string; className: string }> = {
     label: 'Supervisor',
     className: 'bg-violet-50 text-violet-800 border-violet-100',
   },
+};
+
+const getTypeClass = (isSystem: boolean) =>
+  isSystem
+    ? 'bg-violet-50 text-violet-700 border-violet-100'
+    : 'bg-amber-50 text-amber-700 border-amber-100';
+
+const groupPermissions = (perms: Permission[]) => {
+  const map: Record<string, Permission[]> = {};
+  for (const permission of perms) {
+    if (!map[permission.resource]) map[permission.resource] = [];
+    map[permission.resource].push(permission);
+  }
+  return map;
 };
 
 const STATUS_META: Record<string, {
@@ -208,6 +239,7 @@ const UsersPage: React.FC = () => {
   const initialCache = getPageCache<UsersCache>(pageCacheKeys.adminUsers());
   const [users, setUsers] = useState<UserItem[]>(() => initialCache?.users ?? []);
   const [roles, setRoles] = useState<Role[]>(() => initialCache?.roles ?? []);
+  const [permissions, setPermissions] = useState<Permission[]>(() => initialCache?.permissions ?? []);
   const [loading, setLoading] = useState(() => !initialCache);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
@@ -233,6 +265,13 @@ const UsersPage: React.FC = () => {
   const [bulkRoleMenuPos, setBulkRoleMenuPos] = useState<{ top: number; left: number; width: number } | null>(null);
   const [bulkActionLoading, setBulkActionLoading] = useState(false);
   const [sidebarExpanded, setSidebarExpanded] = useState(false);
+  const [roleDialog, setRoleDialog] = useState<RoleDialogState | null>(null);
+  const [newRoleName, setNewRoleName] = useState('');
+  const [newRoleDesc, setNewRoleDesc] = useState('');
+  const [selectedPerms, setSelectedPerms] = useState<Set<string>>(new Set());
+  const [permSearch, setPermSearch] = useState('');
+  const [loadingPerms, setLoadingPerms] = useState(false);
+  const [savingRole, setSavingRole] = useState(false);
   const bulkRoleButtonRef = React.useRef<HTMLButtonElement>(null);
   const searchTimerRef = React.useRef<number | null>(null);
   const PAGE_LIMIT = 20;
@@ -308,14 +347,16 @@ const UsersPage: React.FC = () => {
         roles.length === 0 ? getRoles(token) : Promise.resolve(roles),
       ]);
 
+      const nextRoles = roles.length === 0 ? (rolesRes as typeof roles) : roles;
       setUsers(usersRes.data ?? []);
       setTotal(usersRes.meta?.total ?? 0);
       setTotalPages(usersRes.meta?.totalPages ?? 1);
-      if (roles.length === 0) setRoles(rolesRes as typeof roles);
+      if (roles.length === 0) setRoles(nextRoles);
       setAppliedSearch(normalizedSearch);
       setPageCache(pageCacheKeys.adminUsers(normalizedSearch), {
         users: usersRes.data ?? [],
-        roles: roles.length === 0 ? (rolesRes as typeof roles) : roles,
+        roles: nextRoles,
+        permissions,
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : 'No se pudieron cargar los usuarios.';
@@ -390,6 +431,131 @@ const UsersPage: React.FC = () => {
 
   const handleRefresh = () => {
     load({ showLoading: false, silent: true });
+  };
+
+  const persistRolesCache = (nextRoles: Role[], nextPermissions = permissions) => {
+    setPageCache(pageCacheKeys.adminUsers(appliedSearch), {
+      users,
+      roles: nextRoles,
+      permissions: nextPermissions,
+    });
+  };
+
+  const ensurePermissions = async (token?: string) => {
+    if (permissions.length > 0) return permissions;
+    const resolvedToken = token ?? await getToken();
+    const loadedPermissions = await getPermissions(resolvedToken);
+    setPermissions(loadedPermissions);
+    persistRolesCache(roles, loadedPermissions);
+    return loadedPermissions;
+  };
+
+  const openCreateRole = async (selectAfterCreate = false) => {
+    setRoleDialog({ mode: 'create', selectAfterCreate });
+    setNewRoleName('');
+    setNewRoleDesc('');
+    setSelectedPerms(new Set());
+    setPermSearch('');
+    setLoadingPerms(true);
+
+    try {
+      const token = await getToken();
+      await ensurePermissions(token);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'No se pudieron cargar los permisos.');
+    } finally {
+      setLoadingPerms(false);
+    }
+  };
+
+  const openRolePermissions = async (role: Role) => {
+    setRoleDialog({ mode: 'edit', role });
+    setSelectedPerms(new Set());
+    setPermSearch('');
+    setLoadingPerms(true);
+
+    try {
+      const token = await getToken();
+      const [, currentPermissions] = await Promise.all([
+        ensurePermissions(token),
+        getRolePermissions(role.id, token),
+      ]);
+      setSelectedPerms(new Set(currentPermissions.map(permission => permission.id)));
+    } catch (err) {
+      setSelectedPerms(new Set());
+      toast.error(err instanceof Error ? err.message : 'No se pudieron cargar los permisos del rol.');
+    } finally {
+      setLoadingPerms(false);
+    }
+  };
+
+  const closeRoleDialog = () => {
+    setRoleDialog(null);
+    setNewRoleName('');
+    setNewRoleDesc('');
+    setSelectedPerms(new Set());
+    setPermSearch('');
+  };
+
+  const toggleRolePermission = (permissionId: string) => {
+    if (roleDialog?.mode === 'edit' && roleDialog.role.isSystem) return;
+    setSelectedPerms(prev => {
+      const next = new Set(prev);
+      if (next.has(permissionId)) next.delete(permissionId);
+      else next.add(permissionId);
+      return next;
+    });
+  };
+
+  const handleSaveRoleDialog = async () => {
+    if (!roleDialog) return;
+    if (roleDialog.mode === 'edit' && roleDialog.role.isSystem) return;
+
+    setSavingRole(true);
+    try {
+      const token = await getToken();
+
+      if (roleDialog.mode === 'edit') {
+        await setRolePermissions(roleDialog.role.id, Array.from(selectedPerms), token);
+        toast.success('Permisos actualizados.');
+        closeRoleDialog();
+        return;
+      }
+
+      const roleName = newRoleName.trim().toUpperCase();
+      if (!roleName) return;
+
+      const createdRole = await createRole({
+        name: roleName,
+        description: newRoleDesc.trim() || undefined,
+      }, token);
+
+      const nextRoles = [...roles.filter(role => role.id !== createdRole.id), createdRole]
+        .sort((a, b) => a.name.localeCompare(b.name));
+
+      if (selectedPerms.size > 0) {
+        try {
+          await setRolePermissions(createdRole.id, Array.from(selectedPerms), token);
+        } catch {
+          setRoles(nextRoles);
+          persistRolesCache(nextRoles);
+          if (roleDialog.selectAfterCreate) setAssigningRole(createdRole.id);
+          toast.error('El rol se creo, pero no se pudieron guardar sus permisos.');
+          closeRoleDialog();
+          return;
+        }
+      }
+
+      setRoles(nextRoles);
+      persistRolesCache(nextRoles);
+      if (roleDialog.selectAfterCreate) setAssigningRole(createdRole.id);
+      toast.success('Rol creado correctamente.');
+      closeRoleDialog();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'No se pudo guardar el rol.');
+    } finally {
+      setSavingRole(false);
+    }
   };
 
   useRefreshOnScrollTop(() => load({ showLoading: false, silent: true }), { disabled: loading || refreshing });
@@ -543,6 +709,15 @@ const UsersPage: React.FC = () => {
     );
   };
 
+  const groupedPerms = useMemo(() => groupPermissions(
+    permissions.filter(permission =>
+      permSearch.trim() === '' ||
+      permission.resource.toLowerCase().includes(permSearch.toLowerCase()) ||
+      permission.action.toLowerCase().includes(permSearch.toLowerCase()),
+    ),
+  ), [permissions, permSearch]);
+  const roleDialogReadOnly = roleDialog?.mode === 'edit' && roleDialog.role.isSystem;
+
   return (
     <div
       className="min-h-screen bg-gradient-to-b from-white via-gray-50 to-white text-gray-900"
@@ -564,8 +739,14 @@ const UsersPage: React.FC = () => {
           <div className="absolute bottom-[-260px] left-20 h-[420px] w-[420px] rounded-full bg-[radial-gradient(circle,rgba(249,115,22,0.05)_0%,transparent_66%)] blur-3xl" />
         </div>
 
-        <div className="relative mx-auto max-w-7xl space-y-6">
-          <header className="relative overflow-hidden rounded-[28px] border border-yellow-200/70 bg-[linear-gradient(135deg,#F4B942_0%,#FBBF24_48%,#FDE68A_100%)] p-5 shadow-lg shadow-yellow-200/60 md:p-6">
+        <div className="relative mx-auto max-w-6xl space-y-6">
+          <AdminHeroBanner
+            section="Usuarios"
+            title="Gestion de"
+            accent="usuarios"
+            sidebarExpanded={sidebarExpanded}
+          />
+          <header className="hidden relative overflow-hidden rounded-[28px] border border-yellow-200/70 bg-[linear-gradient(135deg,#F4B942_0%,#FBBF24_48%,#FDE68A_100%)] p-5 shadow-lg shadow-yellow-200/60 md:p-6">
             <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-white/60" />
             <div className="pointer-events-none absolute -left-20 -top-24 h-64 w-64 rounded-full bg-white/22 blur-3xl" />
             <div className="pointer-events-none absolute right-[-90px] top-[-110px] h-72 w-72 rounded-full bg-[#FB923C]/22 blur-3xl" />
@@ -624,28 +805,38 @@ const UsersPage: React.FC = () => {
                 </span>
               </label>
 
-              <div className="inline-flex min-h-12 rounded-2xl border border-white/60 bg-white/60 p-1 shadow-sm backdrop-blur">
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="inline-flex min-h-12 rounded-2xl border border-white/60 bg-white/60 p-1 shadow-sm backdrop-blur">
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('table')}
+                    className={`inline-flex h-10 w-12 items-center justify-center rounded-xl transition focus:outline-none focus:ring-2 focus:ring-yellow-300 ${
+                      viewMode === 'table' ? 'bg-white text-gray-950 shadow-sm' : 'text-gray-500 hover:text-gray-900'
+                    }`}
+                    aria-label="Ver como tabla"
+                    title="Vista de tabla"
+                  >
+                    <List size={21} strokeWidth={2.4} aria-hidden="true" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('cards')}
+                    className={`inline-flex h-10 w-12 items-center justify-center rounded-xl transition focus:outline-none focus:ring-2 focus:ring-yellow-300 ${
+                      viewMode === 'cards' ? 'bg-white text-gray-950 shadow-sm' : 'text-gray-500 hover:text-gray-900'
+                    }`}
+                    aria-label="Ver como tarjetas"
+                    title="Vista de tarjetas"
+                  >
+                    <Grid2X2 size={20} strokeWidth={2.4} aria-hidden="true" />
+                  </button>
+                </div>
                 <button
                   type="button"
-                  onClick={() => setViewMode('table')}
-                  className={`inline-flex h-10 w-12 items-center justify-center rounded-xl transition focus:outline-none focus:ring-2 focus:ring-yellow-300 ${
-                    viewMode === 'table' ? 'bg-white text-gray-950 shadow-sm' : 'text-gray-500 hover:text-gray-900'
-                  }`}
-                  aria-label="Ver como tabla"
-                  title="Vista de tabla"
+                  onClick={() => openCreateRole(false)}
+                  className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-yellow-400 px-4 text-sm font-bold text-white shadow-sm shadow-yellow-500/20 transition hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-300"
                 >
-                  <List size={21} strokeWidth={2.4} aria-hidden="true" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setViewMode('cards')}
-                  className={`inline-flex h-10 w-12 items-center justify-center rounded-xl transition focus:outline-none focus:ring-2 focus:ring-yellow-300 ${
-                    viewMode === 'cards' ? 'bg-white text-gray-950 shadow-sm' : 'text-gray-500 hover:text-gray-900'
-                  }`}
-                  aria-label="Ver como tarjetas"
-                  title="Vista de tarjetas"
-                >
-                  <Grid2X2 size={20} strokeWidth={2.4} aria-hidden="true" />
+                  <Plus size={16} aria-hidden="true" />
+                  Crear rol
                 </button>
               </div>
             </div>
@@ -719,6 +910,18 @@ const UsersPage: React.FC = () => {
                       <X size={13} aria-hidden="true" />
                     </button>
                   </span>
+                )}
+                {!loading && (
+                  <>
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-violet-100 bg-violet-50 px-3 py-1 text-xs font-semibold text-violet-700">
+                      <Shield size={12} aria-hidden="true" />
+                      {roles.length} roles
+                    </span>
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-100 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
+                      <Sliders size={12} aria-hidden="true" />
+                      {roles.filter(role => !role.isSystem).length} personalizados
+                    </span>
+                  </>
                 )}
               </div>
 
@@ -1105,11 +1308,33 @@ const UsersPage: React.FC = () => {
           onAssigningRoleChange={setAssigningRole}
           onAssignRole={handleAssignRole}
           onRevokeRole={handleRevokeRole}
+          onCreateRole={() => openCreateRole(true)}
+          onManageRolePermissions={openRolePermissions}
           onClose={() => {
             setSelectedUser(null);
             setAssigningRole('');
           }}
           onStatusAction={openStatusConfirmation}
+        />
+      )}
+
+      {roleDialog && (
+        <RolePermissionsDialog
+          dialog={roleDialog}
+          groupedPermissions={groupedPerms}
+          selectedPerms={selectedPerms}
+          loadingPerms={loadingPerms}
+          saving={savingRole}
+          readOnly={!!roleDialogReadOnly}
+          newRoleName={newRoleName}
+          newRoleDesc={newRoleDesc}
+          permSearch={permSearch}
+          onNewRoleNameChange={setNewRoleName}
+          onNewRoleDescChange={setNewRoleDesc}
+          onPermSearchChange={setPermSearch}
+          onTogglePermission={toggleRolePermission}
+          onCancel={closeRoleDialog}
+          onSave={handleSaveRoleDialog}
         />
       )}
 
@@ -1179,7 +1404,9 @@ const RoleSelect: React.FC<{
   isOpen: boolean;
   onOpen: () => void;
   onChange: (roleId: string) => void;
-}> = ({ id, roles, value, disabled, isOpen, onOpen, onChange }) => {
+  onCreateRole: () => void;
+  onManageRolePermissions: (role: Role) => void;
+}> = ({ id, roles, value, disabled, isOpen, onOpen, onChange, onCreateRole, onManageRolePermissions }) => {
   const [dropdownPos, setDropdownPos] = React.useState<{ top: number; left: number; width: number } | null>(null);
   const buttonRef = React.useRef<HTMLButtonElement>(null);
   const selected = roles.find(role => role.id === value);
@@ -1193,7 +1420,7 @@ const RoleSelect: React.FC<{
     onOpen();
   };
 
-  const dropdownContent = isOpen && !disabled && roles.length > 0 && dropdownPos
+  const dropdownContent = isOpen && !disabled && dropdownPos
     ? createPortal(
         <>
           {/* overlay transparente para asegurar que nada quede por encima */}
@@ -1208,32 +1435,63 @@ const RoleSelect: React.FC<{
             aria-labelledby={id}
             onClick={e => e.stopPropagation()}
           >
+            {roles.length === 0 && (
+              <p className="px-3 py-3 text-sm font-medium text-gray-400">
+                Todos los roles existentes ya estan asignados.
+              </p>
+            )}
             {roles.map(role => {
               const isSelected = role.id === value;
               return (
-                <button
+                <div
                   key={role.id}
-                  type="button"
                   role="option"
                   aria-selected={isSelected}
-                  onClick={() => {
-                    onChange(role.id);
-                    onOpen();
-                  }}
-                  className={`flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition ${
+                  className={`flex w-full items-center gap-2 rounded-xl px-1.5 py-1.5 text-sm transition ${
                     isSelected
                       ? 'bg-yellow-50 text-amber-800'
                       : 'text-gray-700 hover:bg-gray-50 hover:text-gray-950'
                   }`}
                 >
-                  <span className="flex min-w-0 items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onChange(role.id);
+                      onOpen();
+                    }}
+                    className="flex min-w-0 flex-1 items-center gap-2 rounded-lg px-2 py-1.5 text-left focus:outline-none focus:ring-2 focus:ring-yellow-300"
+                  >
                     <span className={`h-2.5 w-2.5 flex-shrink-0 rounded-full ${getRoleDotClass(role.name)}`} />
                     <span className="truncate font-medium">{getRoleLabel(role.name)}</span>
-                  </span>
-                  {isSelected && <Check size={16} className="flex-shrink-0 text-amber-700" aria-hidden="true" />}
-                </button>
+                    {isSelected && <Check size={16} className="ml-auto flex-shrink-0 text-amber-700" aria-hidden="true" />}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onOpen();
+                      onManageRolePermissions(role);
+                    }}
+                    className="inline-flex h-8 flex-shrink-0 items-center gap-1 rounded-lg border border-gray-200 bg-white px-2 text-xs font-bold text-gray-500 transition hover:border-yellow-300 hover:bg-yellow-50 hover:text-amber-700 focus:outline-none focus:ring-2 focus:ring-yellow-300"
+                  >
+                    <CheckSquare size={12} aria-hidden="true" />
+                    Permisos
+                  </button>
+                </div>
               );
             })}
+            <div className="mt-1 border-t border-gray-100 pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  onOpen();
+                  onCreateRole();
+                }}
+                className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-bold text-amber-700 transition hover:bg-yellow-50 focus:outline-none focus:ring-2 focus:ring-yellow-300"
+              >
+                <Plus size={15} aria-hidden="true" />
+                Crear nuevo rol
+              </button>
+            </div>
           </div>
         </>,
         document.body,
@@ -1285,6 +1543,8 @@ type UserDetailDrawerProps = {
   onAssigningRoleChange: (roleId: string) => void;
   onAssignRole: () => void;
   onRevokeRole: (user: UserItem, roleId: string) => void;
+  onCreateRole: () => void;
+  onManageRolePermissions: (role: Role) => void;
   onClose: () => void;
   onStatusAction: (user: UserItem, status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED') => void;
 };
@@ -1299,6 +1559,8 @@ const UserDetailDrawer: React.FC<UserDetailDrawerProps> = ({
   onAssigningRoleChange,
   onAssignRole,
   onRevokeRole,
+  onCreateRole,
+  onManageRolePermissions,
   onClose,
   onStatusAction,
 }) => {
@@ -1394,23 +1656,35 @@ const UserDetailDrawer: React.FC<UserDetailDrawerProps> = ({
               <div className="mb-4 space-y-1.5">
                 {roleNames.map((role, index) => {
                   const roleId = getRoleIdForName(user, roles, role);
+                  const roleItem = roles.find(item => getCanonicalRoleKey(item.name) === getCanonicalRoleKey(role));
                   return (
                     <div
                       key={`${role}-${index}`}
-                      className="flex items-center justify-between rounded-xl border border-gray-100 bg-gray-50 px-3 py-2.5"
+                      className="flex flex-col gap-2 rounded-xl border border-gray-100 bg-gray-50 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between"
                     >
                       <div className="flex items-center gap-2">
                         <span className={`h-2 w-2 flex-shrink-0 rounded-full ${getRoleDotClass(role)}`} aria-hidden="true" />
                         <span className="text-sm font-semibold text-gray-800">{getRoleLabel(role)}</span>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => roleId && onRevokeRole(user, roleId)}
-                        disabled={!roleId || roleUpdating}
-                        className="text-xs font-bold text-red-600 transition hover:text-red-800 focus:outline-none disabled:cursor-not-allowed disabled:text-gray-400"
-                      >
-                        Retirar
-                      </button>
+                      <div className="flex items-center gap-2 self-end sm:self-auto">
+                        <button
+                          type="button"
+                          onClick={() => roleItem && onManageRolePermissions(roleItem)}
+                          disabled={!roleItem}
+                          className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-bold text-amber-700 transition hover:bg-yellow-50 focus:outline-none focus:ring-2 focus:ring-yellow-300 disabled:cursor-not-allowed disabled:text-gray-400"
+                        >
+                          <CheckSquare size={12} aria-hidden="true" />
+                          Permisos
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => roleId && onRevokeRole(user, roleId)}
+                          disabled={!roleId || roleUpdating}
+                          className="text-xs font-bold text-red-600 transition hover:text-red-800 focus:outline-none disabled:cursor-not-allowed disabled:text-gray-400"
+                        >
+                          Retirar
+                        </button>
+                      </div>
                     </div>
                   );
                 })}
@@ -1428,10 +1702,12 @@ const UserDetailDrawer: React.FC<UserDetailDrawerProps> = ({
                   id="role-select"
                   roles={availableRoles}
                   value={assigningRole}
-                  disabled={roleUpdating || availableRoles.length === 0}
+                  disabled={roleUpdating}
                   isOpen={openRoleSelect}
                   onOpen={() => setOpenRoleSelect(v => !v)}
                   onChange={onAssigningRoleChange}
+                  onCreateRole={onCreateRole}
+                  onManageRolePermissions={onManageRolePermissions}
                 />
               </div>
               <button
@@ -1501,6 +1777,220 @@ const UserDetailDrawer: React.FC<UserDetailDrawerProps> = ({
           </div>
         </div>
       </aside>
+    </div>
+  );
+};
+
+const PermissionToggleItem: React.FC<{
+  permission: Permission;
+  checked: boolean;
+  disabled: boolean;
+  borderTop: boolean;
+  onToggle: (permissionId: string) => void;
+}> = ({ permission, checked, disabled, borderTop, onToggle }) => (
+  <label
+    htmlFor={`user-role-perm-${permission.id}`}
+    className={`flex cursor-pointer items-center gap-3 px-4 py-3 transition hover:bg-yellow-50/60 ${borderTop ? 'border-t border-gray-100' : ''} ${disabled ? 'cursor-default opacity-60' : ''}`}
+  >
+    <div className={`flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-md border-2 transition ${checked ? 'border-yellow-400 bg-yellow-400' : 'border-gray-300 bg-white'}`}>
+      {checked && (
+        <svg viewBox="0 0 10 8" fill="none" className="h-3 w-3" aria-hidden="true">
+          <path d="M1 4l3 3 5-6" stroke="#111" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      )}
+    </div>
+    <input
+      id={`user-role-perm-${permission.id}`}
+      type="checkbox"
+      className="sr-only"
+      checked={checked}
+      onChange={() => onToggle(permission.id)}
+      disabled={disabled}
+    />
+    <span className="text-sm font-medium text-gray-700">{permission.action}</span>
+  </label>
+);
+
+const RolePermissionsDialog: React.FC<{
+  dialog: RoleDialogState;
+  groupedPermissions: Record<string, Permission[]>;
+  selectedPerms: Set<string>;
+  loadingPerms: boolean;
+  saving: boolean;
+  readOnly: boolean;
+  newRoleName: string;
+  newRoleDesc: string;
+  permSearch: string;
+  onNewRoleNameChange: (value: string) => void;
+  onNewRoleDescChange: (value: string) => void;
+  onPermSearchChange: (value: string) => void;
+  onTogglePermission: (permissionId: string) => void;
+  onCancel: () => void;
+  onSave: () => void;
+}> = ({
+  dialog,
+  groupedPermissions,
+  selectedPerms,
+  loadingPerms,
+  saving,
+  readOnly,
+  newRoleName,
+  newRoleDesc,
+  permSearch,
+  onNewRoleNameChange,
+  onNewRoleDescChange,
+  onPermSearchChange,
+  onTogglePermission,
+  onCancel,
+  onSave,
+}) => {
+  const isCreate = dialog.mode === 'create';
+  const role = dialog.mode === 'edit' ? dialog.role : null;
+  const title = isCreate ? 'Crear nuevo rol' : role?.name ?? '';
+  const permissionEntries = Object.entries(groupedPermissions);
+  const canSave = isCreate
+    ? newRoleName.trim().length > 0 && !saving && !loadingPerms
+    : !readOnly && !saving && !loadingPerms;
+
+  return (
+    <div className="fixed inset-0 z-[90] flex items-center justify-center p-3 sm:p-4">
+      <button
+        type="button"
+        aria-label="Cerrar permisos del rol"
+        className="absolute inset-0 bg-gray-950/45 backdrop-blur-sm"
+        onClick={onCancel}
+        disabled={saving}
+      />
+      <div
+        className="relative flex max-h-[min(92vh,840px)] w-full max-w-3xl flex-col overflow-hidden rounded-[28px] bg-white shadow-2xl shadow-gray-900/20"
+        role="dialog"
+        aria-modal="true"
+        data-modal-root="true"
+      >
+        <div className="h-1 flex-shrink-0 bg-[#F4B942]" />
+        <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4 sm:px-6">
+          <div className="flex min-w-0 items-center gap-3">
+            <span className={`inline-flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl border ${getTypeClass(role?.isSystem ?? false)}`}>
+              {isCreate ? <Plus size={20} aria-hidden="true" /> : <Shield size={20} aria-hidden="true" />}
+            </span>
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">
+                {isCreate ? 'Nuevo rol' : 'Permisos del rol'}
+              </p>
+              <h2 className="truncate text-xl font-bold text-gray-950">{title}</h2>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={saving}
+            className="ml-3 inline-flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-yellow-300 disabled:opacity-50"
+            aria-label="Cerrar modal"
+          >
+            <X size={20} aria-hidden="true" />
+          </button>
+        </div>
+
+        {isCreate && (
+          <div className="grid gap-3 border-b border-gray-100 px-5 py-4 sm:grid-cols-[1fr_1.2fr] sm:px-6">
+            <label>
+              <span className="mb-1 block text-xs font-bold uppercase tracking-wide text-amber-700">Nombre del rol</span>
+              <input
+                autoFocus
+                value={newRoleName}
+                onChange={event => onNewRoleNameChange(event.target.value)}
+                onKeyDown={event => { if (event.key === 'Enter' && canSave) onSave(); }}
+                className="h-11 w-full rounded-xl border border-gray-200 px-3 text-sm font-semibold uppercase outline-none placeholder:normal-case placeholder:text-gray-400 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-100"
+                placeholder="Ej. SUPERVISOR"
+              />
+            </label>
+            <label>
+              <span className="mb-1 block text-xs font-bold uppercase tracking-wide text-gray-500">Descripcion</span>
+              <input
+                value={newRoleDesc}
+                onChange={event => onNewRoleDescChange(event.target.value)}
+                onKeyDown={event => { if (event.key === 'Enter' && canSave) onSave(); }}
+                className="h-11 w-full rounded-xl border border-gray-200 px-3 text-sm outline-none placeholder:text-gray-400 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-100"
+                placeholder="Descripcion opcional"
+              />
+            </label>
+          </div>
+        )}
+
+        {readOnly && (
+          <div className="flex items-center gap-2 border-b border-amber-100 bg-amber-50/70 px-5 py-3 sm:px-6">
+            <Lock size={14} className="flex-shrink-0 text-amber-700" aria-hidden="true" />
+            <p className="text-xs font-semibold text-amber-800">
+              Los roles del sistema no pueden modificarse.
+            </p>
+          </div>
+        )}
+
+        <div className="border-b border-gray-100 px-5 py-3 sm:px-6">
+          <label className="relative block">
+            <span className="sr-only">Filtrar permisos</span>
+            <Search size={16} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" aria-hidden="true" />
+            <input
+              type="text"
+              value={permSearch}
+              onChange={event => onPermSearchChange(event.target.value)}
+              placeholder="Filtrar permisos..."
+              className="h-12 w-full rounded-2xl border border-gray-200 bg-white pl-11 pr-4 text-sm outline-none placeholder:text-gray-400 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-100"
+            />
+          </label>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-5 py-4 sm:px-6">
+          {loadingPerms ? (
+            <div className="flex min-h-[240px] items-center justify-center">
+              <div className="h-7 w-7 animate-spin rounded-full border-4 border-yellow-400 border-t-transparent" />
+            </div>
+          ) : permissionEntries.length === 0 ? (
+            <p className="py-10 text-center text-sm font-medium text-gray-400">Sin permisos disponibles</p>
+          ) : (
+            <div className="space-y-5">
+              {permissionEntries.map(([resource, resourcePermissions]) => (
+                <section key={resource}>
+                  <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-gray-400">{resource}</h3>
+                  <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white">
+                    {resourcePermissions.map((permission, index) => (
+                      <PermissionToggleItem
+                        key={permission.id}
+                        permission={permission}
+                        checked={selectedPerms.has(permission.id)}
+                        disabled={readOnly}
+                        borderTop={index > 0}
+                        onToggle={onTogglePermission}
+                      />
+                    ))}
+                  </div>
+                </section>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="border-t border-gray-100 bg-white px-5 py-4 sm:px-6">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <button
+              type="button"
+              onClick={onSave}
+              disabled={!canSave}
+              className="inline-flex min-h-12 items-center justify-center rounded-2xl bg-yellow-400 px-4 text-sm font-bold text-gray-950 transition hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-300 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {saving ? 'Guardando...' : isCreate ? 'Crear rol' : 'Guardar permisos'}
+            </button>
+            <button
+              type="button"
+              onClick={onCancel}
+              disabled={saving}
+              className="inline-flex min-h-12 items-center justify-center rounded-2xl border border-gray-200 bg-gray-50 px-4 text-sm font-bold text-gray-700 transition hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-yellow-300 disabled:opacity-60"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

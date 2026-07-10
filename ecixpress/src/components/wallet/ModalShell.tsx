@@ -10,6 +10,8 @@ interface ModalShellProps {
   maxWidth?: string;
   /** Header full-bleed personalizado; reemplaza el encabezado blanco por defecto. */
   header?: React.ReactNode;
+  /** Clases extra para el botón de cierre cuando se usa `header`. */
+  headerCloseClassName?: string;
   /** Clases del contenedor del cuerpo (por defecto `px-6 py-5`). */
   bodyClassName?: string;
 }
@@ -23,6 +25,7 @@ const ModalShell: React.FC<ModalShellProps> = ({
   children,
   maxWidth = 'max-w-md',
   header,
+  headerCloseClassName,
   bodyClassName = 'px-6 py-5',
 }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -77,7 +80,9 @@ const ModalShell: React.FC<ModalShellProps> = ({
             {header}
             <button
               onClick={onClose}
-              className="absolute top-4 right-4 p-1.5 rounded-lg text-white/80 hover:bg-white/20 hover:text-white transition"
+              className={`absolute top-4 right-4 p-1.5 rounded-lg transition ${
+                headerCloseClassName ?? 'text-white/80 hover:bg-white/20 hover:text-white'
+              }`}
               aria-label="Cerrar"
             >
               <X size={20} />

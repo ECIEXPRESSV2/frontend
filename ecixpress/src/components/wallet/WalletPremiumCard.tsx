@@ -13,7 +13,7 @@ const WalletPremiumCard: React.FC<WalletPremiumCardProps> = ({ className = '' })
     <div
       className={`relative aspect-[16/10] min-h-[218px] w-full max-w-[420px] overflow-hidden rounded-[26px] bg-[linear-gradient(135deg,#E9B44A_0%,#F5C94A_42%,#F7E2AA_100%)] p-5 text-white shadow-[0_18px_40px_-12px_rgba(245,158,11,0.42)] ring-1 ring-white/30 sm:p-6 ${className}`}
       role="group"
-      aria-label="Billetera ECIxpress"
+      aria-label="Billetera ECIEXPRESS"
     >
       <div className="pointer-events-none absolute -left-[10%] -top-1/3 h-[180%] w-[55%] -skew-x-12 bg-gradient-to-r from-transparent via-white/25 to-transparent" />
       <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/16 blur-2xl" />
@@ -23,7 +23,7 @@ const WalletPremiumCard: React.FC<WalletPremiumCardProps> = ({ className = '' })
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
             <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-white/75">Tarjeta virtual</p>
-            <img src="/eciexpress.svg" alt="ECIxpress" className="mt-2 h-9 max-w-[150px] brightness-0 invert" />
+            <img src="/ecixpress-logo.svg" alt="ECIEXPRESS" className="mt-2 h-9 max-w-[150px] brightness-0 invert" />
           </div>
           <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl bg-white/16 backdrop-blur-sm">
             <Nfc size={25} className="opacity-90" aria-hidden="true" />
@@ -48,7 +48,7 @@ const WalletPremiumCard: React.FC<WalletPremiumCardProps> = ({ className = '' })
           <div className="min-w-0 space-y-1">
             <span className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-white/75">
               <CircleDot size={12} aria-hidden="true" />
-              Cuenta ECIxpress
+              Cuenta ECIEXPRESS
             </span>
             <span className="block truncate text-sm font-semibold tracking-wide text-white">Billetera digital</span>
           </div>

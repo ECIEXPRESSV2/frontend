@@ -37,6 +37,18 @@ export const updateMe = (data: UpdateProfileDto, token: string) =>
     body: JSON.stringify(data),
   });
 
+export const changePassword = (
+  data: { currentPassword: string; newPassword: string },
+  token: string,
+) =>
+  apiFetch<{ changed: boolean }>('/auth/change-password', token, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+
+export const deleteOwnAccount = (token: string) =>
+  apiFetch<UserItem>('/users/me', token, { method: 'DELETE' });
+
 export const uploadAvatar = (file: File, token: string) => {
   const form = new FormData();
   form.append('file', file);
