@@ -226,6 +226,42 @@ html {
   animation: gradientShift 3s ease infinite;
 }
 
+@keyframes adminHeroReveal {
+  from {
+    opacity: 0;
+    transform: scaleX(0.96) translateY(12px);
+    clip-path: inset(0 12% 0 0 round 32px);
+  }
+  to {
+    opacity: 1;
+    transform: scaleX(1) translateY(0);
+    clip-path: inset(0 0 0 0 round 32px);
+  }
+}
+
+.admin-hero-banner {
+  transform-origin: left center;
+  animation: adminHeroReveal 560ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 420ms ease;
+}
+
+.admin-hero-banner.admin-hero-expanded {
+  transform: translateX(6px) scaleX(1.012);
+  box-shadow: 0 32px 60px -30px rgb(var(--accent-rgb) / 0.56);
+}
+
+.admin-hero-triangles {
+  transition: transform 520ms cubic-bezier(0.22, 1, 0.36, 1), opacity 420ms ease;
+}
+
+.admin-hero-triangles-expanded {
+  transform: translate3d(28px, 12px, 0) scale(1.06);
+}
+
+.admin-hero-copy {
+  animation: fadeInUp 640ms ease-out 80ms both;
+}
+
 /* 3D perspective effects */
 .perspective-1000 {
   perspective: 1000px;
@@ -612,7 +648,14 @@ html {
   .animate-slide-up,
   .animate-slide-up-delay-1,
   .animate-slide-up-delay-2,
-  .animate-slide-up-delay-3 {
+  .animate-slide-up-delay-3,
+  .admin-hero-banner,
+  .admin-hero-copy {
     animation: none !important;
+  }
+  .admin-hero-banner,
+  .admin-hero-triangles {
+    transition: none !important;
+    transform: none !important;
   }
 }

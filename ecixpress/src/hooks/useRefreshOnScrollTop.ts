@@ -9,6 +9,7 @@ interface UseRefreshOnScrollTopOptions {
   threshold?: number;
   cooldownMs?: number;
   pullDistance?: number;
+  refreshOnReachTop?: boolean;
 }
 
 export function useRefreshOnScrollTop(
@@ -18,6 +19,7 @@ export function useRefreshOnScrollTop(
     threshold = 8,
     cooldownMs = 2500,
     pullDistance = 90,
+    refreshOnReachTop = false,
   }: UseRefreshOnScrollTopOptions = {},
 ) {
   const refreshRef = useRef(onRefresh);
@@ -25,6 +27,7 @@ export function useRefreshOnScrollTop(
   const runningRef = useRef(false);
   const pullDistanceRef = useRef(0);
   const touchStartYRef = useRef<number | null>(null);
+  const lastScrollYRef = useRef(0);
 
   useEffect(() => {
     refreshRef.current = onRefresh;
@@ -32,6 +35,7 @@ export function useRefreshOnScrollTop(
 
   useEffect(() => {
     if (disabled) return undefined;
+    lastScrollYRef.current = window.scrollY;
 
     const resetPull = () => {
       pullDistanceRef.current = 0;
@@ -57,7 +61,21 @@ export function useRefreshOnScrollTop(
     };
 
     const handleScroll = () => {
-      if (hasOpenModal() || window.scrollY > threshold) resetPull();
+      const currentScrollY = window.scrollY;
+
+      if (hasOpenModal()) {
+        resetPull();
+        lastScrollYRef.current = currentScrollY;
+        return;
+      }
+
+      if (currentScrollY > threshold) {
+        resetPull();
+      } else if (refreshOnReachTop && lastScrollYRef.current > threshold) {
+        runRefresh();
+      }
+
+      lastScrollYRef.current = currentScrollY;
     };
 
     const handleWheel = (event: WheelEvent) => {
@@ -113,7 +131,7 @@ export function useRefreshOnScrollTop(
       window.removeEventListener('touchstart', handleTouchStart);
       window.removeEventListener('touchmove', handleTouchMove);
     };
-  }, [cooldownMs, disabled, pullDistance, threshold]);
+  }, [cooldownMs, disabled, pullDistance, refreshOnReachTop, threshold]);
 }
 
 export { AUTO_REFRESH_END, AUTO_REFRESH_START };

@@ -30,7 +30,7 @@ const AccountLayout: React.FC = () => {
         </div>
         <div className="relative mx-auto max-w-7xl space-y-5">
           <AccountNav />
-          <Outlet />
+          <Outlet context={{ sidebarExpanded }} />
         </div>
       </main>
     </div>

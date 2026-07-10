@@ -1,6 +1,6 @@
 import React, { Suspense, lazy, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, Plus, Grid, Clipboard, MessageCircle, LogOut, Wallet, Shield, Store, PackageCheck, Activity } from 'lucide-react';
+import { User, Plus, Grid, Clipboard, MessageCircle, LogOut, Wallet, Store, PackageCheck, Activity } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useWallet } from '../../context/WalletContext';
 import { useNotifications } from '../../context/NotificationsContext';
@@ -106,7 +106,6 @@ const Sidebar: React.FC<SidebarProps> = ({
   const adminItems = [
     { id: 'admin-users', icon: User, label: 'Usuarios', path: '/admin/users' },
     { id: 'admin-stores', icon: Store, label: 'Tiendas', path: '/admin/stores' },
-    { id: 'admin-roles', icon: Shield, label: 'Roles', path: '/admin/roles' },
     { id: 'admin-audit', icon: Clipboard, label: 'Auditoría', path: '/admin/audit' },
   ];
 

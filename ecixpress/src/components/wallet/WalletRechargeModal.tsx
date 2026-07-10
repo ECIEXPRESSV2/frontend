@@ -684,18 +684,18 @@ const WalletRechargeModal: React.FC<Props> = ({ open, onClose }) => {
     ? Number(amountPesos).toLocaleString("es-CO")
     : "";
   const formHeader = (
-    <div className="bg-gradient-to-br from-yellow-400 via-yellow-400 to-yellow-500 px-6 pt-7 pb-5">
-      <h2 className="text-lg font-bold text-white">{titles.form.t}</h2>
-      <p className="text-xs text-white/85 mt-0.5">{titles.form.s}</p>
+    <div className="bg-[linear-gradient(140deg,rgba(244,185,66,0.22)_0%,rgba(255,255,255,0.86)_42%,rgba(244,185,66,0.12)_72%,rgba(244,185,66,0.30)_100%)] px-6 pt-7 pb-5">
+      <h2 className="text-lg font-bold text-gray-950">{titles.form.t}</h2>
+      <p className="text-xs text-gray-600 mt-0.5">{titles.form.s}</p>
 
       {/* Tarjeta del monto */}
-      <div className="mt-4 rounded-2xl bg-white shadow-lg shadow-yellow-900/10 px-5 py-4">
-        <p className="text-center text-[11px] font-semibold uppercase tracking-wide text-yellow-500">
+      <div className="mt-4 rounded-2xl bg-white/95 shadow-lg shadow-amber-900/10 px-5 py-4">
+        <p className="text-center text-[11px] font-semibold uppercase tracking-wide text-amber-600">
           Valor a recargar
         </p>
         <div className="mt-1 flex justify-center">
           <div className="relative">
-            <span className="absolute right-full top-1/2 -translate-y-1/2 mr-1 text-3xl font-extrabold text-yellow-500">
+            <span className="absolute right-full top-1/2 -translate-y-1/2 mr-1 text-3xl font-extrabold text-amber-500">
               $
             </span>
             <input
@@ -740,6 +740,7 @@ const WalletRechargeModal: React.FC<Props> = ({ open, onClose }) => {
         title={titles[step].t}
         subtitle={titles[step].s}
         header={step === "form" ? formHeader : undefined}
+        headerCloseClassName={step === "form" ? "text-gray-500 hover:bg-white/70 hover:text-gray-900" : undefined}
       >
         {step === "form" && renderForm()}
         {step === "confirm" && renderConfirm()}

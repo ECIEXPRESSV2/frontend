@@ -73,7 +73,7 @@ const InformacionSection: React.FC = () => {
             <button type="button" onClick={handleSave} disabled={saving} className="inline-flex items-center gap-2 rounded-xl bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-gray-800 disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-white">
               <Save size={15} aria-hidden="true" /> {saving ? 'Guardando…' : 'Guardar'}
             </button>
-            <button type="button" onClick={cancel} className="inline-flex items-center gap-2 rounded-xl border border-white/70 bg-white/20 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/30 focus:outline-none focus:ring-2 focus:ring-white">
+            <button type="button" onClick={cancel} className="inline-flex items-center gap-2 rounded-xl border border-white/70 bg-white/55 px-4 py-2.5 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-white/75 hover:text-amber-700 focus:outline-none focus:ring-2 focus:ring-white">
               <X size={15} aria-hidden="true" /> Cancelar
             </button>
           </>
