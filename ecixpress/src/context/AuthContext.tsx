@@ -37,7 +37,7 @@ interface AuthContextType {
   signInWithGoogle: () => Promise<void>;
   signUp: (email: string, password: string, fullName: string, phone?: string) => Promise<void>;
   signOut: () => Promise<void>;
-  refreshProfile: () => Promise<void>;
+  refreshProfile: () => Promise<boolean>;
   resetPassword: (email: string) => Promise<void>;
   isAdmin: () => boolean;
   isVendor: () => boolean;
@@ -93,7 +93,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return auth.currentUser.getIdToken();
   };
 
-  const syncAndLoadProfile = async (user: FirebaseUser, fullName?: string, phone?: string) => {
+  const syncAndLoadProfile = async (user: FirebaseUser, fullName?: string, phone?: string): Promise<boolean> => {
     try {
       const token = await user.getIdToken();
 
@@ -142,13 +142,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
       setCatalogIdentity(gatewayIdentity);
       setOrdersIdentity(gatewayIdentity);
+      return true;
     } catch (err) {
       console.error('Failed to sync/load profile:', err);
+      return false;
     }
   };
 
-  const refreshProfile = async () => {
-    if (firebaseUser) await syncAndLoadProfile(firebaseUser);
+  const refreshProfile = async (): Promise<boolean> => {
+    if (!firebaseUser) return false;
+    return syncAndLoadProfile(firebaseUser);
   };
 
   const activateAuthenticatedTab = async (user: FirebaseUser, fullName?: string, phone?: string) => {
