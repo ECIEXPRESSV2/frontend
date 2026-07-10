@@ -114,13 +114,13 @@ const HomeFooter: React.FC<HomeFooterProps> = ({ onOpenMap }) => {
       </div>
 
       {/* Franja oscura: columnas de enlaces + triángulos del logo + copyright */}
-      <div className="relative overflow-hidden bg-[#181a20] px-5 pb-6 pt-9 text-gray-400 md:px-10">
+      <div className="relative overflow-hidden bg-[#181a20] px-5 pb-6 pt-9 text-gray-400 md:px-12 lg:px-16">
         {/* Decoración: los triángulos del logo hacen las veces del retrato del ejemplo */}
         <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-0 hidden items-center pr-6 text-white md:flex">
           <TriangleGlyph size={220} pair rotate={-8} className="opacity-[0.05]" />
         </div>
 
-        <div className="relative grid gap-8 sm:grid-cols-2 md:max-w-3xl md:grid-cols-3">
+        <div className="relative grid gap-8 sm:grid-cols-2 md:grid-cols-3">
           {LINK_COLUMNS.map((column) => (
             <nav key={column.title} aria-label={column.title}>
               <p className="mb-3 text-xs font-bold uppercase tracking-[0.14em] text-gray-200">{column.title}</p>

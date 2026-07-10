@@ -231,7 +231,7 @@ const ResumenSection: React.FC = () => {
         </div>
       </header>
 
-      <section className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(340px,420px)]">
+      <section className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(340px,420px)]">
         <div className="rounded-3xl border border-white/70 bg-white/82 p-5 shadow-lg shadow-gray-200/60 backdrop-blur-xl md:p-6">
           <div className="mb-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
@@ -302,7 +302,7 @@ const ResumenSection: React.FC = () => {
           <InfoRow icon={Calendar} label="Miembro desde">{memberSinceFull}</InfoRow>
         </div>
 
-        <div className="grid content-start gap-4 lg:grid-cols-[minmax(300px,420px)_1fr] xl:grid-cols-1">
+        <div className="grid content-start gap-4">
           <WalletPremiumCard className="mx-auto lg:mx-0" />
           <div className="flex min-h-[178px] flex-col justify-center gap-4 rounded-3xl border border-white/70 bg-white/82 p-5 shadow-lg shadow-gray-200/60 backdrop-blur-xl">
             <div>

@@ -1102,7 +1102,7 @@ const StoresPage: React.FC = () => {
       />
 
       <main className="relative z-[51] app-shift min-h-screen px-4 pb-5 pt-20 md:px-8 lg:px-10">
-        <div className="relative mx-auto max-w-6xl space-y-6">
+        <div className="relative mx-auto max-w-7xl space-y-6">
           {!isStoreProfileRoute && (
             <>
               <header className="relative overflow-hidden rounded-[28px] border border-yellow-200/70 bg-[linear-gradient(135deg,#F4B942_0%,#FBBF24_48%,#FDE68A_100%)] p-5 shadow-lg shadow-yellow-200/60 md:p-6">

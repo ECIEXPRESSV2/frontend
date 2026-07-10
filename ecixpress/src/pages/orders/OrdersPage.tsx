@@ -330,7 +330,7 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
       <Sidebar activeItem="orders" />
 
       <main className="app-shift px-4 pb-6 pt-20 md:px-8 md:pb-8 lg:px-10">
-        <div className="w-full space-y-6">
+        <div className="relative mx-auto w-full max-w-7xl space-y-6">
           <header className="relative overflow-hidden rounded-[28px] border border-yellow-200/70 bg-[linear-gradient(135deg,#F4B942_0%,#FBBF24_48%,#FDE68A_100%)] p-5 shadow-lg shadow-yellow-200/60 md:p-6">
             <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-white/60" />
             <div className="pointer-events-none absolute -left-20 -top-24 h-64 w-64 rounded-full bg-white/22 blur-3xl" />
@@ -597,7 +597,7 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
               </span>
             </div>
 
-            <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
+            <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
               <div className="space-y-6">
                 <section className="rounded-3xl border border-amber-100 bg-white/80 p-5">
                   <div className="grid gap-5 md:grid-cols-2">
