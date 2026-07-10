@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import {
   ArrowUpRight,
-  CheckCircle,
+  ChevronLeft,
+  ChevronRight,
   Clock,
   CreditCard,
   Loader2,
@@ -28,6 +29,8 @@ const STATUS_CHIP: Record<WalletMovementStatus, { label: string; className: stri
   failed: { label: 'Fallida', className: 'bg-red-100 text-red-600' },
   completed: null,
 };
+
+const MOVEMENTS_PAGE_SIZE = 6;
 
 const formatDate = (iso: string) =>
   new Date(iso).toLocaleString('es-CO', {
@@ -61,14 +64,12 @@ const MovementIcon: React.FC<{ movement: WalletMovement }> = ({ movement }) => {
 const PagosSection: React.FC = () => {
   const {
     userId,
-    balanceLabel,
-    loading: walletLoading,
     defaultMethod,
     openRecharge,
-    openHistory,
     openMethodPicker,
   } = useWallet();
   const [movements, setMovements] = useState<WalletMovement[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -82,6 +83,7 @@ const PagosSection: React.FC = () => {
         getWalletTransactions(userId),
       ]);
       setMovements(buildWalletHistory(topups, transactions));
+      setCurrentPage(1);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudieron cargar los pagos');
     } finally {
@@ -96,52 +98,59 @@ const PagosSection: React.FC = () => {
   useRefreshOnScrollTop(loadMovements, { disabled: loading });
 
   const defaultMethodMeta = defaultMethod ? getMethodMeta(defaultMethod) : null;
-  const latestMovements = movements.slice(0, 6);
-  const completedPayments = movements.filter((movement) => movement.kind === 'payment' && movement.status === 'completed');
-  const totalPaid = completedPayments.reduce((sum, movement) => sum + movement.amount, 0);
+  const totalPages = Math.max(1, Math.ceil(movements.length / MOVEMENTS_PAGE_SIZE));
+  const pageStart = (currentPage - 1) * MOVEMENTS_PAGE_SIZE;
+  const paginatedMovements = movements.slice(pageStart, pageStart + MOVEMENTS_PAGE_SIZE);
 
   return (
     <>
-      <AccountSectionHeader titulo="Pagos">
-        <button
-          type="button"
-          onClick={openRecharge}
-          className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-amber-700 shadow-sm transition hover:bg-yellow-50 focus:outline-none focus:ring-2 focus:ring-white"
-        >
-          <PlusCircle size={15} aria-hidden="true" /> Recargar saldo
-        </button>
-        <button
-          type="button"
-          onClick={openMethodPicker}
-          className="inline-flex items-center gap-2 rounded-xl border border-white/70 bg-white/55 px-4 py-2.5 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-white/75 hover:text-amber-700 focus:outline-none focus:ring-2 focus:ring-white"
-        >
-          <CreditCard size={15} aria-hidden="true" /> Metodo predeterminado
-        </button>
-      </AccountSectionHeader>
+      <AccountSectionHeader titulo="Pagos" />
 
       <section className="grid grid-cols-1 items-stretch gap-5 lg:grid-cols-[minmax(320px,420px)_1fr]">
         <WalletPremiumCard className="mx-auto h-full lg:mx-0" />
-        <div className="grid gap-3 sm:grid-cols-3">
-          <div className="flex min-h-[112px] flex-col justify-center rounded-3xl border border-white/70 bg-white/82 p-5 shadow-lg shadow-gray-200/60 backdrop-blur-xl">
-            <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Saldo disponible</p>
-            <p className="mt-2 text-2xl font-black leading-none text-gray-950">{walletLoading ? 'Cargando...' : balanceLabel}</p>
+        <div className="flex flex-col justify-center rounded-3xl border border-white/70 bg-white/82 p-5 shadow-lg shadow-gray-200/60 backdrop-blur-xl md:p-6">
+          <div>
+            <h2 className="text-lg font-black text-gray-950">Accesos rápidos</h2>
           </div>
-          <div className="flex min-h-[112px] flex-col justify-center rounded-3xl border border-white/70 bg-white/82 p-5 shadow-lg shadow-gray-200/60 backdrop-blur-xl">
-            <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Pagos completados</p>
-            <p className="mt-2 text-2xl font-black leading-none text-gray-950">{completedPayments.length}</p>
-          </div>
-          <div className="flex min-h-[112px] flex-col justify-center rounded-3xl border border-white/70 bg-white/82 p-5 shadow-lg shadow-gray-200/60 backdrop-blur-xl">
-            <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Total pagado</p>
-            <p className="mt-2 text-2xl font-black leading-none text-gray-950">{formatCOP(totalPaid)}</p>
+
+          <div className="mt-5 grid flex-1 grid-cols-2 gap-4">
+            <button
+              type="button"
+              onClick={openRecharge}
+              className="group flex min-h-[132px] flex-col items-center justify-center rounded-2xl border border-yellow-100 bg-gradient-to-br from-yellow-50 to-white px-4 py-5 text-center shadow-sm transition hover:-translate-y-0.5 hover:border-yellow-200 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-yellow-300"
+            >
+              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-yellow-100 text-amber-700 shadow-sm transition group-hover:bg-yellow-200">
+                <PlusCircle size={22} aria-hidden="true" />
+              </span>
+              <span className="mt-2.5 text-sm font-bold text-gray-900">Recargar</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={openMethodPicker}
+              className="group flex min-h-[132px] flex-col items-center justify-center rounded-2xl border border-gray-100 bg-white px-4 py-5 text-center shadow-sm transition hover:-translate-y-0.5 hover:border-yellow-200 hover:bg-yellow-50/60 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-yellow-300"
+            >
+              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-amber-700 shadow-sm ring-1 ring-gray-100 transition group-hover:ring-yellow-200">
+                {defaultMethod ? (
+                  <PaymentMethodIcon method={defaultMethod} size={28} />
+                ) : (
+                  <CreditCard size={22} aria-hidden="true" />
+                )}
+              </span>
+              <span className="mt-2.5 text-sm font-bold text-gray-900">Método de recarga</span>
+              <span className="mt-0.5 max-w-full truncate text-xs text-gray-400">
+                {defaultMethodMeta?.label ?? 'Elegir predeterminado'}
+              </span>
+            </button>
           </div>
         </div>
       </section>
 
-      <section className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
+      <section>
         <div className="rounded-3xl border border-white/70 bg-white/82 p-5 shadow-lg shadow-gray-200/60 backdrop-blur-xl md:p-6">
           <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h2 className="text-lg font-bold text-gray-900">Ultimos pagos y movimientos</h2>
+              <h2 className="text-lg font-bold text-gray-900">Historial de movimientos</h2>
               <p className="mt-1 text-xs text-gray-500">Pagos de pedidos, recargas y reembolsos de tu billetera.</p>
             </div>
             <button
@@ -160,14 +169,14 @@ const PagosSection: React.FC = () => {
             </div>
           ) : error ? (
             <p className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600">{error}</p>
-          ) : latestMovements.length === 0 ? (
+          ) : paginatedMovements.length === 0 ? (
             <div className="flex flex-col items-center gap-2 py-10 text-center">
               <Clock className="text-gray-300" size={32} aria-hidden="true" />
-              <p className="text-sm text-gray-500">Aun no tienes pagos o movimientos en tu billetera.</p>
+              <p className="text-sm text-gray-500">Aún no tienes pagos o movimientos en tu billetera.</p>
             </div>
           ) : (
             <ul className="space-y-2.5">
-              {latestMovements.map((movement) => {
+              {paginatedMovements.map((movement) => {
                 const chip = STATUS_CHIP[movement.status];
                 const credit = movement.direction === 'in';
                 const amountClass =
@@ -206,52 +215,37 @@ const PagosSection: React.FC = () => {
             </ul>
           )}
 
-          <button
-            type="button"
-            onClick={openHistory}
-            className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-yellow-400 px-4 py-2.5 text-sm font-bold text-gray-950 transition hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-300"
-          >
-            <Clock size={15} aria-hidden="true" /> Ver historial completo
-          </button>
-        </div>
-
-        <aside className="space-y-4">
-          <div className="rounded-3xl border border-white/70 bg-white/82 p-5 shadow-lg shadow-gray-200/60 backdrop-blur-xl">
-            <h2 className="text-sm font-bold text-gray-900">Metodo de pago</h2>
-            <p className="mt-1 text-xs text-gray-500">Se usa como opcion inicial al recargar la billetera.</p>
-            <button
-              type="button"
-              onClick={openMethodPicker}
-              className="mt-4 flex w-full items-center gap-3 rounded-2xl border border-gray-100 bg-white/80 p-3 text-left transition hover:border-yellow-200 hover:bg-yellow-50/70 focus:outline-none focus:ring-2 focus:ring-yellow-300"
-            >
-              {defaultMethod ? (
-                <PaymentMethodIcon method={defaultMethod} size={40} />
-              ) : (
-                <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-700">
-                  <CreditCard size={18} aria-hidden="true" />
+          {!loading && !error && movements.length > MOVEMENTS_PAGE_SIZE && (
+            <div className="mt-5 flex flex-col gap-3 border-t border-gray-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-xs font-semibold text-gray-400">
+                Página {currentPage} de {totalPages}
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                  disabled={currentPage === 1}
+                  aria-label="Página anterior"
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 transition hover:border-yellow-300 hover:bg-yellow-50 hover:text-amber-700 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <ChevronLeft size={18} aria-hidden="true" />
+                </button>
+                <span className="min-w-8 text-center text-xs font-bold text-gray-400">
+                  {currentPage}
                 </span>
-              )}
-              <span className="min-w-0 flex-1">
-                <span className="block text-sm font-bold text-gray-900">
-                  {defaultMethodMeta?.label ?? 'Sin metodo predeterminado'}
-                </span>
-                <span className="block truncate text-xs text-gray-400">
-                  {defaultMethodMeta?.description ?? 'Elige como quieres completar tus recargas.'}
-                </span>
-              </span>
-            </button>
-          </div>
-
-          <div className="rounded-3xl border border-emerald-100 bg-emerald-50/70 p-5 shadow-sm">
-            <div className="flex items-center gap-2 text-emerald-700">
-              <CheckCircle size={18} aria-hidden="true" />
-              <h2 className="text-sm font-bold">Pagos protegidos</h2>
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                  disabled={currentPage === totalPages}
+                  aria-label="Página siguiente"
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-yellow-100 text-amber-800 transition hover:bg-yellow-200 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <ChevronRight size={18} aria-hidden="true" />
+                </button>
+              </div>
             </div>
-            <p className="mt-2 text-xs leading-5 text-emerald-700/80">
-              Las recargas se completan con Wompi y los pagos de pedidos quedan registrados en tu historial.
-            </p>
-          </div>
-        </aside>
+          )}
+        </div>
       </section>
     </>
   );

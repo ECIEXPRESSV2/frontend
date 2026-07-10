@@ -6,6 +6,7 @@ type AdminHeroBannerProps = {
   title: string;
   accent: string;
   description?: string;
+  rootLabel?: string;
   sidebarExpanded: boolean;
 };
 
@@ -14,6 +15,7 @@ const AdminHeroBanner: React.FC<AdminHeroBannerProps> = ({
   title,
   accent,
   description,
+  rootLabel = 'Administracion',
   sidebarExpanded,
 }) => (
   <header
@@ -28,7 +30,7 @@ const AdminHeroBanner: React.FC<AdminHeroBannerProps> = ({
     <div className="relative z-10 flex min-h-[112px] items-center px-5 py-5 md:min-h-[132px] md:px-8 md:py-6">
       <div className="admin-hero-copy space-y-3">
         <nav className="inline-flex items-center rounded-xl border border-white/70 bg-white/80 px-3 py-1.5 text-sm font-semibold text-gray-700 shadow-sm backdrop-blur" aria-label="Ruta de navegacion">
-          Administracion <span className="mx-2 text-gray-400">/</span>
+          {rootLabel} <span className="mx-2 text-gray-400">/</span>
           <span className="text-gray-950">{section}</span>
         </nav>
 

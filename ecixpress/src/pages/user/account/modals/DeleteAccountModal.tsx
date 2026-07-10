@@ -17,7 +17,7 @@ const DeleteAccountModal: React.FC<Props> = ({ open, onClose, onConfirm }) => {
           <h2 id="delete-account-title" className="flex items-center gap-2 text-lg font-bold text-red-700"><AlertTriangle size={18} aria-hidden="true" /> Eliminar cuenta</h2>
           <button type="button" onClick={handleClose} aria-label="Cerrar" className="rounded-lg p-1 text-gray-400 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-300"><X size={18} aria-hidden="true" /></button>
         </div>
-        <p className="text-sm text-gray-600">Esta acción es permanente y no se puede deshacer. Perderás tu billetera, pedidos y datos. Escribe <span className="font-bold">ELIMINAR</span> para confirmar.</p>
+        <p className="text-sm text-gray-600">Esta acción marcará tu cuenta como inactiva y cerrará tu acceso. Conservaremos pedidos y pagos por trazabilidad. Escribe <span className="font-bold">ELIMINAR</span> para confirmar.</p>
         <input aria-label="Escribe ELIMINAR para confirmar" value={text} onChange={e => setText(e.target.value)} placeholder="ELIMINAR" className="mt-3 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-red-400 focus:outline-none focus:ring-2 focus:ring-red-100" />
         <div className="mt-5 flex justify-end gap-2">
           <button type="button" onClick={handleClose} className="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-300">Cancelar</button>

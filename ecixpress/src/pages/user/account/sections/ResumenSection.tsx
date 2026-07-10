@@ -7,7 +7,6 @@ import {
   Edit,
   ImagePlus,
   Lock,
-  Phone,
   Save,
   User,
   Wallet as WalletIcon,
@@ -197,12 +196,6 @@ const ResumenSection: React.FC = () => {
               <h1 className="font-display text-2xl font-semibold text-gray-900 md:text-3xl">{userProfile?.fullName || '-'}</h1>
               <p className="text-sm font-medium text-gray-600">{userProfile?.email}</p>
               <div className="mt-3 flex flex-wrap items-center gap-1.5">
-                {userProfile?.phone && (
-                  <span className="inline-flex items-center gap-1 rounded-full border border-white/70 bg-white/75 px-2.5 py-1 text-xs font-semibold text-gray-600 shadow-sm">
-                    <Phone size={11} aria-hidden="true" />
-                    {userProfile.phone}
-                  </span>
-                )}
                 {activeAccount && (
                   <span className="inline-flex items-center gap-1 rounded-full border border-emerald-100 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
                     <CheckCircle size={12} aria-hidden="true" /> Cuenta activa
@@ -302,7 +295,7 @@ const ResumenSection: React.FC = () => {
           <WalletPremiumCard className="mx-auto lg:mx-0" />
           <div className="flex min-h-[178px] flex-col justify-center gap-5 rounded-3xl border border-white/70 bg-white/90 p-5 shadow-lg shadow-gray-200/60 backdrop-blur-xl">
             <div>
-              <p className="text-sm font-bold text-gray-900">Billetera ECIxpress</p>
+              <p className="text-sm font-bold text-gray-900">Billetera ECIEXPRESS</p>
               <p className="mt-1 text-sm leading-6 text-gray-500">Administra tus recargas y revisa el historial de pagos cuando lo necesites.</p>
             </div>
             <div className="grid gap-3 sm:grid-cols-[7fr_3fr]">

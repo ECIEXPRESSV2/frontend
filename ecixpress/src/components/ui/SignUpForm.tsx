@@ -4,6 +4,7 @@ import AuthLayout from './AuthLayout';
 import FormInput from './FormInput';
 import PasswordInput from './PasswordInput';
 import { validateEmail, validatePassword, validateName, validateConfirmPassword } from '../../lib/validation';
+import { isFirebasePopupCancelled } from '../../lib/firebase-auth-errors';
 import { useAuth } from '../../context/AuthContext';
 
 interface SignUpProps {
@@ -108,6 +109,7 @@ const SignUpForm: React.FC<SignUpProps> = ({ onSignInClick, onSignUpSuccess }) =
       await signInWithGoogle();
       onSignUpSuccess?.();
     } catch (err: unknown) {
+      if (isFirebasePopupCancelled(err)) return;
       toast.error(err instanceof Error ? err.message : 'Error con Google');
     } finally {
       setIsLoading(false);
