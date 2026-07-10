@@ -126,9 +126,9 @@ const Home: React.FC<HomeProps> = ({ onUserClick, onCartClick, onOrdersClick, on
         <SectionToggle active={activeSection} onChange={setActiveSection} />
       </div>
 
-      {/* Barra de búsqueda de tiendas — fija. En md+ va en la primera franja (el padding derecho
-          evita que la cápsula del avatar la tape); en móvil baja a una segunda fila propia. */}
-      <div className="app-shift fixed inset-x-0 top-[4.25rem] z-[55] flex items-center justify-center px-3 md:top-3 md:pl-64 md:pr-24 lg:pl-3">
+      {/* Barra de búsqueda de tiendas — en móvil fluye con el contenido; en md+ fija en la
+          primera franja (el padding derecho evita que la cápsula del avatar la tape). */}
+      <div className="app-shift flex items-center justify-center px-3 md:fixed md:inset-x-0 md:top-3 md:z-[55] md:pl-64 md:pr-24 lg:pl-3">
         <div className={`relative transition-all duration-300 ease-out ${homeSearchFocused ? 'w-full max-w-2xl' : 'w-full max-w-md'}`}>
           <Search size={18} className="pointer-events-none absolute left-4 top-1/2 z-10 -translate-y-1/2 text-gray-400" />
           <input
@@ -142,9 +142,9 @@ const Home: React.FC<HomeProps> = ({ onUserClick, onCartClick, onOrdersClick, on
         </div>
       </div>
 
-      {/* El padding-top reserva el espacio de los controles fijos: en móvil son dos filas
-          (cápsula y buscador); desde md una sola. */}
-      <main className="app-shift px-4 pb-8 pt-32 md:px-8 md:pt-20 lg:px-10">
+      {/* El padding-top en md+ reserva el espacio de los controles fijos (toggle + buscador).
+          En móvil el buscador fluye con el contenido, así que no necesita padding extra. */}
+      <main className="app-shift px-4 pb-8 pt-20 md:px-8 md:pb-8 lg:px-10">
         <div className="relative mx-auto w-full max-w-7xl space-y-5 md:space-y-6">
           {/* Hero + tiendas van juntos: el título "Nuestras tiendas" es un recuadro puente
               que se superpone al borde entre ambos contenedores. */}

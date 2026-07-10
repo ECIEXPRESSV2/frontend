@@ -316,7 +316,7 @@ const MessagesPage: React.FC<MessagesPageProps> = ({ onBack }) => {
     <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-white to-yellow-100">
       <Sidebar activeItem="messages" />
 
-      <main className="app-shift px-4 pb-6 pt-20 md:px-8 md:pb-8 lg:px-10">
+      <main className="app-shift px-4 pb-24 pt-20 md:px-8 md:pb-8 lg:px-10">
         <div className="relative mx-auto w-full max-w-7xl space-y-6">
           <div className="flex items-center gap-3">
             <button onClick={() => (onBack ? onBack() : navigate('/home'))} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/55 backdrop-blur-xl border border-white/50 text-gray-700 font-medium text-sm shadow-sm shadow-gray-200/40 hover:bg-white/80 hover:text-yellow-600 hover:shadow-md transition-all duration-300">
@@ -334,8 +334,9 @@ const MessagesPage: React.FC<MessagesPageProps> = ({ onBack }) => {
           )}
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            {/* Lista de conversaciones */}
-            <section className="lg:col-span-4">
+            {/* Lista de conversaciones — en mobile se oculta mientras hay un chat abierto,
+                para que el chat use la pantalla completa en vez de apilarse debajo. */}
+            <section className={`lg:col-span-4 ${selectedId ? 'hidden lg:block' : ''}`}>
               <div className="rounded-3xl bg-white/45 backdrop-blur-2xl border border-white/50 shadow-xl shadow-gray-200/40 p-2.5">
                 <div className="space-y-1.5">
                   {groups.length === 0 && (
@@ -471,12 +472,20 @@ const MessagesPage: React.FC<MessagesPageProps> = ({ onBack }) => {
               </div>
             </section>
 
-            {/* Chat */}
-            <section className="lg:col-span-8">
-              <div className="glass-spotlight glass-spotlight-soft rounded-3xl bg-white/45 backdrop-blur-2xl border border-white/50 shadow-xl shadow-gray-200/40 flex flex-col h-[70vh] overflow-hidden">
+            {/* Chat — en mobile solo se muestra cuando hay una conversación seleccionada
+                (ver `selectedId` arriba); en lg+ va siempre junto a la lista, sin cambios. */}
+            <section className={`lg:col-span-8 ${selectedId ? '' : 'hidden lg:block'}`}>
+              <div className="glass-spotlight glass-spotlight-soft rounded-3xl bg-white/45 backdrop-blur-2xl border border-white/50 shadow-xl shadow-gray-200/40 flex flex-col h-[calc(100dvh-13rem)] lg:h-[70vh] overflow-hidden">
                 {selected ? (
                   <>
                     <div className="px-5 py-4 border-b border-white/50 bg-white/30 backdrop-blur-xl flex items-center gap-3">
+                      <button
+                        onClick={() => setSelectedId('')}
+                        aria-label="Volver a conversaciones"
+                        className="inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-white/60 border border-white/60 text-gray-600 shadow-sm transition-all duration-300 hover:bg-white hover:text-yellow-600 lg:hidden"
+                      >
+                        <ArrowLeft size={16} />
+                      </button>
                       <ChatAvatar name={conversationName(selected)} imageUrl={conversationAvatar(selected)} size="lg" />
                       <div className="min-w-0 flex-1">
                         <p className="font-bold text-gray-900 truncate">{conversationName(selected)}</p>

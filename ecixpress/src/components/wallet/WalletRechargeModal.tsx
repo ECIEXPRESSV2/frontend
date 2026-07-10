@@ -5,6 +5,7 @@ import {
   ExternalLink,
   Loader2,
   CheckCircle2,
+  Wallet,
 } from "lucide-react";
 import { toast } from "react-toastify";
 import ModalShell from "./ModalShell";
@@ -269,8 +270,8 @@ const WalletRechargeModal: React.FC<Props> = ({ open, onClose }) => {
   // ─── Render por paso ──────────────────────────────────────────────────────
 
   const input =
-    "w-full px-3.5 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent";
-  const labelCls = "block text-xs font-medium text-gray-600 mb-1.5";
+    "w-full px-3.5 py-2.5 rounded-xl border border-gray-200/80 bg-gray-50/70 backdrop-blur-sm text-sm text-gray-900 transition focus:outline-none focus:ring-2 focus:ring-[var(--accent-300)] focus:border-transparent";
+  const labelCls = "block text-xs font-medium text-gray-500 mb-1.5";
 
   const renderForm = () => (
     <div className="space-y-5">
@@ -287,10 +288,10 @@ const WalletRechargeModal: React.FC<Props> = ({ open, onClose }) => {
                 key={m.key}
                 type="button"
                 onClick={() => setMethod(m.key)}
-                className={`flex items-center gap-2.5 px-3 py-2.5 rounded-2xl border text-left transition ${
+                className={`flex items-center gap-2.5 rounded-2xl border px-3 py-2.5 text-left backdrop-blur-xl transition ${
                   active
-                    ? "border-yellow-400 bg-yellow-50 ring-1 ring-yellow-300"
-                    : "border-gray-200 bg-white hover:border-yellow-200 hover:bg-gray-50"
+                    ? "border-[var(--accent-300)] bg-[rgb(var(--accent-rgb)/0.10)] ring-1 ring-[var(--accent-300)]"
+                    : "border-gray-200/70 bg-white/60 hover:border-gray-300 hover:bg-white/90"
                 }`}
               >
                 <m.Icon size={30} />
@@ -487,7 +488,7 @@ const WalletRechargeModal: React.FC<Props> = ({ open, onClose }) => {
           setStep("confirm");
           setShowWarning(true); // aviso bloqueante no reembolsable
         }}
-        className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-yellow-400 to-yellow-500 text-white font-bold text-base shadow-lg shadow-yellow-200/70 hover:from-yellow-500 hover:to-yellow-600 transition disabled:opacity-40 disabled:cursor-not-allowed"
+        className="w-full py-3.5 rounded-2xl bg-[linear-gradient(135deg,var(--accent-400),var(--accent-500))] text-white font-bold text-base shadow-lg shadow-[rgb(var(--accent-rgb)/0.35)] transition hover:brightness-105 disabled:opacity-40 disabled:cursor-not-allowed"
       >
         {amountCents >= MIN_PESOS * 100
           ? `Recargar ${formatCOP(amountCents)}`
@@ -503,7 +504,7 @@ const WalletRechargeModal: React.FC<Props> = ({ open, onClose }) => {
         Recarga no reembolsable a dinero real.
       </div>
 
-      <div className="rounded-2xl bg-gray-50 border border-gray-100 p-4 space-y-2 text-sm">
+      <div className="rounded-2xl border border-white/60 bg-white/60 backdrop-blur-xl p-4 space-y-2 text-sm shadow-sm">
         <div className="flex justify-between">
           <span className="text-gray-500">Monto</span>
           <span className="font-semibold text-gray-900">
@@ -526,7 +527,7 @@ const WalletRechargeModal: React.FC<Props> = ({ open, onClose }) => {
         <button
           type="button"
           onClick={() => setStep("form")}
-          className="flex items-center justify-center gap-1.5 flex-1 py-3 rounded-xl border border-gray-200 text-gray-600 font-semibold hover:bg-gray-50 transition"
+          className="flex items-center justify-center gap-1.5 flex-1 py-3 rounded-xl border border-gray-200/80 bg-white/60 backdrop-blur-xl text-gray-600 font-semibold transition hover:bg-white/90"
         >
           <ArrowLeft size={16} /> Volver
         </button>
@@ -534,7 +535,7 @@ const WalletRechargeModal: React.FC<Props> = ({ open, onClose }) => {
           type="button"
           disabled={submitting}
           onClick={handleSubmit}
-          className="flex items-center justify-center gap-2 flex-1 py-3 rounded-xl bg-gradient-to-r from-yellow-400 to-yellow-500 text-white font-semibold shadow-md hover:from-yellow-500 hover:to-yellow-600 transition disabled:opacity-50"
+          className="flex items-center justify-center gap-2 flex-1 py-3 rounded-xl bg-[linear-gradient(135deg,var(--accent-400),var(--accent-500))] text-white font-semibold shadow-md shadow-[rgb(var(--accent-rgb)/0.3)] transition hover:brightness-105 disabled:opacity-50"
         >
           {submitting && <Loader2 size={16} className="animate-spin" />}
           {submitting ? "Procesando…" : "Sí, recargar"}
@@ -569,7 +570,7 @@ const WalletRechargeModal: React.FC<Props> = ({ open, onClose }) => {
       <div className="space-y-5 text-center">
         <div className="flex flex-col items-center gap-3">
           <div
-            className={`w-14 h-14 rounded-full flex items-center justify-center ${approved ? "bg-emerald-100" : declined ? "bg-red-100" : "bg-yellow-100"}`}
+            className={`w-14 h-14 rounded-full flex items-center justify-center backdrop-blur-sm ${approved ? "bg-emerald-100/80" : declined ? "bg-red-100/80" : "bg-amber-100/80"}`}
           >
             {approved ? (
               <CheckCircle2 className="text-emerald-500" size={32} />
@@ -577,7 +578,7 @@ const WalletRechargeModal: React.FC<Props> = ({ open, onClose }) => {
               <AlertTriangle className="text-red-500" size={30} />
             ) : (
               <Loader2
-                className={`text-yellow-500 ${checking ? "animate-spin" : ""}`}
+                className={`text-amber-600 ${checking ? "animate-spin" : ""}`}
                 size={30}
               />
             )}
@@ -606,7 +607,7 @@ const WalletRechargeModal: React.FC<Props> = ({ open, onClose }) => {
                 <img
                   src={`data:image/svg+xml;base64,${qrImage}`}
                   alt="Código QR de pago"
-                  className="w-48 h-48 rounded-xl border border-gray-100"
+                  className="w-48 h-48 rounded-xl border border-gray-200/80 bg-white/60 backdrop-blur-xl p-2"
                 />
               </div>
             ) : approveUrl ? (
@@ -614,7 +615,7 @@ const WalletRechargeModal: React.FC<Props> = ({ open, onClose }) => {
                 href={approveUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-gradient-to-r from-yellow-400 to-yellow-500 text-white font-semibold shadow-md hover:from-yellow-500 hover:to-yellow-600 transition"
+                className="inline-flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-[linear-gradient(135deg,var(--accent-400),var(--accent-500))] text-white font-semibold shadow-md shadow-[rgb(var(--accent-rgb)/0.3)] transition hover:brightness-105"
               >
                 Completar / aprobar el pago <ExternalLink size={16} />
               </a>
@@ -651,7 +652,7 @@ const WalletRechargeModal: React.FC<Props> = ({ open, onClose }) => {
               type="button"
               disabled={checking}
               onClick={() => result && void loadDetails(result.topupId)}
-              className="flex items-center justify-center gap-2 flex-1 py-3 rounded-xl border border-gray-200 text-gray-600 font-semibold hover:bg-gray-50 transition disabled:opacity-50"
+              className="flex items-center justify-center gap-2 flex-1 py-3 rounded-xl border border-gray-200/80 bg-white/60 backdrop-blur-xl text-gray-600 font-semibold transition hover:bg-white/90 disabled:opacity-50"
             >
               {checking && <Loader2 size={16} className="animate-spin" />}
               Verificar estado
@@ -660,7 +661,7 @@ const WalletRechargeModal: React.FC<Props> = ({ open, onClose }) => {
           <button
             type="button"
             onClick={handleClose}
-            className="flex-1 py-3 rounded-xl bg-gray-900 text-white font-semibold hover:bg-gray-800 transition"
+            className="flex-1 py-3 rounded-xl bg-gray-900/90 backdrop-blur-xl text-white font-semibold shadow-lg shadow-gray-900/20 transition hover:bg-gray-900"
           >
             {approved ? "Listo" : "Cerrar"}
           </button>
@@ -678,24 +679,36 @@ const WalletRechargeModal: React.FC<Props> = ({ open, onClose }) => {
     result: { t: "Recarga", s: undefined },
   };
 
-  // El paso del formulario usa un header amarillo full-bleed (estilo billetera)
-  // que contiene el monto; confirm/result mantienen el encabezado blanco.
+  // El paso del formulario usa un header "liquid glass" full-bleed (vidrio esmerilado
+  // + acento sutil de color) con la tarjeta del monto; confirm/result usan el
+  // encabezado por defecto de ModalShell (ahora también translúcido via panelClassName).
   const amountDisplay = amountPesos
     ? Number(amountPesos).toLocaleString("es-CO")
     : "";
   const formHeader = (
-    <div className="bg-[linear-gradient(140deg,rgba(244,185,66,0.22)_0%,rgba(255,255,255,0.86)_42%,rgba(244,185,66,0.12)_72%,rgba(244,185,66,0.30)_100%)] px-6 pt-7 pb-5">
-      <h2 className="text-lg font-bold text-gray-950">{titles.form.t}</h2>
-      <p className="text-xs text-gray-600 mt-0.5">{titles.form.s}</p>
+    <div className="relative overflow-hidden bg-white/50 backdrop-blur-2xl px-6 pt-6 pb-5">
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-white/70" />
+      <div className="pointer-events-none absolute -right-20 -top-24 h-56 w-56 rounded-full bg-[rgb(var(--accent-rgb)/0.16)] blur-3xl" />
+      <div className="pointer-events-none absolute -left-20 -bottom-24 h-56 w-56 rounded-full bg-gray-200/50 blur-3xl" />
+
+      <div className="relative flex items-center gap-3">
+        <span className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl border border-white/70 bg-[rgb(var(--accent-rgb)/0.14)] text-[var(--accent-600)] backdrop-blur-xl">
+          <Wallet size={20} aria-hidden="true" />
+        </span>
+        <div className="min-w-0">
+          <h2 className="text-lg font-bold text-gray-900">{titles.form.t}</h2>
+          <p className="text-xs text-gray-500 mt-0.5">{titles.form.s}</p>
+        </div>
+      </div>
 
       {/* Tarjeta del monto */}
-      <div className="mt-4 rounded-2xl bg-white/95 shadow-lg shadow-amber-900/10 px-5 py-4">
-        <p className="text-center text-[11px] font-semibold uppercase tracking-wide text-amber-600">
+      <div className="relative mt-4 rounded-2xl border border-white/70 bg-white/70 backdrop-blur-xl shadow-[0_18px_40px_-16px_rgba(15,23,42,0.18)] px-5 py-4">
+        <p className="text-center text-[11px] font-semibold uppercase tracking-wide text-gray-500">
           Valor a recargar
         </p>
         <div className="mt-1 flex justify-center">
           <div className="relative">
-            <span className="absolute right-full top-1/2 -translate-y-1/2 mr-1 text-3xl font-extrabold text-amber-500">
+            <span className="absolute right-full top-1/2 -translate-y-1/2 mr-1 text-3xl font-extrabold text-gray-400">
               $
             </span>
             <input
@@ -718,10 +731,10 @@ const WalletRechargeModal: React.FC<Props> = ({ open, onClose }) => {
               key={a}
               type="button"
               onClick={() => setAmountPesos(String(a))}
-              className={`py-1.5 rounded-xl text-[11px] font-bold border transition ${
+              className={`py-1.5 rounded-xl text-[11px] font-bold border backdrop-blur-sm transition ${
                 Number(amountPesos) === a
-                  ? "bg-yellow-50 border-yellow-400 text-yellow-700 ring-1 ring-yellow-300"
-                  : "bg-gray-50 border-transparent text-gray-500 hover:bg-gray-100"
+                  ? "bg-[rgb(var(--accent-rgb)/0.14)] border-[var(--accent-300)] text-[var(--accent-700)] ring-1 ring-[var(--accent-300)]"
+                  : "bg-gray-50/70 border-transparent text-gray-500 hover:bg-gray-100/80"
               }`}
             >
               ${a.toLocaleString("es-CO")}
@@ -740,7 +753,8 @@ const WalletRechargeModal: React.FC<Props> = ({ open, onClose }) => {
         title={titles[step].t}
         subtitle={titles[step].s}
         header={step === "form" ? formHeader : undefined}
-        headerCloseClassName={step === "form" ? "text-gray-500 hover:bg-white/70 hover:text-gray-900" : undefined}
+        panelClassName="bg-white/85 backdrop-blur-2xl"
+        closeButtonClassName="text-gray-500 hover:bg-gray-900/5 hover:text-gray-800"
       >
         {step === "form" && renderForm()}
         {step === "confirm" && renderConfirm()}

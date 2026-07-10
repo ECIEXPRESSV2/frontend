@@ -420,8 +420,8 @@ const ProductsManagementPage: React.FC = () => {
     <>
     <div className="min-h-screen bg-background">
       <Sidebar activeItem="vendor-stores" />
-      <main className="app-shift px-4 pb-6 pt-20 md:px-8 md:pb-8 lg:px-10">
-        <div className="relative mx-auto max-w-6xl space-y-6">
+      <main className="app-shift px-4 pb-28 pt-20 md:px-8 md:pb-8 lg:px-10">
+        <div className="relative mx-auto max-w-7xl space-y-6">
           {/* Header */}
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div className="flex items-center gap-3">
@@ -448,7 +448,7 @@ const ProductsManagementPage: React.FC = () => {
 
           {/* Resumen rápido */}
           {!loading && products.length > 0 && (
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="rounded-2xl bg-surface border border-gray-100 p-4">
                 <p className="text-2xl font-display font-semibold text-gray-900 tabular-nums">{activeCount}</p>
                 <p className="text-xs text-gray-500">Productos activos</p>
@@ -557,7 +557,7 @@ const ProductsManagementPage: React.FC = () => {
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between pt-2 border-t border-dashed border-gray-200">
+                    <div className="flex items-center justify-between gap-2 pt-2 border-t border-dashed border-gray-200 flex-wrap">
                       <div className="flex items-center gap-1">
                         <button onClick={() => quickStock(p, -1)} disabled={p.stock <= 0} className="w-7 h-7 rounded-lg bg-gray-50 border border-gray-200 flex items-center justify-center hover:bg-gray-100 disabled:opacity-40"><Minus size={13} /></button>
                         <button onClick={() => setStockModal({ open: true, product: p, value: String(p.stock) })} title="Fijar stock exacto" className="px-2 py-1 rounded-lg bg-gray-100 text-xs font-semibold text-gray-700 tabular-nums hover:bg-gray-200">

@@ -89,7 +89,7 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ open, orderId, onCl
           </button>
 
           <div className="flex flex-col items-center text-center">
-            <img src="/logotipoEcixpress.svg" alt="eciexpress" className="h-12 w-auto" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+            <img src="/ecixpress-logo.svg" alt="eciexpress" className="h-12 w-auto" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
             {order && <p className="mt-2 text-xs font-medium uppercase tracking-wide text-gray-400">{order.storeName}</p>}
           </div>
 

@@ -904,7 +904,7 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName,
           {mobileCartOpen && (
             <div className="fixed inset-0 z-50 flex flex-col justify-end">
               <div className="absolute inset-0 bg-black/40" onClick={() => setMobileCartOpen(false)} />
-              <div className="relative bg-white rounded-t-3xl p-5 pb-6 max-h-[85vh] overflow-auto space-y-4 ml-[var(--sidebar-w)]">
+              <div className="relative bg-white rounded-t-3xl p-5 pb-6 max-h-[85vh] overflow-auto space-y-4 md:ml-[var(--sidebar-w)]">
                 <div className="flex items-center gap-2">
                   <ShoppingCart size={18} className="text-yellow-500" />
                   <h3 className="font-bold text-gray-900">Tu carrito</h3>

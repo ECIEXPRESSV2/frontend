@@ -180,7 +180,7 @@ const InfoPage: React.FC = () => {
           >
             <ArrowLeft size={16} aria-hidden="true" /> Volver al inicio
           </button>
-          <img src="/logotipoEcixpress.svg" alt="ECIEXPRESS" className="h-7 md:h-8" />
+          <img src="/ecixpress-logo.svg" alt="ECIEXPRESS" className="h-7 md:h-8" />
         </div>
 
         <main className="overflow-hidden rounded-[32px] border border-white/60 bg-white/70 px-5 py-7 shadow-[0_18px_40px_-24px_rgb(var(--accent-rgb)/0.35)] backdrop-blur-2xl md:px-10 md:py-9">

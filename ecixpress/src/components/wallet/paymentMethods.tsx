@@ -100,8 +100,8 @@ export const BancolombiaTransferIcon: React.FC<BadgeProps> = ({ size = 28, class
 
 export const BancolombiaQrIcon: React.FC<BadgeProps> = ({ size = 28, className = '' }) => (
   <span
-    className={`inline-flex items-center justify-center rounded-lg flex-shrink-0 ${className}`}
-    style={{ width: size, height: size, background: '#FDDA24', color: '#26221E' }}
+    className={`inline-flex items-center justify-center rounded-lg bg-white border border-gray-200 flex-shrink-0 ${className}`}
+    style={{ width: size, height: size, color: '#2C2A29' }}
   >
     <QrCode size={size * 0.6} />
   </span>

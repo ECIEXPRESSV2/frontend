@@ -67,7 +67,7 @@ export const HBarChart: React.FC<HBarChartProps> = ({
       {data.map((d) => {
         const pct = Math.max((d.value / max) * 100, d.value > 0 ? 2 : 0);
         return (
-          <li key={d.label} className="grid grid-cols-[9rem_1fr] items-center gap-3">
+          <li key={d.label} className="grid grid-cols-1 gap-1 sm:grid-cols-[9rem_1fr] sm:items-center sm:gap-3">
             <span className="truncate text-sm font-semibold text-gray-700" title={d.label}>
               {d.label}
             </span>
@@ -112,7 +112,7 @@ export const ErrorRateBars: React.FC<{ data: ErrorDatum[] }> = ({ data }) => {
         const color = STATUS[status];
         const pct = Math.max((d.pct / max) * 100, d.pct > 0 ? 2 : 0);
         return (
-          <li key={d.label} className="grid grid-cols-[9rem_1fr] items-center gap-3">
+          <li key={d.label} className="grid grid-cols-1 gap-1 sm:grid-cols-[9rem_1fr] sm:items-center sm:gap-3">
             <span className="truncate text-sm font-semibold text-gray-700" title={d.label}>
               {d.label}
             </span>

@@ -146,7 +146,7 @@ const StoreDetail: React.FC<StoreDetailProps> = ({ storeId: storeIdProp, onBack 
 
       {/* min-h reserva scroll suficiente para que recoger el banner (sticky) no encoja el alto
           scrollable de la página → el colapso funciona en cualquier pantalla, sin parpadeo. */}
-      <main className="app-shift min-h-[calc(100vh_+_160px)] px-3 pb-28 md:px-6 lg:pb-8">
+      <main className="app-shift min-h-[calc(100vh_+_160px)] px-3 pb-28 md:px-6 md:pb-8">
         <div className="w-full">
           {/* HERO: banner grande y FIJO. Al bajar se "recoge" hacia arriba y se oscurece, quedando
               como una barra compacta oscura. La barra de búsqueda va superpuesta a la altura de la

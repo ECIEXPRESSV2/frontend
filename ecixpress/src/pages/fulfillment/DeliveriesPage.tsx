@@ -14,7 +14,8 @@ import {
   Camera,
 } from 'lucide-react';
 import Sidebar from '../../components/home/Sidebar';
-import AdminHeroBanner from '../../components/admin/AdminHeroBanner';
+import TrianglePattern from '../../components/home/TrianglePattern';
+
 import ModalShell from '../../components/wallet/ModalShell';
 import QrScannerModal from '../../components/fulfillment/QrScannerModal';
 import FormInput from '../../components/ui/FormInput';
@@ -230,22 +231,31 @@ const DeliveriesPage: React.FC<DeliveriesPageProps> = () => {
   const totalPages = history ? Math.max(1, Math.ceil(history.total / history.limit)) : 1;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-white via-gray-50 to-white text-gray-900">
+    <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-white to-yellow-100 text-gray-900">
       <Sidebar
         activeItem="deliveries"
         expanded={sidebarExpanded}
         onExpandedChange={setSidebarExpanded}
       />
 
-      <main className="relative z-[51] app-shift min-h-screen px-4 pb-6 pt-20 md:px-8 md:pb-8 lg:px-10">
-        <div className="relative mx-auto w-full max-w-6xl space-y-6">
-          <AdminHeroBanner
-            rootLabel="Operaciones"
-            section="Entregas"
-            title="Centro de"
-            accent="entregas"
-            sidebarExpanded={sidebarExpanded}
-          />
+      <main className="relative z-[51] app-shift min-h-screen px-4 pb-28 pt-20 md:px-8 md:pb-8 lg:px-10">
+        <div className="relative mx-auto w-full max-w-7xl space-y-6">
+          <header className="theme-surface relative overflow-hidden rounded-[32px] border border-white/60 bg-[linear-gradient(140deg,rgb(var(--accent-rgb)/0.32)_0%,rgba(255,255,255,0.62)_42%,rgb(var(--accent-rgb)/0.14)_72%,rgb(var(--accent-rgb)/0.36)_100%)] backdrop-blur-2xl [box-shadow:0_28px_50px_-28px_rgb(var(--accent-rgb)/0.45)]">
+            <div aria-hidden="true" className="theme-surface absolute -right-16 -top-24 h-72 w-72 rounded-full bg-[rgb(var(--accent-rgb)/0.32)] blur-3xl" />
+            <div aria-hidden="true" className="theme-surface absolute -bottom-28 left-1/4 h-64 w-64 rounded-full bg-[rgb(var(--accent-rgb)/0.20)] blur-3xl" />
+            <TrianglePattern className="absolute inset-0 pointer-events-none" />
+            <div className="relative flex flex-col gap-5 p-5 lg:flex-row lg:items-start lg:justify-between md:p-6">
+              <div className="max-w-3xl">
+                <nav className="mb-3 inline-flex items-center rounded-xl border border-white/70 bg-white/80 px-3 py-1.5 text-sm font-semibold text-gray-700 shadow-sm backdrop-blur" aria-label="Ruta de navegación">
+                  Operaciones <span className="mx-2 text-gray-400">/</span>
+                  <span className="text-gray-950">Entregas</span>
+                </nav>
+                <h1 className="font-display text-3xl font-bold tracking-normal text-gray-900 md:text-4xl">
+                  Centro de entregas
+                </h1>
+              </div>
+            </div>
+          </header>
 
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
             {/* ── Columna izquierda: operación ── */}

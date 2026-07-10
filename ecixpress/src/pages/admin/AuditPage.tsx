@@ -7,6 +7,7 @@ import { useAuth } from '../../context/AuthContext';
 import { getAuditLogs, type AuditLog } from '../../services/auditService';
 import { getPageCache, pageCacheKeys, setPageCache } from '../../services/pageCache';
 import { useRefreshOnScrollTop } from '../../hooks/useRefreshOnScrollTop';
+import TrianglePattern from '../../components/home/TrianglePattern';
 
 type AuditCache = {
   logs: AuditLog[];
@@ -71,19 +72,19 @@ const AuditPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-white to-yellow-100">
       <Sidebar activeItem="admin-audit" />
-      <main className="app-shift px-4 pb-5 pt-20 md:px-8 lg:px-10">
+      <main className="app-shift px-4 pb-28 pt-20 md:px-8 md:pb-5 lg:px-10">
         <div className="relative mx-auto max-w-7xl space-y-6">
-          <header className="relative overflow-hidden rounded-[28px] border border-yellow-200/70 bg-[linear-gradient(135deg,#F4B942_0%,#FBBF24_48%,#FDE68A_100%)] p-5 shadow-lg shadow-yellow-200/60 md:p-6">
-            <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-white/60" />
-            <div className="pointer-events-none absolute -left-20 -top-24 h-64 w-64 rounded-full bg-white/22 blur-3xl" />
-            <div className="pointer-events-none absolute right-[-90px] top-[-110px] h-72 w-72 rounded-full bg-[#FB923C]/22 blur-3xl" />
+          <header className="theme-surface relative overflow-hidden rounded-[32px] border border-white/60 bg-[linear-gradient(140deg,rgb(var(--accent-rgb)/0.32)_0%,rgba(255,255,255,0.62)_42%,rgb(var(--accent-rgb)/0.14)_72%,rgb(var(--accent-rgb)/0.36)_100%)] backdrop-blur-2xl [box-shadow:0_28px_50px_-28px_rgb(var(--accent-rgb)/0.45)] p-5 md:p-6">
+            <div aria-hidden="true" className="theme-surface absolute -right-16 -top-24 h-72 w-72 rounded-full bg-[rgb(var(--accent-rgb)/0.32)] blur-3xl" />
+            <div aria-hidden="true" className="theme-surface absolute -bottom-28 left-1/4 h-64 w-64 rounded-full bg-[rgb(var(--accent-rgb)/0.20)] blur-3xl" />
+            <TrianglePattern className="absolute inset-0 pointer-events-none" />
             <div className="relative flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
               <div className="max-w-3xl">
                 <nav className="mb-3 inline-flex items-center rounded-xl border border-white/70 bg-white/80 px-3 py-1.5 text-sm font-semibold text-gray-700 shadow-sm backdrop-blur" aria-label="Ruta de navegacion">
                   Administración <span className="mx-2 text-gray-400">/</span>
                   <span className="text-gray-950">Auditoría</span>
                 </nav>
-                <h1 className="text-3xl font-bold tracking-normal text-white md:text-4xl">Log de auditoría</h1>
+                <h1 className="font-display text-3xl font-bold tracking-normal text-gray-900 md:text-4xl">Log de auditoría</h1>
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <button onClick={() => load(page, { actionValue: action })} className="inline-flex min-h-11 items-center gap-2 rounded-2xl border border-white/70 bg-white/80 px-4 py-2 text-sm font-bold text-gray-700 shadow-sm backdrop-blur transition hover:bg-white hover:text-gray-950 focus:outline-none focus:ring-2 focus:ring-white">
