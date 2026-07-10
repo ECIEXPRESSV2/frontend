@@ -93,7 +93,7 @@ const SignUpForm: React.FC<SignUpProps> = ({ onSignInClick, onSignUpSuccess }) =
 
     setIsLoading(true);
     try {
-      await signUp(email, password, name, phone.trim());
+      await signUp(email.trim(), password, name.trim(), phone.trim());
       onSignUpSuccess?.();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Error al crear cuenta';
