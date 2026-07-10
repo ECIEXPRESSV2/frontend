@@ -46,7 +46,11 @@ const CompleteProfilePage: React.FC = () => {
     try {
       const token = await getToken();
       await updateMyPhone(trimmed, token);
-      await refreshProfile();
+      const refreshed = await refreshProfile();
+      if (!refreshed) {
+        toast.error('Telefono guardado, pero no se pudo actualizar tu sesion. Intenta de nuevo.');
+        return;
+      }
       toast.success('Telefono actualizado.');
       navigate(nextPath, { replace: true });
     } catch (err) {
