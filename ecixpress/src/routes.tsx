@@ -12,7 +12,6 @@ import SeguridadSection from './pages/user/account/sections/SeguridadSection';
 import PlaceholderSection from './pages/user/account/sections/PlaceholderSection';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import UsersPage from './pages/admin/UsersPage';
-import RolesPage from './pages/admin/RolesPage';
 import StoresPage from './pages/admin/StoresPage';
 import AuditPage from './pages/admin/AuditPage';
 import MonitoringPage from './pages/admin/MonitoringPage';
@@ -25,6 +24,7 @@ import MessagesPage from './pages/messages/MessagesPage';
 import PickupCodePage from './pages/fulfillment/PickupCodePage';
 import DeliveriesPage from './pages/fulfillment/DeliveriesPage';
 import InfoPage from './pages/info/InfoPage';
+import CompleteProfilePage from './pages/user/CompleteProfilePage';
 
 const AppRoutes: React.FC = () => {
   const navigate = useNavigate();
@@ -40,6 +40,7 @@ const AppRoutes: React.FC = () => {
       {/* Authentication */}
       <Route path="/signin" element={<SignInPage />} />
       <Route path="/signup" element={<SignUpPage />} />
+      <Route path="/complete-profile" element={<CompleteProfilePage />} />
 
       {/* Main App */}
       <Route path="/home" element={<ProtectedRoute><Home onUserClick={() => navigate('/profile')} onCartClick={() => navigate('/cart')} onOrdersClick={openOrdersDemo} onMessagesClick={openMessagesDemo} /></ProtectedRoute>} />
@@ -65,7 +66,7 @@ const AppRoutes: React.FC = () => {
 
       {/* Admin */}
       <Route path="/admin/users" element={<ProtectedRoute requireAdmin><UsersPage /></ProtectedRoute>} />
-      <Route path="/admin/roles" element={<ProtectedRoute requireAdmin><RolesPage /></ProtectedRoute>} />
+      <Route path="/admin/roles" element={<ProtectedRoute requireAdmin><Navigate to="/admin/users" replace /></ProtectedRoute>} />
       <Route path="/admin/stores" element={<ProtectedRoute requireAdmin><StoresPage /></ProtectedRoute>} />
       <Route path="/admin/stores/:storeId" element={<ProtectedRoute requireAdmin><StoresPage /></ProtectedRoute>} />
       <Route path="/admin/audit" element={<ProtectedRoute requireAdmin><AuditPage /></ProtectedRoute>} />

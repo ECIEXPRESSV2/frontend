@@ -125,8 +125,8 @@ const PickupCodePage: React.FC<PickupCodePageProps> = ({ onBack }) => {
     <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-white to-yellow-100">
       <Sidebar activeItem="orders" />
 
-      <main className="app-shift px-6 pb-28 pt-20 md:px-8 md:pb-8">
-        <div className="w-full space-y-6">
+      <main className="app-shift px-4 pb-28 pt-20 md:px-8 md:pb-8 lg:px-10">
+        <div className="relative mx-auto w-full max-w-7xl space-y-6">
           {/* Header */}
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">

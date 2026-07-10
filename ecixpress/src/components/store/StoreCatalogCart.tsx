@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Search, Plus, Minus, ShoppingCart, Loader2, ImageOff, X, Tag, Check } from 'lucide-react';
+import { Search, Plus, Minus, ShoppingCart, Loader2, ImageOff, X, Tag, Check, Trash2, Box } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -29,75 +29,6 @@ interface StoreCatalogCartProps {
  * la etiqueta amarilla "Quedan N unidades".
  */
 const LOW_STOCK_THRESHOLD = 5;
-
-/**
- * Control de cantidad con dos formas de uso a la vez: los botones +/- suman/restan de a uno, y
- * el campo del medio es EDITABLE para teclear una cantidad exacta (p. ej. 30) de un solo golpe.
- * El texto se maneja localmente y se confirma al salir del campo o con Enter, para no disparar una
- * llamada de red por cada tecla; `onCommit` recibe el número y el padre lo acota al stock disponible.
- */
-const QuantityStepper: React.FC<{
-  qty: number;
-  max: number;
-  disabled: boolean;
-  atLimit: boolean;
-  onCommit: (next: number) => void;
-}> = ({ qty, max, disabled, atLimit, onCommit }) => {
-  const [text, setText] = useState(String(qty));
-  // Al cambiar la cantidad efectiva (tras acotar por stock, sincronizar con la orden, etc.)
-  // reflejamos el valor real en el campo. Se sincroniza EN RENDER (patrón recomendado de React)
-  // en vez de un efecto, para no disparar renders en cascada. `qty` solo cambia tras confirmar
-  // (blur/Enter/+/-), nunca mientras se teclea, así que no pisa lo que el usuario está escribiendo.
-  const [syncedQty, setSyncedQty] = useState(qty);
-  if (qty !== syncedQty) {
-    setSyncedQty(qty);
-    setText(String(qty));
-  }
-
-  const commit = (): void => {
-    const n = Number.parseInt(text, 10);
-    if (Number.isNaN(n) || n < 0) {
-      setText(String(qty)); // entrada inválida: se descarta y se restaura el valor actual
-      return;
-    }
-    if (n !== qty) onCommit(n);
-    else setText(String(qty));
-  };
-
-  return (
-    <div className="flex items-center gap-1">
-      <button
-        disabled={disabled}
-        onClick={() => onCommit(qty - 1)}
-        aria-label="Quitar una unidad"
-        className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 disabled:opacity-50"
-      >
-        <Minus size={11} />
-      </button>
-      <input
-        type="text"
-        inputMode="numeric"
-        value={text}
-        disabled={disabled}
-        aria-label="Cantidad"
-        onChange={(e) => setText(e.target.value.replace(/[^0-9]/g, ''))}
-        onFocus={(e) => e.currentTarget.select()}
-        onBlur={commit}
-        onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
-        className="w-8 h-6 text-center text-[11px] font-semibold rounded-md border border-gray-200 focus:outline-none focus:ring-2 focus:ring-yellow-300 focus:border-yellow-300 disabled:opacity-50"
-      />
-      <button
-        disabled={disabled}
-        title={atLimit ? `Solo quedan ${max} unidades` : undefined}
-        onClick={() => onCommit(qty + 1)}
-        aria-label="Agregar una unidad"
-        className="w-6 h-6 rounded-full bg-yellow-400 text-white flex items-center justify-center hover:bg-yellow-500 disabled:opacity-50"
-      >
-        <Plus size={11} />
-      </button>
-    </div>
-  );
-};
 
 /**
  * Catálogo de la tienda + carrito en vivo. El carrito es una orden DRAFT en
@@ -618,22 +549,54 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName,
     <div className="space-y-4">
       {/* Lista de productos */}
       <ul className="space-y-2 max-h-[50vh] overflow-y-auto pr-1">
-        {cartLines.map(({ id, name, imageUrl, qty, lineUnitPrice, lineTotal }) => (
-          <li key={id} className="flex items-center gap-3 py-2 border-b border-gray-50 last:border-0">
-            <div className="w-10 h-10 rounded-lg bg-yellow-50 overflow-hidden shrink-0 flex items-center justify-center text-yellow-300">
-              {imageUrl ? (
-                <img src={imageUrl} alt={name} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-              ) : (
-                <ImageOff size={14} />
-              )}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-800 truncate">{name}</p>
-              <p className="text-xs text-gray-400">{qty} × {formatCOP(lineUnitPrice)}</p>
-            </div>
-            <span className="text-sm font-semibold text-gray-900 shrink-0">{formatCOP(lineTotal)}</span>
-          </li>
-        ))}
+        {cartLines.map(({ id, name, imageUrl, qty, lineUnitPrice, lineTotal }) => {
+          const cartProduct = productById.get(id);
+          return (
+            <li key={id} className="flex items-center gap-2.5 py-2 border-b border-gray-100 last:border-0">
+              <div className="w-11 h-11 rounded-lg bg-gray-50 overflow-hidden shrink-0 flex items-center justify-center text-gray-300 border border-gray-100">
+                {imageUrl ? (
+                  <img src={imageUrl} alt={name} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                ) : (
+                  <ImageOff size={14} />
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-800 truncate">{name}</p>
+                <div className="flex items-center gap-2 mt-1">
+                  <div className="flex items-center gap-0.5 bg-gray-50 rounded-md border border-gray-100/80">
+                    <button
+                      onClick={() => cartProduct && changeQuantity(cartProduct, qty - 1)}
+                      disabled={!cartProduct}
+                      className="w-7 h-7 flex items-center justify-center text-gray-500 hover:text-red-500 hover:bg-red-50 rounded-l-md transition-all disabled:opacity-30"
+                    >
+                      <Minus size={12} />
+                    </button>
+                    <span className="w-7 text-center text-xs font-semibold text-gray-900">{qty}</span>
+                    <button
+                      onClick={() => cartProduct && changeQuantity(cartProduct, qty + 1)}
+                      disabled={!cartProduct}
+                      className="w-7 h-7 flex items-center justify-center text-amber-500 hover:text-white hover:bg-amber-400 rounded-r-md transition-all disabled:opacity-30"
+                    >
+                      <Plus size={12} />
+                    </button>
+                  </div>
+                  <button
+                    onClick={() => cartProduct && changeQuantity(cartProduct, 0)}
+                    disabled={!cartProduct}
+                    className="w-7 h-7 flex items-center justify-center text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-md transition-all disabled:opacity-30"
+                    title="Eliminar"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              </div>
+              <div className="text-right shrink-0">
+                <p className="text-sm font-semibold text-gray-900">{formatCOP(lineTotal)}</p>
+                <p className="text-[10px] text-gray-400">{formatCOP(lineUnitPrice)} c/u</p>
+              </div>
+            </li>
+          );
+        })}
       </ul>
 
       {/* Totales */}
@@ -795,100 +758,126 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName,
           // un estado `draggingProductId` que active el overlay/atenuado global, y onDragOver/
           // onDrop en el contenedor del cartVisual como zona de drop. Cuidar accesibilidad
           // (teclado) y touch (los eventos HTML5 drag no funcionan en móvil → usar pointer events).
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
             {displayProducts.map((product) => {
               const qty = quantities[product.id] ?? 0;
               const available = availableStock(product);
               const outOfStock = available <= 0;
-              // "Últimas unidades": avisa cuando queda poco stock. Umbral = minStock de la tienda si
-              // lo configuró, o LOW_STOCK_THRESHOLD por defecto.
               const lowStockThreshold = product.minStock > 0 ? product.minStock : LOW_STOCK_THRESHOLD;
               const lowStock = !outOfStock && available <= lowStockThreshold;
-              // Tope: solo impide PASARSE del stock disponible (se puede pedir hasta la última unidad).
               const atStockLimit = qty >= available;
               return (
                 <div
                   key={product.id}
-                  className={`group relative isolate rounded-2xl bg-white border border-gray-100 shadow-sm transition-shadow overflow-hidden flex flex-col ${
-                    outOfStock
-                      ? 'pointer-events-none select-none'
-                      : 'hover:shadow-md'
+                  className={`group relative isolate rounded-xl bg-white border border-gray-100/80 shadow-sm transition-all duration-200 overflow-hidden flex flex-col ${
+                    !outOfStock ? 'hover:shadow-2xl hover:-translate-y-1.5 hover:border-gray-200' : ''
                   } ${rejectedProductId === product.id ? 'animate-stock-reject' : ''}`}
-                  aria-disabled={outOfStock}
                 >
-                  <div className={`flex-1 flex flex-col ${outOfStock ? 'opacity-40 grayscale' : ''}`}>
-                    <div className="relative aspect-square bg-gradient-to-br from-yellow-50 to-yellow-100">
-                      {product.frontImageUrl ?? product.imageUrl ? (
-                        <img
-                          src={product.frontImageUrl ?? product.imageUrl ?? ''}
-                          alt={product.name}
-                          className="w-full h-full object-cover"
-                          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-yellow-300">
-                          <ShoppingCart size={18} />
-                        </div>
-                      )}
-                      {product.category?.name && (
-                        <span className="absolute top-1.5 left-1.5 px-2 py-0.5 rounded-md bg-white/90 backdrop-blur-sm text-[9px] font-semibold text-gray-700 leading-tight shadow-sm">
-                          {product.category.name}
-                        </span>
-                      )}
-                      {qty === 0 && (
-                        <button
-                          disabled={outOfStock}
-                          onClick={() => changeQuantity(product, 1)}
-                          className="absolute -bottom-3 right-2 w-7 h-7 rounded-full bg-yellow-400 text-white flex items-center justify-center shadow-md shadow-yellow-400/40 hover:bg-yellow-500 hover:scale-105 transition-all disabled:opacity-50 disabled:hover:scale-100"
-                        >
-                          <Plus size={14} />
-                        </button>
-                      )}
-                      {outOfStock ? (
-                        <span className="absolute top-1.5 right-1.5 z-20 px-2 py-0.5 rounded-md bg-red-600 text-[9px] font-semibold text-white shadow-sm">
-                          Agotado
-                        </span>
-                      ) : lowStock ? (
-                        <span className="absolute top-1.5 right-1.5 z-20 px-2 py-0.5 rounded-md bg-yellow-400 text-[9px] font-semibold text-yellow-950 shadow-sm">
-                          {available}
-                        </span>
-                      ) : null}
-                    </div>
-
-                    <div className="flex-1 flex flex-col p-2.5">
-                      <h4 className="font-semibold text-gray-900 text-xs leading-tight truncate">{product.name}</h4>
-                      <div className="mt-2 flex items-center justify-between gap-1.5">
-                        <span className="text-xs font-bold text-gray-900 shrink-0">{formatCOP(priceToCents(product.price))}</span>
-                        <div className="flex items-center gap-1.5 min-w-0">
-                          {product.model3dUrl && product.modelGenerationStatus === 'READY' ? (
-                            <button
-                              type="button"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                setViewerTitle(product.name);
-                                setViewerSrc(productsApi.getModel3dUrl(product.id));
-                                setViewerOpen(true);
-                              }}
-                              className="shrink-0 inline-flex items-center gap-1 rounded-lg bg-gray-800 px-3 py-1.5 text-xs font-bold text-white shadow-sm transition hover:bg-gray-700 hover:shadow-md hover:scale-105 active:scale-95"
-                            >
-                              3D
-                            </button>
-                          ) : product.modelGenerationStatus === 'FAILED' ? (
-                            <span className="shrink-0 inline-flex items-center gap-1 rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-400 cursor-default" title="El modelo 3D no está disponible">
-                              3D
-                            </span>
-                          ) : null}
-                          {qty > 0 && (
-                            <QuantityStepper
-                              qty={qty}
-                              max={available}
-                              disabled={false}
-                              atLimit={atStockLimit}
-                              onCommit={(next) => changeQuantity(product, next)}
-                            />
-                          )}
-                        </div>
+                  {/* Image — square 1:1, ~65-70% of card */}
+                  <div className="relative aspect-square bg-gradient-to-br from-gray-50 to-gray-100 overflow-hidden">
+                    {product.frontImageUrl ?? product.imageUrl ? (
+                      <img
+                        src={product.frontImageUrl ?? product.imageUrl ?? ''}
+                        alt={product.name}
+                        className={`absolute inset-0 w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.03] ${
+                          outOfStock ? 'opacity-50 saturate-0' : ''
+                        }`}
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                      />
+                    ) : (
+                      <div className="absolute inset-0 flex items-center justify-center text-gray-300">
+                        <ShoppingCart size={28} />
                       </div>
+                    )}
+
+                    {/* Category badge — chip moderno */}
+                    {product.category?.name && (
+                      <span className="absolute top-2.5 left-2.5 px-2.5 py-0.5 rounded-full bg-white/80 backdrop-blur-sm text-[10px] font-semibold text-gray-600 border border-white/60 shadow-sm">
+                        {product.category.name}
+                      </span>
+                    )}
+
+                    {/* OutOfStock / LowStock badge */}
+                    {outOfStock ? (
+                      <span className="absolute top-2.5 right-2.5 px-2.5 py-0.5 rounded-full bg-red-500/90 text-[10px] font-semibold text-white backdrop-blur-sm shadow-sm">
+                        Agotado
+                      </span>
+                    ) : lowStock ? (
+                      <span className="absolute top-2.5 right-2.5 px-2.5 py-0.5 rounded-full bg-amber-400/90 text-[10px] font-semibold text-amber-950 backdrop-blur-sm shadow-sm">
+                        {available}
+                      </span>
+                    ) : null}
+
+                    {/* 3D button — overlay */}
+                    {product.model3dUrl && product.modelGenerationStatus === 'READY' && !outOfStock ? (
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setViewerTitle(product.name);
+                          setViewerSrc(productsApi.getModel3dUrl(product.id));
+                          setViewerOpen(true);
+                        }}
+                        className="absolute bottom-2.5 right-2.5 inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gray-900/80 text-[10px] font-bold text-white shadow-sm backdrop-blur-sm hover:bg-gray-900 hover:shadow-md hover:scale-105 active:scale-95 transition-all"
+                      >
+                        <Box size={12} />
+                        3D
+                      </button>
+                    ) : product.modelGenerationStatus === 'FAILED' ? (
+                      <span className="absolute bottom-2.5 right-2.5 inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gray-400/60 text-[10px] font-medium text-white/70 cursor-default backdrop-blur-sm">
+                        <Box size={12} />
+                        3D
+                      </span>
+                    ) : null}
+                  </div>
+
+                  {/* Content */}
+                  <div className="flex flex-col p-3 pt-2">
+                    <h3 className="font-bold text-gray-900 text-sm leading-snug line-clamp-2">
+                      {product.name}
+                    </h3>
+
+                    <p className="text-2xl font-bold text-gray-900 tracking-tight mt-1">
+                      {formatCOP(priceToCents(product.price))}
+                    </p>
+
+                    {/* Action area — full-width */}
+                    <div className="mt-2">
+                      {outOfStock ? (
+                        <button
+                          disabled
+                          className="w-full py-2 rounded-lg bg-gray-100 text-gray-400 text-xs font-semibold cursor-not-allowed flex items-center justify-center gap-2"
+                        >
+                          🚫 No disponible
+                        </button>
+                      ) : qty === 0 ? (
+                        <button
+                          onClick={() => changeQuantity(product, 1)}
+                          className="w-full py-2 rounded-lg bg-amber-400 text-white text-sm font-semibold shadow-sm hover:bg-amber-500 active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2"
+                        >
+                          <ShoppingCart size={16} />
+                          Agregar al carrito
+                        </button>
+                      ) : (
+                        <div className="flex items-center justify-between bg-amber-400 rounded-lg overflow-hidden shadow-sm">
+                          <button
+                            onClick={() => changeQuantity(product, qty - 1)}
+                            className="flex-1 py-2 text-white/90 hover:text-white hover:bg-amber-500 transition-colors flex items-center justify-center text-sm font-medium"
+                          >
+                            <Minus size={16} />
+                          </button>
+                          <span className="w-10 text-center text-sm font-bold text-white border-x border-amber-300/40 py-2 select-none">
+                            {qty}
+                          </span>
+                          <button
+                            onClick={() => changeQuantity(product, qty + 1)}
+                            disabled={atStockLimit}
+                            className="flex-1 py-2 text-white/90 hover:text-white hover:bg-amber-500 disabled:text-amber-300 disabled:hover:bg-transparent transition-colors flex items-center justify-center text-sm font-medium disabled:cursor-not-allowed"
+                          >
+                            <Plus size={16} />
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

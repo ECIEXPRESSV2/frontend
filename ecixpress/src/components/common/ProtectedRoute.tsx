@@ -1,5 +1,5 @@
 import React from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
 interface ProtectedRouteProps {
@@ -20,6 +20,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   requireRoles,
 }) => {
   const { firebaseUser, userProfile, loading } = useAuth();
+  const location = useLocation();
 
   if (loading) {
     return (
@@ -53,6 +54,16 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   }
 
   const roles = userProfile?.roles ?? [];
+
+  if (!userProfile?.phone?.trim()) {
+    return (
+      <Navigate
+        to="/complete-profile"
+        replace
+        state={{ from: `${location.pathname}${location.search}` }}
+      />
+    );
+  }
 
   if (requireAdmin && !roles.includes('ADMIN')) {
     return <Navigate to="/home" replace />;

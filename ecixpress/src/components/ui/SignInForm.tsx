@@ -4,6 +4,7 @@ import AuthLayout from './AuthLayout';
 import FormInput from './FormInput';
 import PasswordInput from './PasswordInput';
 import { validateEmail, validatePassword } from '../../lib/validation';
+import { isFirebasePopupCancelled } from '../../lib/firebase-auth-errors';
 import { useAuth } from '../../context/AuthContext';
 
 interface SignInProps {
@@ -73,6 +74,7 @@ const SignInForm: React.FC<SignInProps> = ({ onSignUpClick, onLoginSuccess }) =>
       await signInWithGoogle();
       onLoginSuccess?.();
     } catch (err: unknown) {
+      if (isFirebasePopupCancelled(err)) return;
       const msg = err instanceof Error ? err.message : 'Error con Google';
       toast.error(msg);
     } finally {
@@ -113,6 +115,7 @@ const SignInForm: React.FC<SignInProps> = ({ onSignUpClick, onLoginSuccess }) =>
               placeholder="ejemplo@empresa.com"
               error=""
               touched={false}
+              required
             />
             <button
               type="submit"
@@ -161,6 +164,7 @@ const SignInForm: React.FC<SignInProps> = ({ onSignUpClick, onLoginSuccess }) =>
           placeholder="ejemplo@empresa.com"
           error={errors.email}
           touched={touched.email}
+          required
         />
 
         <div className="space-y-1">
@@ -173,6 +177,7 @@ const SignInForm: React.FC<SignInProps> = ({ onSignUpClick, onLoginSuccess }) =>
             touched={touched.password}
             showPassword={showPassword}
             onTogglePassword={() => setShowPassword(!showPassword)}
+            required
           />
           <div className="text-right">
             <button

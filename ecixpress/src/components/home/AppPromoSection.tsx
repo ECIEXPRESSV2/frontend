@@ -169,7 +169,7 @@ const AppPromoSection: React.FC = () => {
 
         {/* Mitad derecha: bloque de texto centrado */}
         <div className="flex justify-center">
-          <div className="max-w-md space-y-3 text-center md:text-left">
+          <div className="max-w-lg space-y-3 text-center md:text-left">
             <h2 className="font-display text-xl font-semibold leading-tight text-gray-900 md:text-2xl">
               Muy pronto, ECIEXPRESS en tu bolsillo
             </h2>

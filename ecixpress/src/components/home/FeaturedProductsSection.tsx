@@ -5,38 +5,21 @@ import { productsApi, priceToCents, type Product } from '../../lib/products-api'
 import { formatCOP } from '../../lib/format';
 import type { Store } from '../../services/storeService';
 import type { HomeSection } from './homeSections';
-import TrianglePattern, { TriangleGlyph } from './TrianglePattern';
+import TrianglePattern from './TrianglePattern';
 
 const HOUR_MS = 3_600_000;
 const MAX_PRODUCTS = 5;
 
 /**
- * Tonalidades rotativas de las tarjetas (como las tarjetas multicolor de la referencia):
- * tintes de acento de distinta intensidad, glass blanco y una tarjeta oscura de contraste.
+ * Tonalidades sutiles para los bordes de las tarjetas, manteniendo el diseño blanco/uniforme.
  */
 const CARD_TONES = [
-  { card: 'border-white/60 bg-[rgb(var(--accent-rgb)/0.28)] text-gray-900', chip: 'bg-white/70 text-gray-600', price: 'text-gray-950' },
-  { card: 'border-white/60 bg-white/65 text-gray-900', chip: 'bg-[rgb(var(--accent-rgb)/0.18)] text-gray-600', price: 'text-[var(--accent-600)]' },
-  { card: 'border-white/20 bg-gray-900/85 text-white', chip: 'bg-white/15 text-white', price: 'text-[var(--accent-300)]' },
-  { card: 'border-white/60 bg-[rgb(var(--accent-rgb)/0.14)] text-gray-900', chip: 'bg-white/70 text-gray-600', price: 'text-gray-950' },
-  { card: 'border-white/60 bg-white/45 text-gray-900', chip: 'bg-[rgb(var(--accent-rgb)/0.18)] text-gray-600', price: 'text-[var(--accent-600)]' },
+  { border: 'border-amber-200/50', chip: 'bg-white/80 text-gray-600' },
+  { border: 'border-sky-200/50', chip: 'bg-white/80 text-gray-600' },
+  { border: 'border-emerald-200/50', chip: 'bg-white/80 text-gray-600' },
+  { border: 'border-violet-200/50', chip: 'bg-white/80 text-gray-600' },
+  { border: 'border-rose-200/50', chip: 'bg-white/80 text-gray-600' },
 ];
-
-/**
- * Distribución de referencia: primera fila con 3 tarjetas iguales, segunda con 2 más
- * anchas (grilla de 6 columnas). Con menos productos, cada fila reparte el ancho completo.
- */
-const SPAN_BY_ROW_COUNT: Record<number, string> = {
-  1: 'md:col-span-6',
-  2: 'md:col-span-3',
-  3: 'md:col-span-2',
-};
-
-const spanClass = (index: number, total: number): string => {
-  const firstRowCount = Math.min(3, total);
-  const rowCount = index < firstRowCount ? firstRowCount : total - firstRowCount;
-  return SPAN_BY_ROW_COUNT[rowCount] ?? 'md:col-span-2';
-};
 
 interface FeaturedData {
   store: Store;
@@ -129,7 +112,7 @@ const FeaturedProductsSection: React.FC<FeaturedProductsSectionProps> = ({
 
       {/* Bloque centrado: mismo ancho visual que ocupan los círculos de "Nuestras tiendas",
           con aire a los lados en vez de tarjetas de borde a borde. */}
-      <div className="relative z-10 mx-auto w-full max-w-4xl space-y-4">
+      <div className="relative z-10 mx-auto w-full max-w-7xl space-y-4">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <h2 className="font-display text-xl font-semibold text-gray-900 md:text-2xl">
             ¿Y si pruebas algo nuevo?
@@ -155,13 +138,13 @@ const FeaturedProductsSection: React.FC<FeaturedProductsSectionProps> = ({
         </div>
 
         {loading ? (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-6 md:gap-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
             {Array.from({ length: MAX_PRODUCTS }).map((_, i) => (
-              <div key={i} className={`h-44 animate-pulse rounded-3xl border border-white/60 bg-white/50 ${spanClass(i, MAX_PRODUCTS)}`} />
+              <div key={i} className="aspect-square animate-pulse rounded-xl bg-gray-100" />
             ))}
           </div>
         ) : featured ? (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-6 md:gap-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
             {featured.products.map((product, index) => {
               const tone = CARD_TONES[index % CARD_TONES.length];
               return (
@@ -170,46 +153,33 @@ const FeaturedProductsSection: React.FC<FeaturedProductsSectionProps> = ({
                   type="button"
                   onClick={() => onTryProduct(featured.store, product)}
                   title={`Probar ${product.name}`}
-                  className={`theme-surface group relative flex min-h-[176px] flex-col overflow-hidden rounded-3xl border text-left shadow-sm backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-ring)] ${tone.card} ${spanClass(index, featured.products.length)}`}
+                  className={`group relative flex flex-col overflow-hidden rounded-xl border bg-white text-left shadow-sm transition-all duration-200 hover:shadow-2xl hover:-translate-y-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-ring)] ${tone.border}`}
                 >
-                  {/* Con imagen en el catálogo: la foto llena toda la parte superior de la
-                      tarjeta y abajo se conserva la franja de color con nombre/precio. */}
-                  {product.imageUrl && (
-                    <div className="relative h-28 w-full shrink-0 overflow-hidden">
+                  {/* Image — square 1:1 */}
+                  <div className="relative aspect-square bg-gradient-to-br from-gray-50 to-gray-100 overflow-hidden">
+                    {product.imageUrl && (
                       <img
                         src={product.imageUrl}
                         alt=""
                         loading="lazy"
-                        className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.03]"
                       />
-                      <span className="absolute left-3 top-3 inline-flex max-w-[calc(100%-1.5rem)] truncate rounded-full bg-white/80 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-gray-700 backdrop-blur">
-                        {product.category?.name ?? 'Destacado'}
-                      </span>
-                    </div>
-                  )}
-
-                  <div className="relative flex flex-1 flex-col justify-between p-4">
-                    {/* Marca de agua con el triángulo del logo */}
-                    <TriangleGlyph size={104} rotate={18} className="absolute -bottom-4 -right-5 text-current opacity-10" />
-
-                    {!product.imageUrl && (
-                      <span className={`inline-flex max-w-full self-start truncate rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${tone.chip}`}>
-                        {product.category?.name ?? 'Destacado'}
-                      </span>
                     )}
+                    <span className="absolute top-2.5 left-2.5 px-2.5 py-0.5 rounded-full bg-white/80 backdrop-blur-sm text-[10px] font-semibold text-gray-600 border border-white/60 shadow-sm">
+                      {product.category?.name ?? 'Destacado'}
+                    </span>
+                  </div>
 
-                    <div className={`relative ${product.imageUrl ? '' : 'mt-3'}`}>
-                      {!product.imageUrl && (
-                        <div className="theme-surface flex h-10 w-10 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,var(--accent-300),var(--accent-400))] text-sm font-black text-gray-950 shadow-sm">
-                          {product.name.trim()[0]?.toUpperCase()}
-                        </div>
-                      )}
-                      <p className={`line-clamp-2 text-sm font-black leading-snug ${product.imageUrl ? '' : 'mt-2'}`}>{product.name}</p>
-                      <p className={`mt-1 text-lg font-black ${tone.price}`}>{formatCOP(priceToCents(product.price))}</p>
-                    </div>
-
-                    <span className="relative mt-2 inline-flex items-center gap-1 text-xs font-bold opacity-60 transition group-hover:opacity-100">
-                      Pruébalo <ArrowRight size={12} className="transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+                  {/* Content */}
+                  <div className="flex flex-col p-3 pt-2">
+                    <p className="font-bold text-gray-900 text-sm leading-snug line-clamp-2 text-left">
+                      {product.name}
+                    </p>
+                    <p className="text-2xl font-bold text-gray-900 tracking-tight mt-1 text-left">
+                      {formatCOP(priceToCents(product.price))}
+                    </p>
+                    <span className="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-amber-500 transition group-hover:gap-2">
+                      Pruébalo <ArrowRight size={12} aria-hidden="true" />
                     </span>
                   </div>
                 </button>

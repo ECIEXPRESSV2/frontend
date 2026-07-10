@@ -352,7 +352,7 @@ const RolesPage: React.FC = () => {
           <div className="absolute right-[-220px] top-44 h-[420px] w-[420px] rounded-full bg-[radial-gradient(circle,rgba(139,92,246,0.07)_0%,transparent_68%)] blur-3xl" />
         </div>
 
-        <div className="relative mx-auto max-w-6xl space-y-6">
+        <div className="relative mx-auto max-w-7xl space-y-6">
           {/* ── HEADER ── */}
           <header className="relative overflow-hidden rounded-[28px] border border-yellow-200/70 bg-[linear-gradient(135deg,#F4B942_0%,#FBBF24_48%,#FDE68A_100%)] p-5 shadow-lg shadow-yellow-200/60 md:p-6">
             <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-white/60" />

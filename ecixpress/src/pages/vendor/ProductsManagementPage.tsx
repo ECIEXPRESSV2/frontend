@@ -84,10 +84,32 @@ const generationLabel = (status?: Product['modelGenerationStatus']): string => {
   }
 };
 
-const GenerationRing: React.FC<{ status?: Product['modelGenerationStatus']; progress?: number | null }> = ({ status, progress }) => {
+const GenerationRing: React.FC<{
+  status?: Product['modelGenerationStatus'];
+  progress?: number | null;
+  productId?: string;
+  productName?: string;
+  onView3d?: (id: string, name: string) => void;
+}> = ({ status, progress, productId, productName, onView3d }) => {
   if (!status || status === 'PENDING') return null;
-  const clamped = Math.max(0, Math.min(100, progress ?? (status === 'READY' ? 100 : 0)));
-  const color = status === 'FAILED' ? '#E2725B' : status === 'READY' ? '#2E8B95' : '#4F8CFF';
+
+  // READY → badge verde con check, sin anillo
+  if (status === 'READY') {
+    return (
+      <button
+        type="button"
+        onClick={() => productId && productName && onView3d?.(productId, productName)}
+        title={`${generationLabel(status)} — Haz clic para ver en 3D`}
+        className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-semibold text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition"
+      >
+        <span className="text-emerald-500 text-xs">✓</span>
+        3D listo
+      </button>
+    );
+  }
+
+  const clamped = Math.max(0, Math.min(100, progress ?? 0));
+  const color = status === 'FAILED' ? '#E2725B' : '#4F8CFF';
   return (
     <div
       className="relative h-11 w-11 shrink-0 rounded-full"
@@ -209,6 +231,24 @@ const ProductsManagementPage: React.FC = () => {
     /* eslint-disable-next-line react-hooks/exhaustive-deps */
   }, [products, storeId, showInactive]);
 
+  // Auto-refresh de stock cada 15s
+  useEffect(() => {
+    if (!storeId) return;
+    const intervalId = setInterval(async () => {
+      if (document.hidden) return;
+      const token = await getToken().catch(() => null);
+      if (!token) return;
+      const [prods, lowStock] = await Promise.all([
+        productsApi.getProducts(storeId, { includeInactive: showInactive }, token).catch(() => null),
+        productsApi.getLowStock(storeId, token).catch(() => null),
+      ]);
+      if (prods) setProducts(prods);
+      if (lowStock) setLowStockIds(new Set(lowStock.map((p) => p.id)));
+    }, 15000);
+    return () => clearInterval(intervalId);
+    /* eslint-disable-next-line react-hooks/exhaustive-deps */
+  }, [storeId, showInactive]);
+
   useRefreshOnScrollTop(load, { disabled: loading || !storeId });
 
   const openCreate = () => {
@@ -319,6 +359,13 @@ const ProductsManagementPage: React.FC = () => {
         token,
       );
       setProducts((list) => list.map((x) => (x.id === updated.id ? updated : x)));
+      // Recalcular lowStockIds con el nuevo valor
+      setLowStockIds((prev) => {
+        const next = new Set(prev);
+        if (updated.stock <= updated.minStock) next.add(updated.id);
+        else next.delete(updated.id);
+        return next;
+      });
     } catch (e) {
       toast.error((e as Error).message || 'No se pudo ajustar el stock');
     }
@@ -332,6 +379,12 @@ const ProductsManagementPage: React.FC = () => {
       const token = await getToken();
       const updated = await productsApi.adjustStock(stockModal.product.id, { operation: 'set', quantity }, token);
       setProducts((list) => list.map((x) => (x.id === updated.id ? updated : x)));
+      setLowStockIds((prev) => {
+        const next = new Set(prev);
+        if (updated.stock <= updated.minStock) next.add(updated.id);
+        else next.delete(updated.id);
+        return next;
+      });
       setStockModal({ open: false, product: null, value: '' });
       toast.success('Stock actualizado');
     } catch (e) {
@@ -472,11 +525,23 @@ const ProductsManagementPage: React.FC = () => {
                       <div className="flex-1 min-w-0">
                         <h3 className="font-semibold text-gray-900 leading-tight truncate">{p.name}</h3>
                         <p className="text-xs text-gray-500 truncate">{categoryName(p.categoryId)}</p>
-                        <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">{generationLabel(p.modelGenerationStatus)}</p>
+                        {p.modelGenerationStatus && p.modelGenerationStatus !== 'READY' && (
+                          <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">{generationLabel(p.modelGenerationStatus)}</p>
+                        )}
                       </div>
                       <div className="flex flex-col items-end gap-2">
                         <StockRing stock={p.stock} minStock={p.minStock} />
-                        <GenerationRing status={p.modelGenerationStatus} progress={p.modelGenerationProgress} />
+                        <GenerationRing
+                          status={p.modelGenerationStatus}
+                          progress={p.modelGenerationProgress}
+                          productId={p.id}
+                          productName={p.name}
+                          onView3d={(id, name) => {
+                            setViewerTitle(name);
+                            setViewerSrc(productsApi.getModel3dUrl(id));
+                            setViewerOpen(true);
+                          }}
+                        />
                       </div>
                     </div>
 

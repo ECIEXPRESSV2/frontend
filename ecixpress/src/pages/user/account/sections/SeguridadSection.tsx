@@ -1,24 +1,53 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { KeyRound, LogOut, Mail, Clock, ChevronRight, Trash2 } from 'lucide-react';
+import { KeyRound, Clock, ChevronRight, Trash2 } from 'lucide-react';
 import AccountSectionHeader from '../AccountSectionHeader';
 import { useAuth } from '../../../../context/AuthContext';
-import CloseSessionsModal from '../modals/CloseSessionsModal';
 import DeleteAccountModal from '../modals/DeleteAccountModal';
+import ChangePasswordModal from '../modals/ChangePasswordModal';
+import { changePassword, deleteOwnAccount } from '../../../../services/userService';
 
 const SeguridadSection: React.FC = () => {
-  const { userProfile } = useAuth();
-  const [sessionsOpen, setSessionsOpen] = useState(false);
+  const navigate = useNavigate();
+  const { userProfile, getToken, signOut } = useAuth();
+  const [passwordOpen, setPasswordOpen] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
 
   const memberSince = userProfile?.createdAt
     ? new Date(userProfile.createdAt).toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' })
     : 'No disponible';
 
+  const handlePasswordChange = async (payload: { currentPassword: string; newPassword: string }) => {
+    setChangingPassword(true);
+    try {
+      const token = await getToken();
+      await changePassword(payload, token);
+      setPasswordOpen(false);
+      toast.success('Contraseña actualizada.');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'No se pudo cambiar la contraseña.');
+    } finally {
+      setChangingPassword(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    try {
+      const token = await getToken();
+      await deleteOwnAccount(token);
+      setDeleteOpen(false);
+      await signOut();
+      toast.success('Tu cuenta fue marcada como inactiva.');
+      navigate('/signin', { replace: true });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'No se pudo eliminar la cuenta.');
+    }
+  };
+
   const items = [
-    { icon: KeyRound, title: 'Cambiar contraseña', desc: 'Actualiza tu contraseña de acceso.', onClick: () => toast.info('Próximamente') },
-    { icon: LogOut, title: 'Cerrar otras sesiones', desc: 'Cierra tu sesión en otros dispositivos.', onClick: () => setSessionsOpen(true) },
-    { icon: Mail, title: 'Verificación de correo', desc: userProfile?.email ?? '', onClick: () => toast.info('Próximamente') },
+    { icon: KeyRound, title: 'Cambiar contraseña', desc: 'Actualiza tu contraseña de acceso.', onClick: () => setPasswordOpen(true) },
     { icon: Clock, title: 'Cuenta creada', desc: memberSince, onClick: undefined },
   ];
 
@@ -51,8 +80,13 @@ const SeguridadSection: React.FC = () => {
         </button>
       </div>
 
-      <CloseSessionsModal open={sessionsOpen} onClose={() => setSessionsOpen(false)} onConfirm={() => { setSessionsOpen(false); toast.success('Se cerraron las demás sesiones (demo)'); }} />
-      <DeleteAccountModal open={deleteOpen} onClose={() => setDeleteOpen(false)} onConfirm={() => { setDeleteOpen(false); toast.info('Eliminación de cuenta no disponible aún'); }} />
+      <ChangePasswordModal
+        open={passwordOpen}
+        loading={changingPassword}
+        onClose={() => setPasswordOpen(false)}
+        onConfirm={handlePasswordChange}
+      />
+      <DeleteAccountModal open={deleteOpen} onClose={() => setDeleteOpen(false)} onConfirm={handleDeleteAccount} />
     </>
   );
 };

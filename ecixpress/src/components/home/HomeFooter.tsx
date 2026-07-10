@@ -114,15 +114,14 @@ const HomeFooter: React.FC<HomeFooterProps> = ({ onOpenMap }) => {
       </div>
 
       {/* Franja oscura: columnas de enlaces + triángulos del logo + copyright.
-          Mismo negro (gray-950) y tratamiento tipográfico/hover que el footer de landing,
-          para que ambos pies de página se sientan parte de la misma marca. */}
-      <div className="relative overflow-hidden bg-gray-950 px-5 pb-28 pt-9 text-gray-400 md:px-10 md:pb-6">
+          pb-28 en mobile deja espacio para la barra de navegación inferior fija. */}
+      <div className="relative overflow-hidden bg-[#181a20] px-5 pb-28 pt-9 text-gray-400 md:px-12 md:pb-6 lg:px-16">
         {/* Decoración: los triángulos del logo hacen las veces del retrato del ejemplo */}
         <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-0 hidden items-center pr-6 text-white md:flex">
           <TriangleGlyph size={220} pair rotate={-8} className="opacity-[0.05]" />
         </div>
 
-        <div className="relative grid gap-8 sm:grid-cols-2 md:max-w-3xl md:grid-cols-3">
+        <div className="relative grid gap-8 sm:grid-cols-2 md:grid-cols-3">
           {LINK_COLUMNS.map((column) => (
             <nav key={column.title} aria-label={column.title}>
               <p className="mb-4 font-semibold text-white">{column.title}</p>
