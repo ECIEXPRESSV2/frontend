@@ -118,7 +118,7 @@ const SignUpForm: React.FC<SignUpProps> = ({ onSignInClick, onSignUpSuccess }) =
     <AuthLayout carouselPosition="right" dense>
       {/* Header */}
       <div className="text-center space-y-1">
-        <img src="/logotipoEcixpress.svg" className="h-8 mx-auto mb-2" alt="EciXpress" />
+        <img src="/ecixpress-logo.svg" className="h-8 mx-auto mb-2" alt="EciXpress" />
         <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Crear cuenta</h1>
         <p className="text-sm text-gray-500">Únete a la plataforma</p>
       </div>

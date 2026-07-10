@@ -8,6 +8,9 @@ export default {
                 background: "#F5F5F5",   // gris fondo
                 surface: "#FFFFFF",      // cards
                 danger: "#E2725B",       // terracota: acciones destructivas
+                // Accessibility colors - high contrast variants
+                'a11y-yellow-dark': "#92400E",  // yellow-800 for text on light backgrounds
+                'a11y-yellow-darker': "#78350F", // yellow-900 for maximum contrast
             },
 
             borderRadius: {
@@ -17,6 +20,19 @@ export default {
 
             boxShadow: {
                 card: "0 8px 20px rgba(0,0,0,0.08)",
+                // Focus ring for accessibility
+                'focus-ring': "0 0 0 3px rgba(244, 185, 66, 0.5), 0 0 0 1px rgba(244, 185, 66, 0.8)",
+            },
+
+            // Accessibility utilities
+            ringWidth: {
+                'focus': '3px',
+            },
+            ringColor: {
+                'focus': 'rgba(244, 185, 66, 0.5)',
+            },
+            ringOffsetColor: {
+                'focus': 'rgba(244, 185, 66, 0.8)',
             },
         },
     },

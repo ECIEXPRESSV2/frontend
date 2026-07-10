@@ -144,8 +144,8 @@ const Home: React.FC<HomeProps> = ({ onUserClick, onCartClick, onOrdersClick, on
 
       {/* El padding-top reserva el espacio de los controles fijos: en móvil son dos filas
           (cápsula y buscador); desde md una sola. */}
-      <main className="app-shift px-3 pb-8 pt-[8.5rem] md:px-6 md:pt-20 lg:px-8">
-        <div className="w-full space-y-5 md:space-y-6">
+      <main className="app-shift px-4 pb-8 pt-32 md:px-8 md:pt-20 lg:px-10">
+        <div className="relative mx-auto w-full max-w-7xl space-y-5 md:space-y-6">
           {/* Hero + tiendas van juntos: el título "Nuestras tiendas" es un recuadro puente
               que se superpone al borde entre ambos contenedores. */}
           <div>
