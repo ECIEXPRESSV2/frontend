@@ -1102,7 +1102,7 @@ const StoresPage: React.FC = () => {
       />
 
       <main className="relative z-[51] app-shift min-h-screen px-4 pb-5 pt-20 md:px-8 lg:px-10">
-        <div className="relative mx-auto max-w-6xl space-y-6">
+        <div className="relative mx-auto max-w-7xl space-y-6">
           {!isStoreProfileRoute && (
             <>
               <AdminHeroBanner
