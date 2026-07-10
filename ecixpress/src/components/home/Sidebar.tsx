@@ -340,7 +340,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             expanded={isExpanded}
             onOpenChange={(open) => {
               setNotifOpen(open);
-              if (open) setIsExpanded(false); // comprimir el sidebar al abrir
+              if (open) setIsExpanded(false);
             }}
           />
         )}
@@ -371,7 +371,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           </>
         )}
 
-        {/* Monitoreo — ADMIN o ANALYST. Su propia sección porque no depende de ser admin. */}
+        {/* Monitoreo */}
         {canMonitor && (
           <>
             {isExpanded && <p className="text-xs text-gray-500 font-medium px-1 pt-3 pb-1 uppercase tracking-wider">Monitoreo</p>}
@@ -416,40 +416,33 @@ const Sidebar: React.FC<SidebarProps> = ({
           </>
         )}
 
-        {/* "Gestionar cuenta" y "Cerrar sesión" ya no viven aquí: ahora salen del menú del
-            avatar (la bolita) en la cápsula superior derecha. */}
+        {/* Wallet + Nuevo pedido: pegados al fondo del nav con mt-auto */}
+        <div className="mt-auto flex flex-col gap-1 pt-4">
+          <button
+            onClick={() => navigate('/profile/pagos')}
+            title={`Saldo disponible: ${balanceLabel}`}
+            className={`w-full rounded-xl flex items-center bg-gradient-to-r from-amber-400 to-amber-500 text-white shadow-sm hover:shadow-md transition-all overflow-hidden
+              ${isExpanded ? 'p-3' : 'h-11 justify-center'}`}
+          >
+            <Wallet size={18} className="flex-shrink-0" />
+            {isExpanded && (
+              <div className="ml-3 text-left">
+                <p className="text-[10px] text-white/80 uppercase tracking-wider leading-none">Saldo</p>
+                <p className="text-base font-bold leading-tight">{walletLoading ? '—' : balanceLabel}</p>
+              </div>
+            )}
+          </button>
+          <button
+            onClick={() => setMapOpen(true)}
+            className={`w-full h-11 rounded-xl flex items-center bg-gradient-to-r from-amber-400 to-amber-500 text-white shadow-md hover:from-amber-500 hover:to-amber-600 transition-all overflow-hidden
+              ${isExpanded ? 'px-4' : 'justify-center'}`}
+            title="Nuevo pedido"
+          >
+            <Plus size={18} className="flex-shrink-0" />
+            {isExpanded && <span className="ml-3 font-medium text-sm whitespace-nowrap">Nuevo pedido</span>}
+          </button>
+        </div>
       </nav>
-
-      {/* Wallet — solo saldo; al hacer click navega al perfil donde están los controles */}
-      <div className="mt-4 mb-3 px-3">
-        <button
-          onClick={() => navigate('/profile/pagos')}
-          title={`Saldo disponible: ${balanceLabel}`}
-          className={`w-full rounded-xl flex items-center bg-gradient-to-r from-amber-400 to-amber-500 text-white shadow-sm hover:shadow-md transition-all overflow-hidden
-            ${isExpanded ? 'p-3' : 'h-11 justify-center'}`}
-        >
-          <Wallet size={18} className="flex-shrink-0" />
-          {isExpanded && (
-            <div className="ml-3 text-left">
-              <p className="text-[10px] text-white/80 uppercase tracking-wider leading-none">Saldo</p>
-              <p className="text-base font-bold leading-tight">{walletLoading ? '—' : balanceLabel}</p>
-            </div>
-          )}
-        </button>
-      </div>
-
-      {/* Bottom */}
-      <div className="flex flex-col gap-1 w-full px-3">
-        <button
-          onClick={() => setMapOpen(true)}
-          className={`w-full h-11 rounded-xl flex items-center bg-gradient-to-r from-amber-400 to-amber-500 text-white shadow-md hover:from-amber-500 hover:to-amber-600 transition-all overflow-hidden
-            ${isExpanded ? 'px-4' : 'justify-center'}`}
-          title="Nuevo pedido"
-        >
-          <Plus size={18} className="flex-shrink-0" />
-          {isExpanded && <span className="ml-3 font-medium text-sm whitespace-nowrap">Nuevo pedido</span>}
-        </button>
-      </div>
       </aside>
 
       {/* ── Bottom nav móvil: reemplaza el riel lateral en <md. "Nuevo pedido" queda como
