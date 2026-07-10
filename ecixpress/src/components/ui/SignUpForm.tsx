@@ -41,7 +41,7 @@ const SignUpForm: React.FC<SignUpProps> = ({ onSignInClick, onSignUpSuccess }) =
   });
 
   const validatePhone = (v: string) => {
-    if (!v.trim()) return 'El celular es obligatorio';
+    if (!v.trim()) return '';
     if (!/^\+?[\d\s\-()]{7,15}$/.test(v.trim())) return 'Número inválido';
     return '';
   };
@@ -135,6 +135,7 @@ const SignUpForm: React.FC<SignUpProps> = ({ onSignInClick, onSignUpSuccess }) =
           placeholder="Juan Pérez"
           error={errors.name}
           touched={touched.name}
+          required
         />
 
         <FormInput
@@ -146,6 +147,7 @@ const SignUpForm: React.FC<SignUpProps> = ({ onSignInClick, onSignUpSuccess }) =
           placeholder="ejemplo@empresa.com"
           error={errors.email}
           touched={touched.email}
+          required
         />
 
         <FormInput
@@ -168,6 +170,7 @@ const SignUpForm: React.FC<SignUpProps> = ({ onSignInClick, onSignUpSuccess }) =
           touched={touched.password}
           showPassword={showPassword}
           onTogglePassword={() => setShowPassword(!showPassword)}
+          required
         />
 
         <PasswordInput
@@ -179,6 +182,7 @@ const SignUpForm: React.FC<SignUpProps> = ({ onSignInClick, onSignUpSuccess }) =
           touched={touched.confirmPassword}
           showPassword={showConfirmPassword}
           onTogglePassword={() => setShowConfirmPassword(!showConfirmPassword)}
+          required
         />
 
         <button

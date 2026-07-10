@@ -11,6 +11,7 @@ interface PasswordInputProps {
   touched?: boolean;
   showPassword: boolean;
   onTogglePassword: () => void;
+  required?: boolean;
 }
 
 const PasswordInput: React.FC<PasswordInputProps> = ({
@@ -23,15 +24,19 @@ const PasswordInput: React.FC<PasswordInputProps> = ({
   touched = false,
   showPassword,
   onTogglePassword,
+  required = false,
 }) => {
   return (
     <div className="space-y-1">
       <label className="block text-sm font-semibold text-gray-700">
         {label}
+        {required && <span className="ml-1 text-red-500" aria-hidden="true">*</span>}
       </label>
       <div className="relative">
         <input
           type={showPassword ? 'text' : 'password'}
+          required={required}
+          aria-required={required}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           onBlur={onBlur}

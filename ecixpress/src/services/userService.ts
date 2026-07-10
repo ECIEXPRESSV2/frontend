@@ -37,6 +37,12 @@ export const updateMe = (data: UpdateProfileDto, token: string) =>
     body: JSON.stringify(data),
   });
 
+export const updateMyPhone = (phone: string, token: string) =>
+  apiFetch<Record<string, unknown>>('/users/me/phone', token, {
+    method: 'PATCH',
+    body: JSON.stringify({ phone }),
+  });
+
 export const changePassword = (
   data: { currentPassword: string; newPassword: string },
   token: string,
