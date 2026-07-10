@@ -18,7 +18,7 @@ export interface UserProfile {
   id: string;
   email: string;
   fullName: string;
-  phone?: string;
+  phone: string | null;
   avatarUrl?: string;
   status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED';
   emailVerified?: boolean;
@@ -124,7 +124,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         id: profile.id as string,
         email: profile.email as string,
         fullName: (profile.fullName || profile.displayName) as string,
-        phone: profile.phone as string | undefined,
+        phone: typeof profile.phone === 'string' ? profile.phone : null,
         avatarUrl: (profile.avatarUrl || profile.photoURL) as string | undefined,
         status: (profile.status || 'ACTIVE') as UserProfile['status'],
         emailVerified: profile.emailVerified as boolean | undefined,

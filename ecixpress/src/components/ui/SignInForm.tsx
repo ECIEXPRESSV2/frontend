@@ -115,6 +115,7 @@ const SignInForm: React.FC<SignInProps> = ({ onSignUpClick, onLoginSuccess }) =>
               placeholder="ejemplo@empresa.com"
               error=""
               touched={false}
+              required
             />
             <button
               type="submit"
@@ -163,6 +164,7 @@ const SignInForm: React.FC<SignInProps> = ({ onSignUpClick, onLoginSuccess }) =>
           placeholder="ejemplo@empresa.com"
           error={errors.email}
           touched={touched.email}
+          required
         />
 
         <div className="space-y-1">
@@ -175,6 +177,7 @@ const SignInForm: React.FC<SignInProps> = ({ onSignUpClick, onLoginSuccess }) =>
             touched={touched.password}
             showPassword={showPassword}
             onTogglePassword={() => setShowPassword(!showPassword)}
+            required
           />
           <div className="text-right">
             <button
