@@ -87,6 +87,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Firebase emits auth state immediately; hold it until duplicate detection finishes.
   // undefined = not yet received, null = signed out, FirebaseUser = signed in
   const pendingAuthUser = useRef<FirebaseUser | null | undefined>(undefined);
+  // signIn/signUp/signInWithGoogle already sync the profile themselves (with fullName/phone).
+  // Without this, onAuthStateChanged fires concurrently and races them to /auth/sync-profile,
+  // sometimes creating the profile first with no fullName (falls back to the email prefix).
+  const isHandlingAuthAction = useRef(false);
 
   const getToken = async (): Promise<string> => {
     if (!auth.currentUser) throw new Error('No authenticated user');
@@ -158,10 +162,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     isDuplicateTab.current = false;
     duplicateCheckResolved.current = true;
     pendingAuthUser.current = user;
+    isHandlingAuthAction.current = true;
     setLoading(true);
     setFirebaseUser(user);
-    await syncAndLoadProfile(user, fullName, phone);
-    setLoading(false);
+    try {
+      await syncAndLoadProfile(user, fullName, phone);
+    } finally {
+      isHandlingAuthAction.current = false;
+      setLoading(false);
+    }
   };
 
   const signIn = async (email: string, password: string) => {
@@ -292,6 +301,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
       }
       if (isDuplicateTab.current) { setLoading(false); return; }
+      if (isHandlingAuthAction.current) {
+        // signIn/signUp/signInWithGoogle is already syncing this user with the right data.
+        return;
+      }
       setFirebaseUser(user);
       if (user) {
         await syncAndLoadProfile(user);
