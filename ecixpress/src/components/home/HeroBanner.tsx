@@ -24,7 +24,7 @@ const HeroBanner: React.FC<HeroBannerProps> = ({ userName, onNewOrder, sectionTo
       <div aria-hidden="true" className="theme-surface absolute -bottom-28 left-1/4 h-64 w-64 rounded-full bg-[rgb(var(--accent-rgb)/0.20)] blur-3xl" />
       <TrianglePattern />
 
-      <div className="relative z-10 grid min-h-[clamp(170px,24vh,280px)] items-center gap-6 px-5 py-6 md:grid-cols-[1.15fr_0.85fr] md:px-10 md:py-8">
+      <div className="relative z-10 grid min-h-[clamp(240px,32vh,320px)] items-center gap-6 px-5 py-6 md:grid-cols-[1.15fr_0.85fr] md:px-10 md:py-8">
         <div className="animate-fade-in-up space-y-4">
           {sectionToggle && <div className="md:hidden">{sectionToggle}</div>}
           <h1 className="font-display text-2xl font-semibold leading-tight text-gray-900 md:text-[clamp(1.6rem,2.6vw,2.4rem)]">
