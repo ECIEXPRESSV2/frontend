@@ -61,11 +61,9 @@ const Sidebar: React.FC<SidebarProps> = ({
     onExpandedChange?.(next);
   };
 
-  // Publica el ancho actual del sidebar para que el contenido de la página (con la clase
-  // `app-shift`) se corra a la derecha en vez de quedar tapado. En pantallas md- el CSS ya
-  // fuerza 4rem, porque ahí el sidebar no se ensancha aunque esté "expandido".
   useEffect(() => {
-    document.documentElement.style.setProperty('--sidebar-w', isExpanded ? '16rem' : '4rem');
+    const w = matchMedia('(min-width: 768px)').matches ? (isExpanded ? '16rem' : '4rem') : '4rem';
+    document.documentElement.style.setProperty('--sidebar-w', w);
   }, [isExpanded]);
   // Cuando el panel de notificaciones está abierto, el sidebar se comprime y no se
   // vuelve a expandir con el hover hasta que se cierre.
@@ -272,7 +270,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         <button
           type="button"
           onClick={() => setIsExpanded(!isExpanded)}
-          className="inline-flex h-11 w-11 items-center justify-center overflow-hidden rounded-xl border border-[color-mix(in_srgb,var(--accent-200)_60%,transparent)] bg-[linear-gradient(135deg,var(--accent-300),var(--accent-400))] shadow-[0_4px_14px_rgb(var(--accent-rgb)/0.28),inset_0_1px_1px_rgba(255,255,255,0.55)] backdrop-blur-sm transition hover:shadow-[0_6px_18px_rgb(var(--accent-rgb)/0.38)] focus:outline-none focus:ring-2 focus:ring-amber-300"
+          className="max-md:hidden inline-flex h-11 w-11 items-center justify-center overflow-hidden rounded-xl border border-[color-mix(in_srgb,var(--accent-200)_60%,transparent)] bg-[linear-gradient(135deg,var(--accent-300),var(--accent-400))] shadow-[0_4px_14px_rgb(var(--accent-rgb)/0.28),inset_0_1px_1px_rgba(255,255,255,0.55)] backdrop-blur-sm transition hover:shadow-[0_6px_18px_rgb(var(--accent-rgb)/0.38)] focus:outline-none focus:ring-2 focus:ring-amber-300"
           title={isExpanded ? 'Contraer menú' : 'Abrir menú'}
           aria-label={isExpanded ? 'Contraer menú lateral' : 'Abrir menú lateral'}
         >
