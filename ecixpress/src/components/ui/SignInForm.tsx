@@ -43,7 +43,7 @@ const SignInForm: React.FC<SignInProps> = ({ onSignUpClick, onLoginSuccess }) =>
     if (emailError || passwordError) return;
     setIsLoading(true);
     try {
-      await signIn(email, password);
+      await signIn(email.trim(), password);
       onLoginSuccess?.();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Error al iniciar sesión';
@@ -58,7 +58,7 @@ const SignInForm: React.FC<SignInProps> = ({ onSignUpClick, onLoginSuccess }) =>
     if (!resetEmail) return;
     setResetLoading(true);
     try {
-      await resetPassword(resetEmail);
+      await resetPassword(resetEmail.trim());
       setResetSent(true);
     } catch {
       // Mostrar mensaje genérico para no revelar si el email existe
