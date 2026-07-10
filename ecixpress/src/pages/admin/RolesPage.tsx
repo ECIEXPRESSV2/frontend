@@ -26,6 +26,7 @@ import {
 } from '../../services/roleService';
 import { getPageCache, pageCacheKeys, setPageCache } from '../../services/pageCache';
 import { useRefreshOnScrollTop } from '../../hooks/useRefreshOnScrollTop';
+import TrianglePattern from '../../components/home/TrianglePattern';
 
 type RolesCache = { roles: Role[]; permissions: Permission[] };
 
@@ -338,7 +339,7 @@ const RolesPage: React.FC = () => {
   const permsContent = renderPermsContent();
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-white via-gray-50 to-white text-gray-900">
+    <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-white to-yellow-100 text-gray-900">
       <Sidebar
         activeItem="admin-roles"
         expanded={sidebarExpanded}
@@ -354,18 +355,17 @@ const RolesPage: React.FC = () => {
 
         <div className="relative mx-auto max-w-7xl space-y-6">
           {/* ── HEADER ── */}
-          <header className="relative overflow-hidden rounded-[28px] border border-yellow-200/70 bg-[linear-gradient(135deg,#F4B942_0%,#FBBF24_48%,#FDE68A_100%)] p-5 shadow-lg shadow-yellow-200/60 md:p-6">
-            <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-white/60" />
-            <div className="pointer-events-none absolute -left-20 -top-24 h-64 w-64 rounded-full bg-white/20 blur-3xl" />
-            <div className="pointer-events-none absolute right-[-90px] top-[-110px] h-72 w-72 rounded-full bg-violet-400/15 blur-3xl" />
-
+          <header className="theme-surface relative overflow-hidden rounded-[32px] border border-white/60 bg-[linear-gradient(140deg,rgb(var(--accent-rgb)/0.32)_0%,rgba(255,255,255,0.62)_42%,rgb(var(--accent-rgb)/0.14)_72%,rgb(var(--accent-rgb)/0.36)_100%)] backdrop-blur-2xl [box-shadow:0_28px_50px_-28px_rgb(var(--accent-rgb)/0.45)] p-5 md:p-6">
+            <div aria-hidden="true" className="theme-surface absolute -right-16 -top-24 h-72 w-72 rounded-full bg-[rgb(var(--accent-rgb)/0.32)] blur-3xl" />
+            <div aria-hidden="true" className="theme-surface absolute -bottom-28 left-1/4 h-64 w-64 rounded-full bg-[rgb(var(--accent-rgb)/0.20)] blur-3xl" />
+            <TrianglePattern className="absolute inset-0 pointer-events-none" />
             <div className="relative flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div>
                 <nav className="mb-3 inline-flex items-center rounded-xl border border-white/70 bg-white/80 px-3 py-1.5 text-sm font-semibold text-gray-700 shadow-sm backdrop-blur">
                   Administración <span className="mx-2 text-gray-400">/</span>
                   <span className="text-gray-950">Roles y Permisos</span>
                 </nav>
-                <h1 className="flex items-center gap-3 text-3xl font-bold tracking-normal text-white md:text-4xl">
+                <h1 className="flex items-center gap-3 font-display text-3xl font-bold tracking-normal text-gray-900 md:text-4xl">
                   Gestión de roles
                 </h1>
               </div>
