@@ -24,6 +24,7 @@ import MessagesPage from './pages/messages/MessagesPage';
 import PickupCodePage from './pages/fulfillment/PickupCodePage';
 import DeliveriesPage from './pages/fulfillment/DeliveriesPage';
 import InfoPage from './pages/info/InfoPage';
+import CompleteProfilePage from './pages/user/CompleteProfilePage';
 
 const AppRoutes: React.FC = () => {
   const navigate = useNavigate();
@@ -39,6 +40,7 @@ const AppRoutes: React.FC = () => {
       {/* Authentication */}
       <Route path="/signin" element={<SignInPage />} />
       <Route path="/signup" element={<SignUpPage />} />
+      <Route path="/complete-profile" element={<CompleteProfilePage />} />
 
       {/* Main App */}
       <Route path="/home" element={<ProtectedRoute><Home onUserClick={() => navigate('/profile')} onCartClick={() => navigate('/cart')} onOrdersClick={openOrdersDemo} onMessagesClick={openMessagesDemo} /></ProtectedRoute>} />

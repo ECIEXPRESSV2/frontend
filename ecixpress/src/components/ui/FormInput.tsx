@@ -11,6 +11,7 @@ interface FormInputProps {
   touched?: boolean;
   className?: string;
   min?: string | number;
+  required?: boolean;
 }
 
 const FormInput: React.FC<FormInputProps> = ({
@@ -24,6 +25,7 @@ const FormInput: React.FC<FormInputProps> = ({
   touched = false,
   className = '',
   min,
+  required = false,
 }) => {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let val = e.target.value;
@@ -35,10 +37,13 @@ const FormInput: React.FC<FormInputProps> = ({
     <div className="space-y-1">
       <label className="block text-sm font-semibold text-gray-700">
         {label}
+        {required && <span className="ml-1 text-red-500" aria-hidden="true">*</span>}
       </label>
       <input
         type="text"
         inputMode={type === 'number' ? 'numeric' : undefined}
+        required={required}
+        aria-required={required}
         value={value}
         onChange={handleChange}
         onBlur={onBlur}
