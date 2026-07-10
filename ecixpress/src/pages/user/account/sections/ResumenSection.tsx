@@ -107,17 +107,11 @@ const ResumenSection: React.FC = () => {
 
   return (
     <>
-      <header
-        className={`admin-hero-banner theme-surface relative overflow-visible rounded-[32px] border border-white/60 bg-[linear-gradient(140deg,rgb(var(--accent-rgb)/0.32)_0%,rgba(255,255,255,0.62)_42%,rgb(var(--accent-rgb)/0.14)_72%,rgb(var(--accent-rgb)/0.36)_100%)] p-5 backdrop-blur-2xl [box-shadow:0_28px_50px_-28px_rgb(var(--accent-rgb)/0.45)] md:p-6 ${
-          sidebarExpanded ? 'admin-hero-expanded' : ''
-        }`}
-      >
-        <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[32px]">
-          <div aria-hidden="true" className="theme-surface absolute -right-16 -top-24 h-72 w-72 rounded-full bg-[rgb(var(--accent-rgb)/0.32)] blur-3xl" />
-          <div aria-hidden="true" className="theme-surface absolute -bottom-28 left-1/4 h-64 w-64 rounded-full bg-[rgb(var(--accent-rgb)/0.20)] blur-3xl" />
-          <TrianglePattern className={`admin-hero-triangles ${sidebarExpanded ? 'admin-hero-triangles-expanded' : ''}`} />
-        </div>
-        <div className="relative z-10 flex min-h-[112px] flex-col justify-center gap-5 lg:flex-row lg:items-start lg:justify-between">
+      <header className="theme-surface relative overflow-hidden rounded-[32px] border border-white/60 bg-[linear-gradient(140deg,rgb(var(--accent-rgb)/0.32)_0%,rgba(255,255,255,0.62)_42%,rgb(var(--accent-rgb)/0.14)_72%,rgb(var(--accent-rgb)/0.36)_100%)] backdrop-blur-2xl [box-shadow:0_28px_50px_-28px_rgb(var(--accent-rgb)/0.45)]">
+        <div aria-hidden="true" className="theme-surface absolute -right-16 -top-24 h-72 w-72 rounded-full bg-[rgb(var(--accent-rgb)/0.32)] blur-3xl" />
+        <div aria-hidden="true" className="theme-surface absolute -bottom-28 left-1/4 h-64 w-64 rounded-full bg-[rgb(var(--accent-rgb)/0.20)] blur-3xl" />
+        <TrianglePattern className={`absolute inset-0 ${sidebarExpanded ? 'opacity-30' : 'opacity-40'}`} />
+        <div className="relative z-10 flex min-h-[112px] flex-col justify-center gap-5 px-5 py-5 md:px-8 md:py-6 lg:flex-row lg:items-start lg:justify-between">
           <div className="flex items-center gap-4">
             <div className="relative flex-shrink-0">
               <button
@@ -193,7 +187,7 @@ const ResumenSection: React.FC = () => {
                 Mi cuenta <span className="mx-2 text-gray-400">/</span>
                 <span className="text-gray-950">Perfil</span>
               </nav>
-              <h1 className="font-display text-2xl font-semibold text-gray-900 md:text-3xl">{userProfile?.fullName || '-'}</h1>
+              <h1 className="font-display text-2xl font-semibold leading-tight text-gray-900 md:text-[clamp(1.6rem,2.6vw,2.4rem)]">{userProfile?.fullName || '-'}</h1>
               <p className="text-sm font-medium text-gray-600">{userProfile?.email}</p>
               <div className="mt-3 flex flex-wrap items-center gap-1.5">
                 {activeAccount && (

@@ -171,7 +171,7 @@ const CategoryManager: React.FC<CategoryManagerProps> = ({ storeId, categories, 
           </span>
         )}
         {!node.isActive && <span className="text-[10px] uppercase font-bold text-gray-400 shrink-0">inactiva</span>}
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+        <div className="flex items-center gap-1 max-lg:opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity shrink-0">
           <button onClick={() => openEdit(node)} title="Editar" className="w-7 h-7 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-500">
             <Pencil size={13} />
           </button>

@@ -193,7 +193,7 @@ const PromotionsPage: React.FC = () => {
     <div className="min-h-screen bg-background">
       <Sidebar activeItem="vendor-stores" />
       <main className="app-shift px-4 pb-28 pt-20 md:px-8 md:pb-8 lg:px-10">
-        <div className="relative mx-auto max-w-6xl space-y-6">
+        <div className="relative mx-auto max-w-7xl space-y-6">
           {/* Header */}
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div className="flex items-center gap-3">

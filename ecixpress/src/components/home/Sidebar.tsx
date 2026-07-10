@@ -61,11 +61,9 @@ const Sidebar: React.FC<SidebarProps> = ({
     onExpandedChange?.(next);
   };
 
-  // Publica el ancho actual del sidebar para que el contenido de la página (con la clase
-  // `app-shift`) se corra a la derecha en vez de quedar tapado. En pantallas md- el CSS ya
-  // fuerza 4rem, porque ahí el sidebar no se ensancha aunque esté "expandido".
   useEffect(() => {
-    document.documentElement.style.setProperty('--sidebar-w', isExpanded ? '16rem' : '4rem');
+    const w = matchMedia('(min-width: 768px)').matches ? (isExpanded ? '16rem' : '4rem') : '4rem';
+    document.documentElement.style.setProperty('--sidebar-w', w);
   }, [isExpanded]);
   // Cuando el panel de notificaciones está abierto, el sidebar se comprime y no se
   // vuelve a expandir con el hover hasta que se cierre.
@@ -272,7 +270,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         <button
           type="button"
           onClick={() => setIsExpanded(!isExpanded)}
-          className="inline-flex h-11 w-11 items-center justify-center overflow-hidden rounded-xl border border-[color-mix(in_srgb,var(--accent-200)_60%,transparent)] bg-[linear-gradient(135deg,var(--accent-300),var(--accent-400))] shadow-[0_4px_14px_rgb(var(--accent-rgb)/0.28),inset_0_1px_1px_rgba(255,255,255,0.55)] backdrop-blur-sm transition hover:shadow-[0_6px_18px_rgb(var(--accent-rgb)/0.38)] focus:outline-none focus:ring-2 focus:ring-amber-300"
+          className="max-md:hidden inline-flex h-11 w-11 items-center justify-center overflow-hidden rounded-xl border border-[color-mix(in_srgb,var(--accent-200)_60%,transparent)] bg-[linear-gradient(135deg,var(--accent-300),var(--accent-400))] shadow-[0_4px_14px_rgb(var(--accent-rgb)/0.28),inset_0_1px_1px_rgba(255,255,255,0.55)] backdrop-blur-sm transition hover:shadow-[0_6px_18px_rgb(var(--accent-rgb)/0.38)] focus:outline-none focus:ring-2 focus:ring-amber-300"
           title={isExpanded ? 'Contraer menú' : 'Abrir menú'}
           aria-label={isExpanded ? 'Contraer menú lateral' : 'Abrir menú lateral'}
         >
@@ -340,7 +338,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             expanded={isExpanded}
             onOpenChange={(open) => {
               setNotifOpen(open);
-              if (open) setIsExpanded(false); // comprimir el sidebar al abrir
+              if (open) setIsExpanded(false);
             }}
           />
         )}
@@ -371,7 +369,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           </>
         )}
 
-        {/* Monitoreo — ADMIN o ANALYST. Su propia sección porque no depende de ser admin. */}
+        {/* Monitoreo */}
         {canMonitor && (
           <>
             {isExpanded && <p className="text-xs text-gray-500 font-medium px-1 pt-3 pb-1 uppercase tracking-wider">Monitoreo</p>}
@@ -416,40 +414,33 @@ const Sidebar: React.FC<SidebarProps> = ({
           </>
         )}
 
-        {/* "Gestionar cuenta" y "Cerrar sesión" ya no viven aquí: ahora salen del menú del
-            avatar (la bolita) en la cápsula superior derecha. */}
+        {/* Wallet + Nuevo pedido: pegados al fondo del nav con mt-auto */}
+        <div className="mt-auto flex flex-col gap-1 pt-4">
+          <button
+            onClick={() => navigate('/profile/pagos')}
+            title={`Saldo disponible: ${balanceLabel}`}
+            className={`w-full rounded-xl flex items-center bg-gradient-to-r from-amber-400 to-amber-500 text-white shadow-sm hover:shadow-md transition-all overflow-hidden
+              ${isExpanded ? 'p-3' : 'h-11 justify-center'}`}
+          >
+            <Wallet size={18} className="flex-shrink-0" />
+            {isExpanded && (
+              <div className="ml-3 text-left">
+                <p className="text-[10px] text-white/80 uppercase tracking-wider leading-none">Saldo</p>
+                <p className="text-base font-bold leading-tight">{walletLoading ? '—' : balanceLabel}</p>
+              </div>
+            )}
+          </button>
+          <button
+            onClick={() => setMapOpen(true)}
+            className={`w-full h-11 rounded-xl flex items-center bg-gradient-to-r from-amber-400 to-amber-500 text-white shadow-md hover:from-amber-500 hover:to-amber-600 transition-all overflow-hidden
+              ${isExpanded ? 'px-4' : 'justify-center'}`}
+            title="Nuevo pedido"
+          >
+            <Plus size={18} className="flex-shrink-0" />
+            {isExpanded && <span className="ml-3 font-medium text-sm whitespace-nowrap">Nuevo pedido</span>}
+          </button>
+        </div>
       </nav>
-
-      {/* Wallet — solo saldo; al hacer click navega al perfil donde están los controles */}
-      <div className="mt-4 mb-3 px-3">
-        <button
-          onClick={() => navigate('/profile/pagos')}
-          title={`Saldo disponible: ${balanceLabel}`}
-          className={`w-full rounded-xl flex items-center bg-gradient-to-r from-amber-400 to-amber-500 text-white shadow-sm hover:shadow-md transition-all overflow-hidden
-            ${isExpanded ? 'p-3' : 'h-11 justify-center'}`}
-        >
-          <Wallet size={18} className="flex-shrink-0" />
-          {isExpanded && (
-            <div className="ml-3 text-left">
-              <p className="text-[10px] text-white/80 uppercase tracking-wider leading-none">Saldo</p>
-              <p className="text-base font-bold leading-tight">{walletLoading ? '—' : balanceLabel}</p>
-            </div>
-          )}
-        </button>
-      </div>
-
-      {/* Bottom */}
-      <div className="flex flex-col gap-1 w-full px-3">
-        <button
-          onClick={() => setMapOpen(true)}
-          className={`w-full h-11 rounded-xl flex items-center bg-gradient-to-r from-amber-400 to-amber-500 text-white shadow-md hover:from-amber-500 hover:to-amber-600 transition-all overflow-hidden
-            ${isExpanded ? 'px-4' : 'justify-center'}`}
-          title="Nuevo pedido"
-        >
-          <Plus size={18} className="flex-shrink-0" />
-          {isExpanded && <span className="ml-3 font-medium text-sm whitespace-nowrap">Nuevo pedido</span>}
-        </button>
-      </div>
       </aside>
 
       {/* ── Bottom nav móvil: reemplaza el riel lateral en <md. "Nuevo pedido" queda como
