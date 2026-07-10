@@ -162,7 +162,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     isDuplicateTab.current = false;
     duplicateCheckResolved.current = true;
     pendingAuthUser.current = user;
-    isHandlingAuthAction.current = true;
     setLoading(true);
     setFirebaseUser(user);
     try {
@@ -176,21 +175,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signIn = async (email: string, password: string) => {
     // El usuario elige iniciar sesión explícitamente, incluso en tab duplicado
     isDuplicateTab.current = false;
-    const cred = await signInWithEmailAndPassword(auth, email, password);
-    await activateAuthenticatedTab(cred.user);
+    // Se prende ANTES de llamar a Firebase: onAuthStateChanged puede dispararse
+    // apenas Firebase confirma la sesión, antes de que nuestro código siga ejecutándose.
+    isHandlingAuthAction.current = true;
+    try {
+      const cred = await signInWithEmailAndPassword(auth, email, password);
+      await activateAuthenticatedTab(cred.user);
+    } catch (err) {
+      isHandlingAuthAction.current = false;
+      throw err;
+    }
   };
 
   const signInWithGoogle = async () => {
     isDuplicateTab.current = false;
-    const provider = new GoogleAuthProvider();
-    const cred = await signInWithPopup(auth, provider);
-    await activateAuthenticatedTab(cred.user);
+    isHandlingAuthAction.current = true;
+    try {
+      const provider = new GoogleAuthProvider();
+      const cred = await signInWithPopup(auth, provider);
+      await activateAuthenticatedTab(cred.user);
+    } catch (err) {
+      isHandlingAuthAction.current = false;
+      throw err;
+    }
   };
 
   const signUp = async (email: string, password: string, fullName: string, phone?: string) => {
     isDuplicateTab.current = false;
-    const cred = await createUserWithEmailAndPassword(auth, email, password);
-    await activateAuthenticatedTab(cred.user, fullName, phone);
+    isHandlingAuthAction.current = true;
+    try {
+      const cred = await createUserWithEmailAndPassword(auth, email, password);
+      await activateAuthenticatedTab(cred.user, fullName, phone);
+    } catch (err) {
+      isHandlingAuthAction.current = false;
+      throw err;
+    }
   };
 
   const resetPassword = async (email: string) => {
