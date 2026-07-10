@@ -1,6 +1,6 @@
 import React, { Suspense, lazy, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, Plus, Grid, Clipboard, MessageCircle, LogOut, Wallet, Store, PackageCheck, Activity } from 'lucide-react';
+import { User, Plus, Grid, Clipboard, MessageCircle, LogOut, Wallet, Store, PackageCheck, Activity, MoreHorizontal } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useWallet } from '../../context/WalletContext';
 import { useNotifications } from '../../context/NotificationsContext';
@@ -70,6 +70,8 @@ const Sidebar: React.FC<SidebarProps> = ({
   // Cuando el panel de notificaciones está abierto, el sidebar se comprime y no se
   // vuelve a expandir con el hover hasta que se cierre.
   const [notifOpen, setNotifOpen] = useState(false);
+  // Hoja "Más" del bottom nav móvil: agrupa vendedor/admin/monitoreo cuando aplican.
+  const [moreOpen, setMoreOpen] = useState(false);
   // Menú desplegable del usuario (Gestionar cuenta / Cerrar sesión) que aparece al hacer clic
   // en la bolita del avatar de la cápsula superior derecha.
   const [userMenuOpen, setUserMenuOpen] = useState(false);
@@ -115,6 +117,10 @@ const Sidebar: React.FC<SidebarProps> = ({
     { id: 'deliveries', icon: PackageCheck, label: 'Entregas', path: '/fulfillment/deliveries' },
   ];
 
+  // Secciones de vendedor/admin/monitoreo: en el bottom nav móvil no caben como pestañas
+  // propias, así que se agrupan detrás de una pestaña "Más" (solo se muestra si aplica).
+  const hasMoreItems = isVendor() || isAdmin() || canMonitor;
+
   const handleLogout = async () => {
     setUserMenuOpen(false);
     await signOut();
@@ -147,7 +153,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         <>
         {/* Cápsula flotante estilo liquid glass — anclada a la derecha */}
         <div
-          className={`fixed top-3 right-4 z-[70] flex h-14 w-auto items-center justify-end overflow-hidden border border-white/55 bg-white/65 backdrop-blur-2xl transition-all duration-300 ease-in-out [box-shadow:0_8px_32px_rgba(0,0,0,0.07),0_1px_0_rgba(255,255,255,0.85)_inset,0_-1px_0_rgba(0,0,0,0.04)_inset] md:right-5 ${
+          className={`fixed top-3 right-4 z-[70] flex h-14 w-auto items-center justify-end overflow-hidden border border-white/55 bg-white/65 backdrop-blur-2xl transition-all duration-300 ease-in-out [box-shadow:0_8px_32px_rgba(0,0,0,0.07),0_1px_0_rgba(255,255,255,0.85)_inset,0_-1px_0_rgba(0,0,0,0.04)_inset] [transform:translateZ(0)] [-webkit-transform:translateZ(0)] [backface-visibility:hidden] will-change-transform md:right-5 ${
             isTopbarOpen ? 'max-w-[340px] gap-2 rounded-full px-2.5' : 'max-w-[3.5rem] rounded-full px-2'
           }`}
           role="banner"
@@ -253,7 +259,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       )}
 
       <aside
-      className={`fixed left-0 top-0 z-[60] h-screen bg-[linear-gradient(180deg,rgba(255,255,255,0.90)_0%,var(--accent-surface-soft)_36%,var(--accent-surface)_64%,rgba(255,255,255,0.90)_100%)] backdrop-blur-2xl border-r border-white/60 [box-shadow:0_20px_25px_-5px_rgb(var(--accent-rgb)/0.18),0_8px_10px_-6px_rgb(var(--accent-rgb)/0.18)] flex flex-col py-6 transition-all duration-300 ease-in-out overflow-hidden
+      className={`fixed left-0 top-0 z-[60] hidden h-screen bg-[linear-gradient(180deg,rgba(255,255,255,0.90)_0%,var(--accent-surface-soft)_36%,var(--accent-surface)_64%,rgba(255,255,255,0.90)_100%)] backdrop-blur-2xl border-r border-white/60 [box-shadow:0_20px_25px_-5px_rgb(var(--accent-rgb)/0.18),0_8px_10px_-6px_rgb(var(--accent-rgb)/0.18)] [transform:translateZ(0)] [-webkit-transform:translateZ(0)] [backface-visibility:hidden] will-change-transform md:flex flex-col py-6 transition-all duration-300 ease-in-out overflow-hidden
         ${isExpanded ? 'w-64 max-md:w-16' : 'w-16'}`}
       onMouseEnter={() => {
         if (!lockExpanded && !notifOpen) setIsExpanded(true);
@@ -445,6 +451,147 @@ const Sidebar: React.FC<SidebarProps> = ({
         </button>
       </div>
       </aside>
+
+      {/* ── Bottom nav móvil: reemplaza el riel lateral en <md. "Nuevo pedido" queda como
+          acción central elevada, y las secciones de vendedor/admin/monitoreo (si aplican)
+          se agrupan en la pestaña "Más". ── */}
+      <nav
+        className="fixed inset-x-0 bottom-0 z-[60] flex items-stretch justify-around border-t border-white/60 bg-[linear-gradient(180deg,rgba(255,255,255,0.92)_0%,var(--accent-surface-soft)_100%)] backdrop-blur-2xl [box-shadow:0_-8px_24px_rgba(0,0,0,0.08)] [transform:translateZ(0)] [-webkit-transform:translateZ(0)] [backface-visibility:hidden] will-change-transform pb-[env(safe-area-inset-bottom)] md:hidden"
+        aria-label="Navegación principal"
+      >
+        <button
+          type="button"
+          onClick={() => handleMenuClick(menuItems[0])}
+          className={`flex flex-1 flex-col items-center justify-center gap-0.5 py-2.5 text-[11px] font-medium transition-colors ${
+            activeItem === 'home' ? 'text-[var(--accent-700)]' : 'text-gray-500'
+          }`}
+        >
+          <Grid size={20} />
+          Inicio
+        </button>
+
+        <button
+          type="button"
+          onClick={() => handleMenuClick(menuItems[2])}
+          className={`flex flex-1 flex-col items-center justify-center gap-0.5 py-2.5 text-[11px] font-medium transition-colors ${
+            activeItem === 'orders' ? 'text-[var(--accent-700)]' : 'text-gray-500'
+          }`}
+        >
+          <Clipboard size={20} />
+          Pedidos
+        </button>
+
+        <div className="flex flex-1 items-center justify-center">
+          <button
+            type="button"
+            onClick={() => setMapOpen(true)}
+            className="-mt-6 inline-flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-amber-500 text-white shadow-[0_8px_20px_rgb(var(--accent-rgb)/0.45)] ring-4 ring-white transition active:scale-95"
+            aria-label="Nuevo pedido"
+            title="Nuevo pedido"
+          >
+            <Plus size={24} />
+          </button>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => navigate('/profile/pagos')}
+          className="flex flex-1 flex-col items-center justify-center gap-0.5 py-2.5 text-[11px] font-medium text-gray-500 transition-colors"
+        >
+          <Wallet size={20} />
+          <span className="max-w-[4.5rem] truncate">{walletLoading ? 'Billetera' : balanceLabel}</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => handleMenuClick(menuItems[1])}
+          className={`flex flex-1 flex-col items-center justify-center gap-0.5 py-2.5 text-[11px] font-medium transition-colors ${
+            activeItem === 'profile' ? 'text-[var(--accent-700)]' : 'text-gray-500'
+          }`}
+        >
+          <User size={20} />
+          Perfil
+        </button>
+
+        {hasMoreItems && (
+          <button
+            type="button"
+            onClick={() => setMoreOpen(true)}
+            aria-haspopup="menu"
+            aria-expanded={moreOpen}
+            className="flex flex-1 flex-col items-center justify-center gap-0.5 py-2.5 text-[11px] font-medium text-gray-500 transition-colors"
+          >
+            <MoreHorizontal size={20} />
+            Más
+          </button>
+        )}
+      </nav>
+
+      {/* Hoja "Más": vendedor / monitoreo / admin, solo relevante para esos roles. */}
+      {moreOpen && (
+        <>
+          <div className="fixed inset-0 z-[65] md:hidden" onClick={() => setMoreOpen(false)} aria-hidden="true" />
+          <div
+            role="menu"
+            aria-label="Más opciones"
+            className="animate-menu-pop fixed inset-x-3 bottom-[5.5rem] z-[70] max-h-[60vh] overflow-y-auto rounded-2xl border border-white/60 bg-white/95 p-1.5 backdrop-blur-2xl [box-shadow:0_16px_40px_rgba(0,0,0,0.18)] md:hidden"
+          >
+            {isVendor() && (
+              <>
+                <p className="px-3 pt-2 pb-1 text-xs font-medium uppercase tracking-wider text-gray-500">Vendedor</p>
+                {vendorItems.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      role="menuitem"
+                      onClick={() => { navigate(item.path); setMoreOpen(false); }}
+                      className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-amber-50"
+                    >
+                      <Icon size={18} className="flex-shrink-0" /> {item.label}
+                    </button>
+                  );
+                })}
+              </>
+            )}
+
+            {canMonitor && (
+              <>
+                <p className="px-3 pt-2 pb-1 text-xs font-medium uppercase tracking-wider text-gray-500">Monitoreo</p>
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => { navigate('/admin/monitoring'); setMoreOpen(false); }}
+                  className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-amber-50"
+                >
+                  <Activity size={18} className="flex-shrink-0" /> Centro de monitoreo
+                </button>
+              </>
+            )}
+
+            {isAdmin() && (
+              <>
+                <p className="px-3 pt-2 pb-1 text-xs font-medium uppercase tracking-wider text-gray-500">Administración</p>
+                {adminItems.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      role="menuitem"
+                      onClick={() => { navigate(item.path); setMoreOpen(false); }}
+                      className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-amber-50"
+                    >
+                      <Icon size={18} className="flex-shrink-0" /> {item.label}
+                    </button>
+                  );
+                })}
+              </>
+            )}
+          </div>
+        </>
+      )}
 
       {mapOpen && (
         <Suspense fallback={null}>

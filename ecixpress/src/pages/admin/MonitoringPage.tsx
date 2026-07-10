@@ -87,7 +87,7 @@ const MonitoringPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-white to-yellow-100">
       <Sidebar activeItem="admin-monitoring" />
-      <main className="app-shift px-4 pb-8 pt-20 md:px-8 lg:px-10">
+      <main className="app-shift px-4 pb-28 pt-20 md:px-8 md:pb-8 lg:px-10">
         <div className="relative mx-auto max-w-7xl space-y-6">
           {/* Header */}
           <header className="relative overflow-hidden rounded-[28px] border border-yellow-200/70 bg-[linear-gradient(135deg,#F4B942_0%,#FBBF24_48%,#FDE68A_100%)] p-5 shadow-lg shadow-yellow-200/60 md:p-6">
@@ -155,7 +155,7 @@ const MonitoringPage: React.FC = () => {
           ) : (
             <>
               {/* KPI tiles */}
-              <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+              <section className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:grid-cols-4">
                 <KpiTile
                   label="Peticiones"
                   value={fmtInt(totals?.totalRequests ?? 0)}

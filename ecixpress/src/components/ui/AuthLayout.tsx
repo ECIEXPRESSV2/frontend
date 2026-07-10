@@ -35,9 +35,10 @@ const AuthLayout: React.FC<AuthLayoutProps> = ({ children, dense = false }) => {
   usePointerGlow();
 
   // Login: centrado con realce óptico hacia arriba.
-  // Registro (dense): alineado a la parte superior (a la altura del botón "Volver"),
-  // así el formulario alto no se recorta.
-  const mainAlign = dense ? 'items-start justify-center' : 'items-center justify-center';
+  // Registro (dense): centrado en móvil (el contenido ya está acotado por
+  // contentMaxH + scroll interno, así que no se recorta); en desktop se
+  // mantiene arriba, a la altura del botón "Volver", como antes.
+  const mainAlign = dense ? 'items-center md:items-start justify-center' : 'items-center justify-center';
   const mainPadding = dense
     ? 'px-4 sm:px-6 pt-6 pb-6'
     : 'px-4 sm:px-6 pt-3 pb-20 sm:pt-4 sm:pb-24';

@@ -55,7 +55,7 @@ const CartPage: React.FC<CartPageProps> = ({ onBack, onContinue }) => {
       />
 
       {/* Main Content */}
-      <main className="app-shift px-4 pb-6 pt-20 md:px-8 md:pb-8 lg:px-10">
+      <main className="app-shift px-4 pb-28 pt-20 md:px-8 md:pb-8 lg:px-10">
         <div className="relative mx-auto w-full max-w-7xl space-y-8">
           {/* Back Button */}
           <button

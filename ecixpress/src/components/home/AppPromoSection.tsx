@@ -69,7 +69,7 @@ const AppPhoneMockup: React.FC<AppPhoneMockupProps> = ({ variant, className = ''
     {/* Cabecera de la app con el logo */}
     <div className="theme-surface bg-[linear-gradient(135deg,var(--accent-400),var(--accent-500))] px-3 pb-2.5 pt-4">
       <div className="mx-auto mb-2 h-1 w-10 rounded-full bg-gray-900/70" />
-      <img src="/logotipoEcixpress.svg" alt="" className="mx-auto h-4 brightness-0 invert" />
+      <img src="/ecixpress-logo.svg" alt="" className="mx-auto h-4 brightness-0 invert" />
     </div>
 
     {variant === 'menu' ? (
@@ -147,20 +147,23 @@ const AppPromoSection: React.FC = () => {
       <TrianglePattern />
 
       <div className="relative z-10 grid items-center gap-6 md:grid-cols-2">
-        {/* Mitad izquierda: dúo de celulares grande, desbordando el panel arriba y abajo */}
-        <div className="relative hidden items-center justify-center md:-my-16 md:flex" aria-hidden="true">
-          <TriangleGlyph size={300} rotate={8} className="theme-surface absolute text-[rgb(var(--accent-rgb))] opacity-30" />
+        {/* Mitad izquierda: dúo de celulares. En móvil, versión compacta y sin desbordar
+            (cabe dentro del panel); desde md crece al tamaño original que sí sobresale
+            arriba y abajo del panel. */}
+        <div className="relative flex items-center justify-center py-2 md:-my-16 md:py-0" aria-hidden="true">
+          <TriangleGlyph size={190} rotate={8} className="theme-surface absolute text-[rgb(var(--accent-rgb))] opacity-30 md:hidden" />
+          <TriangleGlyph size={300} rotate={8} className="theme-surface absolute hidden text-[rgb(var(--accent-rgb))] opacity-30 md:block" />
           <PhoneShot
             src={PHONE_IMAGES.order}
             fallback="stores"
-            className="relative -mt-8 h-[330px] -rotate-2 lg:h-[370px]"
+            className="relative -mt-4 h-[170px] -rotate-2 md:-mt-8 md:h-[330px] lg:h-[370px]"
             fallbackClassName="relative -rotate-6"
           />
           <PhoneShot
             src={PHONE_IMAGES.home}
             fallback="menu"
-            className="relative z-10 -ml-24 mt-10 h-[350px] rotate-2 lg:h-[390px]"
-            fallbackClassName="relative z-10 -ml-12 mt-10 rotate-6"
+            className="relative z-10 -ml-10 mt-6 h-[180px] rotate-2 md:-ml-24 md:mt-10 md:h-[350px] lg:h-[390px]"
+            fallbackClassName="relative z-10 -ml-8 mt-6 rotate-6 md:-ml-12 md:mt-10"
           />
         </div>
 

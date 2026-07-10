@@ -80,7 +80,7 @@ const HomeFooter: React.FC<HomeFooterProps> = ({ onOpenMap }) => {
     <footer className="app-shift mt-6">
       {/* Franja de acento: marca + contactos + redes */}
       <div className="theme-surface flex flex-wrap items-center justify-between gap-x-8 gap-y-3 bg-[linear-gradient(135deg,var(--accent-400),var(--accent-500))] px-5 py-4 text-gray-950 md:px-10">
-        <span className="font-display text-2xl font-semibold tracking-wide">ECIEXPRESS</span>
+        <img src="/ecixpress-logo.svg" alt="ECIEXPRESS" className="h-7 brightness-0 invert md:h-8" />
 
         <div className="flex flex-wrap items-center gap-x-8 gap-y-2 text-sm font-semibold">
           <a href="https://wa.me/573186188826" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 transition hover:opacity-75">
@@ -113,8 +113,9 @@ const HomeFooter: React.FC<HomeFooterProps> = ({ onOpenMap }) => {
         </div>
       </div>
 
-      {/* Franja oscura: columnas de enlaces + triángulos del logo + copyright */}
-      <div className="relative overflow-hidden bg-[#181a20] px-5 pb-6 pt-9 text-gray-400 md:px-12 lg:px-16">
+      {/* Franja oscura: columnas de enlaces + triángulos del logo + copyright.
+          pb-28 en mobile deja espacio para la barra de navegación inferior fija. */}
+      <div className="relative overflow-hidden bg-[#181a20] px-5 pb-28 pt-9 text-gray-400 md:px-12 md:pb-6 lg:px-16">
         {/* Decoración: los triángulos del logo hacen las veces del retrato del ejemplo */}
         <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-0 hidden items-center pr-6 text-white md:flex">
           <TriangleGlyph size={220} pair rotate={-8} className="opacity-[0.05]" />
@@ -123,14 +124,14 @@ const HomeFooter: React.FC<HomeFooterProps> = ({ onOpenMap }) => {
         <div className="relative grid gap-8 sm:grid-cols-2 md:grid-cols-3">
           {LINK_COLUMNS.map((column) => (
             <nav key={column.title} aria-label={column.title}>
-              <p className="mb-3 text-xs font-bold uppercase tracking-[0.14em] text-gray-200">{column.title}</p>
-              <ul className="space-y-2">
+              <p className="mb-4 font-semibold text-white">{column.title}</p>
+              <ul className="space-y-2 text-sm text-gray-400">
                 {column.links.map((link) => (
                   <li key={link.label}>
                     <button
                       type="button"
                       onClick={() => handleLink(link)}
-                      className="text-sm text-gray-500 transition hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-ring)]"
+                      className="inline-block transition hover:translate-x-1 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-ring)]"
                     >
                       {link.label}
                     </button>
@@ -141,7 +142,7 @@ const HomeFooter: React.FC<HomeFooterProps> = ({ onOpenMap }) => {
           ))}
         </div>
 
-        <div className="relative mt-8 border-t border-white/10 pt-4 text-xs text-gray-600">
+        <div className="relative mt-8 border-t border-gray-800 pt-4 text-xs text-gray-500">
           <p>
             Copyright © {new Date().getFullYear()} ECIEXPRESS. Todos los derechos reservados. ·
             Hecho por estudiantes de la Escuela Colombiana de Ingeniería Julio Garavito.

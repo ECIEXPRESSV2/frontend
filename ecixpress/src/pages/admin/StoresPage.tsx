@@ -1101,7 +1101,7 @@ const StoresPage: React.FC = () => {
         onExpandedChange={setSidebarExpanded}
       />
 
-      <main className="relative z-[51] app-shift min-h-screen px-4 pb-5 pt-20 md:px-8 lg:px-10">
+      <main className="relative z-[51] app-shift min-h-screen px-4 pb-28 pt-20 md:px-8 md:pb-5 lg:px-10">
         <div className="relative mx-auto max-w-7xl space-y-6">
           {!isStoreProfileRoute && (
             <>
@@ -1304,26 +1304,28 @@ const StoresPage: React.FC = () => {
                     </div>
 
                     <div className="border-y border-gray-100 bg-gray-50/50 px-4 py-3 md:px-7">
-                      <div className="inline-flex rounded-xl border border-gray-200 bg-white p-1 gap-0.5">
-                        {DETAIL_TABS.map(tab => {
-                          const Icon = tab.icon;
-                          const isActive = activeTab === tab.id;
-                          return (
-                            <button
-                              key={tab.id}
-                              type="button"
-                              onClick={() => setActiveTab(tab.id)}
-                              className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-yellow-300 ${
-                                isActive
-                                  ? 'bg-yellow-400 text-gray-950 shadow-sm'
-                                  : 'text-gray-500 hover:text-gray-800'
-                              }`}
-                            >
-                              <Icon size={15} aria-hidden="true" />
-                              {tab.label}
-                            </button>
-                          );
-                        })}
+                      <div className="overflow-x-auto">
+                        <div className="inline-flex rounded-xl border border-gray-200 bg-white p-1 gap-0.5">
+                          {DETAIL_TABS.map(tab => {
+                            const Icon = tab.icon;
+                            const isActive = activeTab === tab.id;
+                            return (
+                              <button
+                                key={tab.id}
+                                type="button"
+                                onClick={() => setActiveTab(tab.id)}
+                                className={`inline-flex flex-shrink-0 items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-yellow-300 ${
+                                  isActive
+                                    ? 'bg-yellow-400 text-gray-950 shadow-sm'
+                                    : 'text-gray-500 hover:text-gray-800'
+                                }`}
+                              >
+                                <Icon size={15} aria-hidden="true" />
+                                {tab.label}
+                              </button>
+                            );
+                          })}
+                        </div>
                       </div>
                     </div>
 

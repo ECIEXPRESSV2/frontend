@@ -272,12 +272,23 @@ const RolesPage: React.FC = () => {
                 className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-gray-200 text-gray-600 transition hover:bg-gray-50 disabled:opacity-40">
                 <ChevronLeft size={15} />
               </button>
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map(n => (
-                <button key={n} type="button" onClick={() => setPage(n)}
-                  className={`inline-flex h-8 w-8 items-center justify-center rounded-xl text-xs font-semibold transition ${n === page ? 'bg-yellow-400 text-gray-950 shadow-sm' : 'border border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
-                  {n}
-                </button>
-              ))}
+              {Array.from({ length: totalPages }, (_, i) => i + 1)
+                .filter(n => n === 1 || n === totalPages || Math.abs(n - page) <= 1)
+                .reduce<(number | '…')[]>((acc, n, idx, arr) => {
+                  if (idx > 0 && n - (arr[idx - 1] as number) > 1) acc.push('…');
+                  acc.push(n);
+                  return acc;
+                }, [])
+                .map((n, idx) =>
+                  n === '…' ? (
+                    <span key={`ellipsis-${idx}`} className="px-1 text-gray-400">…</span>
+                  ) : (
+                    <button key={n} type="button" onClick={() => setPage(n)}
+                      className={`inline-flex h-8 w-8 items-center justify-center rounded-xl text-xs font-semibold transition ${n === page ? 'bg-yellow-400 text-gray-950 shadow-sm' : 'border border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
+                      {n}
+                    </button>
+                  ),
+                )}
               <button type="button" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
                 className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-gray-200 text-gray-600 transition hover:bg-gray-50 disabled:opacity-40">
                 <ChevronRight size={15} />
@@ -334,7 +345,7 @@ const RolesPage: React.FC = () => {
         onExpandedChange={setSidebarExpanded}
       />
 
-      <main className="relative z-[51] app-shift min-h-screen px-4 pb-5 pt-20 md:px-8 lg:px-10">
+      <main className="relative z-[51] app-shift min-h-screen px-4 pb-28 pt-20 md:px-8 md:pb-5 lg:px-10">
         {/* background blobs */}
         <div className="pointer-events-none fixed inset-0 overflow-hidden">
           <div className="absolute -top-52 left-1/2 h-[560px] w-[760px] -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgba(251,191,36,0.08)_0%,transparent_66%)] blur-3xl" />

@@ -237,7 +237,7 @@ const DeliveriesPage: React.FC<DeliveriesPageProps> = () => {
         onExpandedChange={setSidebarExpanded}
       />
 
-      <main className="relative z-[51] app-shift min-h-screen px-4 pb-6 pt-20 md:px-8 md:pb-8 lg:px-10">
+      <main className="relative z-[51] app-shift min-h-screen px-4 pb-28 pt-20 md:px-8 md:pb-8 lg:px-10">
         <div className="relative mx-auto w-full max-w-6xl space-y-6">
           <AdminHeroBanner
             rootLabel="Operaciones"

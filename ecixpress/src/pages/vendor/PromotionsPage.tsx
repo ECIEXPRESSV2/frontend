@@ -192,7 +192,7 @@ const PromotionsPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-background">
       <Sidebar activeItem="vendor-stores" />
-      <main className="app-shift px-4 pb-6 pt-20 md:px-8 md:pb-8 lg:px-10">
+      <main className="app-shift px-4 pb-28 pt-20 md:px-8 md:pb-8 lg:px-10">
         <div className="relative mx-auto max-w-6xl space-y-6">
           {/* Header */}
           <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -311,7 +311,7 @@ const PromotionsPage: React.FC = () => {
               ))}
             </select>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1">Tipo de descuento</label>
               <select
@@ -330,7 +330,7 @@ const PromotionsPage: React.FC = () => {
               onChange={(v) => setForm((f) => ({ ...f, discountValue: v }))}
             />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <FormInput label="Inicio" type="datetime-local" value={form.startsAt} onChange={(v) => setForm((f) => ({ ...f, startsAt: v }))} />
             <FormInput label="Fin" type="datetime-local" value={form.endsAt} onChange={(v) => setForm((f) => ({ ...f, endsAt: v }))} />
           </div>
