@@ -204,6 +204,79 @@ export const getPseInstitutions = (userId: string) =>
 export const getTopupDetails = (userId: string, topupId: string) =>
   financialFetch<TopupDetails>(`/wallet/topups/${topupId}`, userId);
 
+// ─── Panel del vendedor: ganancias y hora pico ────────────────────────────────
+// Estos endpoints se resuelven por su tienda (header x-store-id que inyecta el gateway
+// desde la identidad del vendedor). El `userId` que se pasa es solo para el x-user-id de
+// respaldo; el gateway lo reemplaza por la identidad real del token.
+
+/** Agregado de montos (centavos COP) de un grupo de transacciones. */
+export interface EarningsBucket {
+  count: number;
+  /** Valor bruto de los pedidos (SUM order_amount). */
+  grossAmount: number;
+  /** Descuento por uso de la app (SUM platform_fee_amount). */
+  platformFeeAmount: number;
+  /** Neto que recibe el negocio (SUM store_payout_amount). */
+  netAmount: number;
+}
+
+/** Resumen de ganancias del mes en curso del negocio. */
+export interface StoreEarnings {
+  month: string; // 'YYYY-MM'
+  currency: 'COP';
+  platformFeePercent: number;
+  received: EarningsBucket; // ya desembolsado (RELEASED)
+  pending: EarningsBucket; // se libera al entregar (HELD)
+  totals: EarningsBucket;
+}
+
+/** Configuración de comisiones + estado de hora pico del negocio. */
+export interface StoreCommissionInfo {
+  storeId: string;
+  platformFeePercent: number;
+  peakFeePercent: number;
+  isPeakHour: boolean;
+  peakHoursStart: string | null;
+  peakHoursEnd: string | null;
+  peakDays: string[] | null;
+  orderAmount: number;
+  peakFeeAmount: number;
+  platformFeeAmount: number;
+  totalCharged: number;
+}
+
+/** Campos editables por el vendedor de su franja de hora pico. */
+export interface UpdatePeakConfigDto {
+  peakFeePercent?: number;
+  peakHoursStart?: string;
+  peakHoursEnd?: string;
+  peakDays?: string[];
+}
+
+/** Ganancias del mes de una tienda (por id en la ruta). */
+export const getStoreEarnings = (storeId: string, userId: string) =>
+  financialFetch<StoreEarnings>(`/stores/payouts/earnings/${storeId}`, userId);
+
+/** Comisiones + si es hora pico ahora, de una tienda (por id en la ruta). */
+export const getStoreCommission = (storeId: string, userId: string) =>
+  financialFetch<StoreCommissionInfo>(`/stores/${storeId}/commission`, userId);
+
+/** Actualiza la hora pico (franja + recargo) de una tienda. Devuelve el Store actualizado. */
+export const updatePeakConfig = (storeId: string, userId: string, data: UpdatePeakConfigDto) =>
+  financialFetch<{ id: string; peakFeePercent: number }>(`/stores/${storeId}/peak-config`, userId, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+
+/** Días de la semana en el formato que espera financial (MON..SUN), en orden. */
+export const PEAK_DAY_CODES = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'] as const;
+export type PeakDayCode = (typeof PEAK_DAY_CODES)[number];
+
+const PEAK_DAY_LABELS: Record<PeakDayCode, string> = {
+  MON: 'Lun', TUE: 'Mar', WED: 'Mié', THU: 'Jue', FRI: 'Vie', SAT: 'Sáb', SUN: 'Dom',
+};
+export const getPeakDayLabel = (code: string) => PEAK_DAY_LABELS[code as PeakDayCode] ?? code;
+
 // ─── Tokenización de tarjeta (Wompi, directo desde el navegador) ───────────────
 // La tarjeta NUNCA pasa por nuestro backend: se tokeniza contra Wompi con la
 // llave pública y solo enviamos el token resultante en paymentData.token.

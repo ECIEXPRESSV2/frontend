@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { X, Loader2, ImageOff, Tag, Lock, ShieldCheck, ReceiptText, AlertTriangle } from 'lucide-react';
+import { X, Loader2, ImageOff, Tag, Lock, ShieldCheck, ReceiptText, AlertTriangle, Clock } from 'lucide-react';
 import { formatCOP } from '../../lib/format';
 import type { CartQuoteResponse } from '../../lib/orders-api';
 
@@ -226,6 +226,22 @@ const CheckoutInvoiceModal: React.FC<CheckoutInvoiceModalProps> = ({
                           </motion.span>
                         </span>
                         <span className="font-medium text-gray-700 tabular-nums">- {formatCOP(quote.discountAmount)}</span>
+                      </div>
+                    )}
+                    {quote.peakFeeAmount > 0 && (
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="flex items-center gap-2 text-gray-500">
+                          Comisión hora pico
+                          <motion.span
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            transition={{ delay: 0.25, type: 'spring', stiffness: 420, damping: 14 }}
+                            className="inline-flex items-center gap-1 rounded-full bg-amber-50 ring-1 ring-amber-200/70 px-2 py-0.5 text-[11px] font-medium text-amber-700"
+                          >
+                            <Clock size={11} /> Hora pico
+                          </motion.span>
+                        </span>
+                        <span className="font-medium text-gray-700 tabular-nums">+ {formatCOP(quote.peakFeeAmount)}</span>
                       </div>
                     )}
                   </div>

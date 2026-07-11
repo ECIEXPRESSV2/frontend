@@ -224,6 +224,11 @@ export interface CartQuoteResponse {
   lines: CartQuoteLine[];
   subtotalAmount: number;
   discountAmount: number;
+  /** Recargo de hora pico que cobra la tienda al comprador, en centavos COP (0 si no aplica). */
+  peakFeeAmount: number;
+  /** true si la tienda está en su franja de hora pico al cotizar. */
+  isPeakHour: boolean;
+  /** Total a pagar = subtotal − descuento + recargo de hora pico. */
   totalAmount: number;
   hasStockIssues: boolean;
 }
