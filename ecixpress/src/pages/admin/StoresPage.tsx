@@ -1123,7 +1123,7 @@ const StoresPage: React.FC = () => {
                 </div>
               </header>
 
-              <section className="sticky top-20 z-30 rounded-2xl border border-white/70 bg-white/90 p-4 shadow-lg shadow-gray-200/60 backdrop-blur-xl md:p-5">
+              <section className="rounded-2xl border border-white/70 bg-white/90 p-4 shadow-lg shadow-gray-200/60 backdrop-blur-xl md:p-5">
                 <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
                   <div>
                     <label className="relative block">

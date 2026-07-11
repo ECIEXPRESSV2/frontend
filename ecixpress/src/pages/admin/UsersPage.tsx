@@ -9,6 +9,8 @@ import {
   CheckSquare,
   CheckCircle,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Clock,
   Eye,
   Grid2X2,
@@ -275,7 +277,7 @@ const UsersPage: React.FC = () => {
   const [savingRole, setSavingRole] = useState(false);
   const bulkRoleButtonRef = React.useRef<HTMLButtonElement>(null);
   const searchTimerRef = React.useRef<number | null>(null);
-  const PAGE_LIMIT = 20;
+  const PAGE_LIMIT = 7;
 
   const toggleSelectUser = (id: string) => {
     setSelectedUserIds(prev => {
@@ -758,7 +760,7 @@ const UsersPage: React.FC = () => {
             </div>
           </header>
 
-          <section className="sticky top-20 z-30 relative rounded-3xl border border-white/70 bg-white/88 p-4 shadow-lg shadow-gray-200/60 backdrop-blur-xl md:p-5">
+          <section className="rounded-3xl border border-white/70 bg-white/88 p-4 shadow-lg shadow-gray-200/60 backdrop-blur-xl md:p-5">
             <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white to-transparent" />
             <div className="grid gap-3 lg:grid-cols-[1fr_auto] lg:items-center">
               <label className="relative block">
@@ -1044,7 +1046,7 @@ const UsersPage: React.FC = () => {
 
           <section className="relative overflow-hidden rounded-3xl border border-white/70 bg-white/78 shadow-xl shadow-gray-200/70 backdrop-blur-xl">
             <div className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-[#F4B942]" />
-            <div className="max-h-[calc(100vh-24rem)] overflow-auto">
+            <div>
               {loading && users.length === 0 ? (
                 <div>
                   <div className="border-b border-white/70 px-5 py-4">
@@ -1228,63 +1230,40 @@ const UsersPage: React.FC = () => {
               )}
 
               {total > 0 && !loading && (
-                <footer className="flex flex-col gap-3 border-t border-white/70 bg-white/75 px-5 py-4 text-sm text-gray-600 md:flex-row md:items-center md:justify-between">
-                <p>
-                  Mostrando{' '}
-                  <span className="font-bold text-gray-950">
-                    {(page - 1) * PAGE_LIMIT + 1}–{Math.min(page * PAGE_LIMIT, total)}
-                  </span>{' '}
-                  de <span className="font-bold text-gray-950">{total}</span> usuarios
-                </p>
-                {totalPages > 1 && (
-                  <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={() => goToPage(page - 1)}
-                      disabled={page === 1}
-                      className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-600 transition hover:border-yellow-300 hover:text-amber-700 disabled:cursor-not-allowed disabled:opacity-40"
-                      aria-label="Página anterior"
-                    >
-                      ‹
-                    </button>
-                    {Array.from({ length: totalPages }, (_, i) => i + 1)
-                      .filter(p => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
-                      .reduce<(number | '…')[]>((acc, p, idx, arr) => {
-                        if (idx > 0 && p - (arr[idx - 1] as number) > 1) acc.push('…');
-                        acc.push(p);
-                        return acc;
-                      }, [])
-                      .map((p, idx) =>
-                        p === '…' ? (
-                          <span key={`ellipsis-${idx}`} className="px-1 text-gray-400">…</span>
-                        ) : (
-                          <button
-                            key={p}
-                            type="button"
-                            onClick={() => goToPage(p as number)}
-                            className={`inline-flex h-8 w-8 items-center justify-center rounded-xl border text-sm font-semibold transition ${
-                              p === page
-                                ? 'border-yellow-300 bg-yellow-50 text-amber-800'
-                                : 'border-gray-200 bg-white text-gray-600 hover:border-yellow-200 hover:text-amber-700'
-                            }`}
-                            aria-current={p === page ? 'page' : undefined}
-                          >
-                            {p}
-                          </button>
-                        ),
-                      )}
-                    <button
-                      type="button"
-                      onClick={() => goToPage(page + 1)}
-                      disabled={page === totalPages}
-                      className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-600 transition hover:border-yellow-300 hover:text-amber-700 disabled:cursor-not-allowed disabled:opacity-40"
-                      aria-label="Página siguiente"
-                    >
-                      ›
-                    </button>
-                  </div>
-                )}
-                </footer>
+                <div className="flex flex-col gap-3 border-t border-gray-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-sm text-gray-500">
+                    Mostrando{' '}
+                    <span className="font-semibold text-gray-900">
+                      {(page - 1) * PAGE_LIMIT + 1}–{Math.min(page * PAGE_LIMIT, total)}
+                    </span>{' '}
+                    de <span className="font-semibold text-gray-900">{total}</span> usuarios
+                  </p>
+                  {totalPages > 1 && (
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => goToPage(page - 1)}
+                        disabled={page === 1}
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-600 transition hover:border-yellow-300 hover:text-amber-700 disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        <ChevronLeft size={14} />
+                        Anterior
+                      </button>
+                      <span className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-semibold text-gray-700">
+                        Página {page} de {totalPages}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => goToPage(page + 1)}
+                        disabled={page === totalPages}
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-600 transition hover:border-yellow-300 hover:text-amber-700 disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        Siguiente
+                        <ChevronRight size={14} />
+                      </button>
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           </section>
