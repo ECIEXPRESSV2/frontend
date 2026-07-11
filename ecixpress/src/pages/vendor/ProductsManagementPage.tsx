@@ -433,7 +433,7 @@ const ProductsManagementPage: React.FC = () => {
                 <p className="text-sm text-gray-500">{store?.name ?? 'Tienda'}</p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <button onClick={load} className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-surface border border-gray-200 text-gray-700 font-semibold hover:bg-gray-50">
                 <RefreshCw size={16} /> Actualizar
               </button>

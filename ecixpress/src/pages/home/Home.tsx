@@ -39,7 +39,6 @@ const Home: React.FC<HomeProps> = ({ onUserClick, onCartClick, onOrdersClick, on
   const [loadingStores, setLoadingStores] = useState(true);
   // Búsqueda de tiendas (barra superior, al nivel de la bolita del usuario).
   const [storeQuery, setStoreQuery] = useState('');
-  const [homeSearchFocused, setHomeSearchFocused] = useState(false);
   const [orders, setOrders] = useState<OrderResponse[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(false);
   // Modal de mapa que abre el CTA "Nuevo pedido" del banner (el Sidebar tiene el suyo propio).
@@ -126,25 +125,22 @@ const Home: React.FC<HomeProps> = ({ onUserClick, onCartClick, onOrdersClick, on
         <SectionToggle active={activeSection} onChange={setActiveSection} />
       </div>
 
-      {/* Barra de búsqueda de tiendas — en móvil fluye con el contenido; en md+ fija en la
-          primera franja (el padding derecho evita que la cápsula del avatar la tape). */}
-      <div className="app-shift flex items-center justify-center px-3 md:fixed md:inset-x-0 md:top-3 md:z-[55] md:pl-64 md:pr-24 lg:pl-3">
-        <div className={`relative transition-all duration-300 ease-out ${homeSearchFocused ? 'w-full max-w-2xl' : 'w-full max-w-md'}`}>
+      {/* Barra de búsqueda de tiendas — fluye con el contenido (desaparece al scrollear). */}
+      <div className="app-shift flex items-center justify-center px-3 pt-20 md:pt-3">
+        <div className="relative w-full max-w-2xl">
           <Search size={18} className="pointer-events-none absolute left-4 top-1/2 z-10 -translate-y-1/2 text-gray-400" />
           <input
             value={storeQuery}
             onChange={(e) => setStoreQuery(e.target.value)}
-            onFocus={() => setHomeSearchFocused(true)}
-            onBlur={() => setHomeSearchFocused(false)}
             placeholder="Buscar una tienda…"
             className="theme-surface w-full rounded-2xl border border-white/60 bg-white/80 py-3 pl-12 pr-4 text-sm shadow-lg backdrop-blur-xl transition focus:border-[var(--accent-300)] focus:bg-white/95 focus:outline-none focus:ring-2 focus:ring-[var(--accent-ring)]"
           />
         </div>
       </div>
 
-      {/* El padding-top en md+ reserva el espacio de los controles fijos (toggle + buscador).
-          En móvil el buscador fluye con el contenido, así que no necesita padding extra. */}
-      <main className="app-shift px-4 pb-8 pt-20 md:px-8 md:pb-8 lg:px-10">
+      {/* La barra de búsqueda fluye con el contenido, así que el main solo necesita
+          un padding pequeño de separación. */}
+      <main className="app-shift px-4 pb-8 pt-4 md:px-8 md:pb-8 lg:px-10">
         <div className="relative mx-auto w-full max-w-7xl space-y-5 md:space-y-6">
           {/* Hero + tiendas van juntos: el título "Nuestras tiendas" es un recuadro puente
               que se superpone al borde entre ambos contenedores. */}

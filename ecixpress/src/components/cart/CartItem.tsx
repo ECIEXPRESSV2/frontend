@@ -50,7 +50,13 @@ const CartItem: React.FC<CartItemProps> = ({
         >
           -
         </button>
-        <span className="w-7 text-center font-semibold text-gray-900 text-sm">{quantity}</span>
+        <input
+          type="number"
+          value={quantity}
+          onChange={(e) => onQuantityChange(id, Math.max(1, parseInt(e.target.value) || 1))}
+          min={1}
+          className="w-8 text-center font-semibold text-gray-900 text-sm bg-transparent [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+        />
         <button
           onClick={() => onQuantityChange(id, quantity + 1)}
           className="w-7 h-7 rounded-full bg-yellow-400 hover:bg-yellow-500 text-white font-semibold transition-colors flex items-center justify-center"
