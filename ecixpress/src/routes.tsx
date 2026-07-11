@@ -15,7 +15,6 @@ import UsersPage from './pages/admin/UsersPage';
 import StoresPage from './pages/admin/StoresPage';
 import AuditPage from './pages/admin/AuditPage';
 import MonitoringPage from './pages/admin/MonitoringPage';
-import VendorStoresPage from './pages/vendor/VendorStoresPage';
 import VendorOrdersPage from './pages/vendor/VendorOrdersPage';
 import ProductsManagementPage from './pages/vendor/ProductsManagementPage';
 import PromotionsPage from './pages/vendor/PromotionsPage';
@@ -73,7 +72,8 @@ const AppRoutes: React.FC = () => {
       <Route path="/admin/monitoring" element={<ProtectedRoute requireRoles={['ANALYST']}><MonitoringPage /></ProtectedRoute>} />
 
       {/* Vendor */}
-      <Route path="/vendor/stores" element={<ProtectedRoute requireVendor><VendorStoresPage /></ProtectedRoute>} />
+      <Route path="/vendor/stores" element={<ProtectedRoute requireVendor><StoresPage vendorMode /></ProtectedRoute>} />
+      <Route path="/vendor/stores/:storeId" element={<ProtectedRoute requireVendor><StoresPage vendorMode /></ProtectedRoute>} />
       <Route path="/vendor/orders" element={<ProtectedRoute requireVendor><VendorOrdersPage onBack={goHome} /></ProtectedRoute>} />
       <Route path="/vendor/stores/:storeId/products" element={<ProtectedRoute requireVendor><ProductsManagementPage /></ProtectedRoute>} />
       <Route path="/vendor/stores/:storeId/promotions" element={<ProtectedRoute requireVendor><PromotionsPage /></ProtectedRoute>} />
