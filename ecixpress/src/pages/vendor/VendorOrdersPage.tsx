@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { io, Socket } from 'socket.io-client';
-import { ArrowLeft, RefreshCw, MessageCircle, Store as StoreIcon, User, ChevronRight, XCircle, Loader2 } from 'lucide-react';
+import { ArrowLeft, RefreshCw, MessageCircle, Store as StoreIcon, User, ChevronRight, ChevronLeft, XCircle, Loader2, Search, X } from 'lucide-react';
 import Sidebar from '../../components/home/Sidebar';
 import TrianglePattern from '../../components/home/TrianglePattern';
 import { useAuth } from '../../context/AuthContext';
@@ -34,6 +34,8 @@ const STATUS_FILTERS: Array<{ value: 'ALL' | OrderStatus; label: string }> = [
   { value: 'DELIVERED', label: 'Entregado' },
 ];
 
+const PAGE_SIZE = 4;
+
 const VendorOrdersPage: React.FC<VendorOrdersPageProps> = ({ onBack }) => {
   const navigate = useNavigate();
   const { userProfile, getToken } = useAuth();
@@ -45,6 +47,8 @@ const VendorOrdersPage: React.FC<VendorOrdersPageProps> = ({ onBack }) => {
   const [actionMsg, setActionMsg] = useState<string | null>(null);
   const [filter, setFilter] = useState<'ALL' | OrderStatus>('ALL');
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
 
   const socketRef = useRef<Socket | null>(null);
 
@@ -140,10 +144,25 @@ const VendorOrdersPage: React.FC<VendorOrdersPageProps> = ({ onBack }) => {
     }
   };
 
-  const visibleOrders = useMemo(
-    () => (filter === 'ALL' ? orders : orders.filter((o) => o.status === filter)),
-    [orders, filter],
-  );
+  const visibleOrders = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    const byFilter = filter === 'ALL' ? orders : orders.filter((o) => o.status === filter);
+    const bySearch = query
+      ? byFilter.filter((o) => o.orderNumber.toLowerCase().includes(query) || o.customerId.toLowerCase().includes(query))
+      : byFilter;
+    return bySearch;
+  }, [orders, filter, search]);
+
+  const totalPages = Math.max(1, Math.ceil(visibleOrders.length / PAGE_SIZE));
+
+  const pagedOrders = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    return visibleOrders.slice(start, start + PAGE_SIZE);
+  }, [visibleOrders, page]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [filter, search]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-white to-yellow-100">
@@ -180,9 +199,36 @@ const VendorOrdersPage: React.FC<VendorOrdersPageProps> = ({ onBack }) => {
             </div>
           </header>
 
-          {/* Filtros */}
+          {/* Buscador + Filtros */}
           <div className="rounded-3xl border border-white/70 bg-white/82 p-4 shadow-lg shadow-gray-200/60 backdrop-blur-xl">
-            <div className="flex flex-wrap gap-2">
+            <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+              <label className="relative block">
+                <span className="sr-only">Buscar pedidos</span>
+                <input
+                  className="min-h-12 w-full rounded-2xl border border-gray-100 bg-white py-3 pl-5 pr-24 text-base font-medium text-gray-900 outline-none transition placeholder:text-gray-400 hover:border-yellow-200 focus:border-yellow-400 focus:ring-4 focus:ring-yellow-100"
+                  placeholder="Buscar por número de orden o cliente"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                />
+                {search && (
+                  <button
+                    type="button"
+                    onClick={() => setSearch('')}
+                    className="absolute right-12 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 focus:outline-none"
+                    aria-label="Limpiar búsqueda"
+                  >
+                    <X size={14} aria-hidden="true" />
+                  </button>
+                )}
+                <span className="absolute right-2 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-xl bg-yellow-400 text-white" aria-hidden="true">
+                  <Search size={16} />
+                </span>
+              </label>
+              <p className="text-sm font-semibold text-gray-500">
+                {visibleOrders.length} pedido{visibleOrders.length === 1 ? '' : 's'}
+              </p>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
               {STATUS_FILTERS.map((f) => (
                 <button
                   key={f.value}
@@ -202,10 +248,10 @@ const VendorOrdersPage: React.FC<VendorOrdersPageProps> = ({ onBack }) => {
             {loading && <p className="text-sm text-gray-500">Cargando pedidos…</p>}
             {!loading && visibleOrders.length === 0 && (
               <div className="rounded-2xl bg-white/60 backdrop-blur-xl border border-white/50 p-8 text-center text-gray-500">
-                {filter === 'ALL' ? 'Aún no has recibido pedidos.' : 'No tienes pedidos con ese estado.'}
+                {filter === 'ALL' && !search ? 'Aún no has recibido pedidos.' : 'No se encontraron pedidos con esos criterios.'}
               </div>
             )}
-            {visibleOrders.map((order) => {
+            {pagedOrders.map((order) => {
               const next = NEXT_STATUS[order.status];
               const itemCount = order.items.reduce((sum, item) => sum + item.quantity, 0);
               const busy = updatingId === order.id;
@@ -270,6 +316,39 @@ const VendorOrdersPage: React.FC<VendorOrdersPageProps> = ({ onBack }) => {
                 </article>
               );
             })}
+            {visibleOrders.length > PAGE_SIZE && (
+              <div className="flex flex-col gap-3 border-t border-gray-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-sm text-gray-500">
+                  Mostrando{' '}
+                  <span className="font-semibold text-gray-900">{(page - 1) * PAGE_SIZE + 1}</span> a{' '}
+                  <span className="font-semibold text-gray-900">{Math.min(page * PAGE_SIZE, visibleOrders.length)}</span> de{' '}
+                  <span className="font-semibold text-gray-900">{visibleOrders.length}</span> pedidos
+                </p>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={page === 1}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-600 transition hover:border-yellow-300 hover:text-amber-700 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    <ChevronLeft size={14} />
+                    Anterior
+                  </button>
+                  <span className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-semibold text-gray-700">
+                    Página {page} de {totalPages}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={page === totalPages}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-600 transition hover:border-yellow-300 hover:text-amber-700 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    Siguiente
+                    <ChevronRight size={14} />
+                  </button>
+                </div>
+              </div>
+            )}
           </section>
         </div>
       </main>

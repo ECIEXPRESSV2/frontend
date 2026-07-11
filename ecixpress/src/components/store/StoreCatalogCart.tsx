@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Search, Plus, Minus, ShoppingCart, Loader2, ImageOff, X, Tag, Check, Trash2, Box } from 'lucide-react';
+import { Search, Plus, Minus, ShoppingCart, Loader2, ImageOff, X, Tag, Check, Trash2, Box, ChevronDown } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -68,6 +68,13 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName,
   // Producto cuyo recuadro está "rechazando" un intento de pedir más de lo disponible: se le
   // aplica la clase de sacudida + borde rojo por un instante (feedback en el sitio, sin toasts).
   const [rejectedProductId, setRejectedProductId] = useState<string | null>(null);
+  // Cantidad seleccionada en el selector desplegable (antes de agregar al carrito).
+  const [selectedAddQty, setSelectedAddQty] = useState<Record<string, number>>({});
+  // Producto con el dropdown de cantidad abierto (null = ninguno).
+  const [qtyDropdownOpenId, setQtyDropdownOpenId] = useState<string | null>(null);
+  // Producto donde se está ingresando una cantidad personalizada ("Otra cantidad").
+  const [customQtyOpenId, setCustomQtyOpenId] = useState<string | null>(null);
+  const [customQtyValue, setCustomQtyValue] = useState('');
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerSrc, setViewerSrc] = useState<string | null>(null);
   const [viewerTitle, setViewerTitle] = useState('');
@@ -571,7 +578,13 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName,
                     >
                       <Minus size={12} />
                     </button>
-                    <span className="w-7 text-center text-xs font-semibold text-gray-900">{qty}</span>
+          <input
+                            type="number"
+                            value={qty}
+                            onChange={(e) => cartProduct && changeQuantity(cartProduct, parseInt(e.target.value) || 0)}
+                            min={1}
+                            className="w-10 text-center text-xs font-semibold text-gray-900 bg-transparent [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                          />
                     <button
                       onClick={() => cartProduct && changeQuantity(cartProduct, qty + 1)}
                       disabled={!cartProduct}
@@ -851,13 +864,110 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName,
                           🚫 No disponible
                         </button>
                       ) : qty === 0 ? (
-                        <button
-                          onClick={() => changeQuantity(product, 1)}
-                          className="w-full py-2 rounded-lg bg-amber-400 text-white text-sm font-semibold shadow-sm hover:bg-amber-500 active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2"
-                        >
-                          <ShoppingCart size={16} />
-                          Agregar al carrito
-                        </button>
+                        <div className="flex flex-col gap-1.5">
+                          {/* Selector de cantidad desplegable */}
+                          <div className="relative">
+                            <button
+                              onClick={() => {
+                                setQtyDropdownOpenId(qtyDropdownOpenId === product.id ? null : product.id);
+                                setCustomQtyOpenId(null);
+                                setCustomQtyValue('');
+                              }}
+                              className="w-full py-1.5 rounded-lg bg-gray-100 text-gray-600 text-xs font-medium hover:bg-gray-200 transition-all duration-200 flex items-center justify-center gap-1"
+                            >
+                              <span>Cantidad {selectedAddQty[product.id] ?? 1}</span>
+                              <span className="text-[10px] text-gray-400">(+{available} disponibles)</span>
+                              <ChevronDown size={12} className={`transition-transform ${qtyDropdownOpenId === product.id ? 'rotate-180' : ''}`} />
+                            </button>
+                            {qtyDropdownOpenId === product.id && (
+                              <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                                <div className="absolute inset-0 bg-black/40" onClick={() => { setQtyDropdownOpenId(null); setCustomQtyOpenId(null); setCustomQtyValue(''); }} />
+                                <div className="relative bg-white rounded-2xl p-5 w-full max-w-xs shadow-2xl">
+                                  <h4 className="text-sm font-bold text-gray-900 mb-3 text-center">
+                                    Cantidad <span className="text-gray-400 font-normal">({available} disponibles)</span>
+                                  </h4>
+                                  {customQtyOpenId === product.id ? (
+                                    <div>
+                                      <input
+                                        type="number"
+                                        value={customQtyValue}
+                                        onChange={(e) => setCustomQtyValue(e.target.value)}
+                                        min={1}
+                                        max={available}
+                                        placeholder={`Máx ${available}`}
+                                        className="w-full px-3 py-2.5 text-sm text-gray-700 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-300"
+                                        autoFocus
+                                        onKeyDown={(e) => {
+                                          if (e.key === 'Enter') {
+                                            const n = parseInt(customQtyValue);
+                                            if (n > 0 && n <= available) {
+                                              setSelectedAddQty((prev) => ({ ...prev, [product.id]: n }));
+                                              setQtyDropdownOpenId(null);
+                                              setCustomQtyOpenId(null);
+                                              setCustomQtyValue('');
+                                            }
+                                          }
+                                        }}
+                                      />
+                                      <div className="flex gap-2 mt-2">
+                                        <button
+                                          onClick={() => {
+                                            const n = parseInt(customQtyValue);
+                                            if (n > 0 && n <= available) {
+                                              setSelectedAddQty((prev) => ({ ...prev, [product.id]: n }));
+                                              setQtyDropdownOpenId(null);
+                                              setCustomQtyOpenId(null);
+                                              setCustomQtyValue('');
+                                            }
+                                          }}
+                                          className="flex-1 py-2.5 rounded-xl text-sm font-medium bg-amber-400 text-white"
+                                        >
+                                          Ok
+                                        </button>
+                                        <button
+                                          onClick={() => { setCustomQtyOpenId(null); setCustomQtyValue(''); }}
+                                          className="flex-1 py-2.5 rounded-xl text-sm font-medium bg-gray-100 text-gray-600"
+                                        >
+                                          Cancelar
+                                        </button>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div>
+                                      <div className="flex gap-3 justify-center mb-3">
+                                        {Array.from({ length: Math.min(3, available) }, (_, i) => i + 1).map((n) => (
+                                          <button
+                                            key={n}
+                                            onClick={() => {
+                                              setSelectedAddQty((prev) => ({ ...prev, [product.id]: n }));
+                                              setQtyDropdownOpenId(null);
+                                            }}
+                                            className={`w-14 h-14 rounded-xl text-lg font-bold transition-colors ${(selectedAddQty[product.id] ?? 1) === n ? 'bg-amber-400 text-white shadow-lg shadow-amber-300/40' : 'bg-gray-100 text-gray-700 hover:bg-amber-50 hover:text-amber-700'}`}
+                                          >
+                                            {n}
+                                          </button>
+                                        ))}
+                                      </div>
+                                      <button
+                                        onClick={() => setCustomQtyOpenId(product.id)}
+                                        className="w-full py-2.5 rounded-xl text-sm font-medium text-gray-500 hover:bg-gray-50 border border-gray-200 transition"
+                                      >
+                                        Otra cantidad...
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                          <button
+                            onClick={() => changeQuantity(product, selectedAddQty[product.id] ?? 1)}
+                            className="w-full px-3 py-2 rounded-lg bg-amber-400 text-white text-sm font-semibold shadow-sm hover:bg-amber-500 active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2"
+                          >
+                            <ShoppingCart size={16} />
+                            Agregar al carrito
+                          </button>
+                        </div>
                       ) : (
                         <div className="flex items-center justify-between bg-amber-400 rounded-lg overflow-hidden shadow-sm">
                           <button
@@ -866,9 +976,14 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName,
                           >
                             <Minus size={16} />
                           </button>
-                          <span className="w-10 text-center text-sm font-bold text-white border-x border-amber-300/40 py-2 select-none">
-                            {qty}
-                          </span>
+                          <input
+                            type="number"
+                            value={qty}
+                            onChange={(e) => changeQuantity(product, parseInt(e.target.value) || 0)}
+                            min={1}
+                            max={available}
+                            className="w-12 text-center text-sm font-bold text-white bg-transparent border-x border-amber-300/40 py-2 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                          />
                           <button
                             onClick={() => changeQuantity(product, qty + 1)}
                             disabled={atStockLimit}
@@ -892,7 +1007,7 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName,
         <>
           <button
             onClick={() => setMobileCartOpen(true)}
-            className="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 pl-3 pr-4 py-2.5 rounded-full bg-gradient-to-r from-yellow-400 to-yellow-500 text-white shadow-xl shadow-yellow-400/40 hover:from-yellow-500 hover:to-yellow-600 hover:shadow-yellow-400/60 transition-all"
+            className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[65] flex items-center gap-2 pl-3 pr-4 py-2.5 rounded-full bg-gradient-to-r from-yellow-400 to-yellow-500 text-white shadow-xl shadow-yellow-400/40 hover:from-yellow-500 hover:to-yellow-600 hover:shadow-yellow-400/60 transition-all md:bottom-5"
           >
             <span className="relative flex items-center justify-center w-9 h-9 rounded-full bg-white/25">
               <ShoppingCart size={17} />
@@ -902,9 +1017,9 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName,
           </button>
 
           {mobileCartOpen && (
-            <div className="fixed inset-0 z-50 flex flex-col justify-end">
+            <div className="fixed inset-0 z-[65] flex flex-col justify-end">
               <div className="absolute inset-0 bg-black/40" onClick={() => setMobileCartOpen(false)} />
-              <div className="relative bg-white rounded-t-3xl p-5 pb-6 max-h-[85vh] overflow-auto space-y-4 md:ml-[var(--sidebar-w)]">
+              <div className="relative bg-white rounded-t-3xl p-5 pb-24 max-h-[85vh] overflow-auto space-y-4 md:pb-6 md:ml-[var(--sidebar-w)]">
                 <div className="flex items-center gap-2">
                   <ShoppingCart size={18} className="text-yellow-500" />
                   <h3 className="font-bold text-gray-900">Tu carrito</h3>
