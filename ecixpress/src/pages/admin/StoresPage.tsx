@@ -27,7 +27,7 @@ import { CardSkeleton, TableSkeleton } from '../../components/common/LoadingSkel
 const LocationPickerModal = lazy(() => import('../../components/admin/LocationPickerModal'));
 import { useAuth } from '../../context/AuthContext';
 import {
-  getStores, createStore, updateStore, updateStoreStatus, uploadStoreLogo, uploadStoreBanner,
+  getStores, getMyStores, createStore, updateStore, updateStoreStatus, uploadStoreLogo, uploadStoreBanner,
   getStoreSchedules, createSchedule, updateSchedule, deleteSchedule,
   getStoreClosures, createClosure, cancelClosure,
   assignStaff, removeStaff, getStoreById,
@@ -272,12 +272,14 @@ const StoreLogo: React.FC<{ store: Store; size?: 'sm' | 'md' | 'lg'; selected?: 
   );
 };
 
-const StoresPage: React.FC = () => {
+type StoresPageProps = { vendorMode?: boolean };
+
+const StoresPage: React.FC<StoresPageProps> = ({ vendorMode = false }) => {
   const { getToken } = useAuth();
   const navigate = useNavigate();
   const { storeId } = useParams<{ storeId?: string }>();
   const isStoreProfileRoute = Boolean(storeId);
-  const initialStoresCache = getPageCache<Store[]>(pageCacheKeys.adminStores);
+  const initialStoresCache = vendorMode ? null : getPageCache<Store[]>(pageCacheKeys.adminStores);
   const [stores, setStores] = useState<Store[]>(() => initialStoresCache ?? []);
   const [loading, setLoading] = useState(() => !initialStoresCache);
   const [sidebarExpanded, setSidebarExpanded] = useState(false);
@@ -368,15 +370,15 @@ const StoresPage: React.FC = () => {
   }, [totalPages]);
 
   const loadStores = async ({ showLoading = false } = {}) => {
-    const cached = getPageCache<Store[]>(pageCacheKeys.adminStores);
+    const cached = vendorMode ? null : getPageCache<Store[]>(pageCacheKeys.adminStores);
     if (cached) setStores(cached);
     setLoading(showLoading && !cached);
     setError('');
     try {
       const token = await getToken();
-      const data = await getStores(token);
+      const data = await (vendorMode ? getMyStores(token) : getStores(token));
       setStores(data);
-      setPageCache(pageCacheKeys.adminStores, data);
+      if (!vendorMode) setPageCache(pageCacheKeys.adminStores, data);
     } catch (err) {
       setError('No fue posible cargar las tiendas. Intenta nuevamente.');
       toast.error(err instanceof Error ? err.message : 'Error cargando tiendas');
@@ -427,7 +429,7 @@ const StoresPage: React.FC = () => {
   useRefreshOnScrollTop(handleRefresh, { disabled: loading || refreshing });
 
   const openStoreProfile = (store: Store) => {
-    navigate(`/admin/stores/${encodeURIComponent(store.id)}`);
+    navigate(`/${vendorMode ? 'vendor' : 'admin'}/stores/${encodeURIComponent(store.id)}`);
   };
 
   const loadStaff = async (storeId: string) => {
@@ -441,7 +443,7 @@ const StoresPage: React.FC = () => {
     setActiveTab('schedules');
 
     const cacheKey = pageCacheKeys.adminStoreDetail(store.id);
-    const cached = getPageCache<StoreDetailCache>(cacheKey);
+    const cached = vendorMode ? null : getPageCache<StoreDetailCache>(cacheKey);
     if (cached) {
       setSchedules(cached.schedules);
       setClosures(cached.closures);
@@ -456,7 +458,7 @@ const StoresPage: React.FC = () => {
       const [sched, clos, rawUsers, storeDetail] = await Promise.all([
         getStoreSchedules(store.id, token).catch(() => []),
         getStoreClosures(store.id, token).catch(() => []),
-        getUsers(token).catch(() => []),
+        vendorMode ? Promise.resolve([]) : getUsers(token).catch(() => []),
         getStoreById(store.id, token).catch(() => null),
       ]);
       const userList = Array.isArray(rawUsers) ? rawUsers : (rawUsers as { data: UserItem[] }).data ?? [];
@@ -465,7 +467,7 @@ const StoresPage: React.FC = () => {
       setClosures(clos);
       setAllUsers(userList);
       setStaffList(staff);
-      setPageCache(cacheKey, { schedules: sched, closures: clos, staff, users: userList });
+      if (!vendorMode) setPageCache(cacheKey, { schedules: sched, closures: clos, staff, users: userList });
     } finally {
       setLoadingDetail(false);
     }
@@ -497,7 +499,7 @@ const StoresPage: React.FC = () => {
       } catch (err) {
         if (!cancelled) {
           toast.error(err instanceof Error ? err.message : 'No fue posible abrir la tienda.');
-          navigate('/admin/stores');
+          navigate(`/${vendorMode ? 'vendor' : 'admin'}/stores`);
         }
       }
     };
@@ -1095,7 +1097,7 @@ const StoresPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-white to-yellow-100 text-gray-900">
       <Sidebar
-        activeItem="admin-stores"
+        activeItem={vendorMode ? 'vendor-stores' : 'admin-stores'}
         expanded={sidebarExpanded}
         showProfile={false}
         showNotifications={false}
@@ -1113,11 +1115,11 @@ const StoresPage: React.FC = () => {
                 <div className="relative flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
                   <div className="max-w-3xl">
                     <nav className="mb-3 inline-flex items-center rounded-xl border border-white/70 bg-white/80 px-3 py-1.5 text-sm font-semibold text-gray-700 shadow-sm backdrop-blur" aria-label="Ruta de navegación">
-                      Administración <span className="mx-2 text-gray-400">/</span>
-                      <span className="text-gray-950">Tiendas</span>
+                      {vendorMode ? 'Vendedor' : 'Administración'} <span className="mx-2 text-gray-400">/</span>
+                      <span className="text-gray-950">{vendorMode ? 'Mis tiendas' : 'Tiendas'}</span>
                     </nav>
                     <h1 className="font-display text-3xl font-bold tracking-normal text-gray-900 md:text-4xl">
-                      Gestión de tiendas
+                      {vendorMode ? 'Mis tiendas' : 'Gestión de tiendas'}
                     </h1>
                   </div>
                 </div>
@@ -1152,14 +1154,14 @@ const StoresPage: React.FC = () => {
                       {visibleStores.length} resultado{visibleStores.length === 1 ? '' : 's'}
                     </p>
                   </div>
-                  <button
+                  {!vendorMode && <button
                     type="button"
                     onClick={() => { setCreateImage(undefined); setCreateImageFile(null); setCreateBanner(undefined); setCreateBannerFile(null); setShowCreate(true); }}
                     className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-yellow-400 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-300"
                   >
                     <Plus size={16} aria-hidden="true" />
                     Nueva tienda
-                  </button>
+                  </button>}
                 </div>
               </section>
             </>
@@ -1204,7 +1206,7 @@ const StoresPage: React.FC = () => {
                       <div className="absolute inset-x-0 top-0 flex items-center justify-between gap-3 p-4 md:p-6">
                         <button
                           type="button"
-                          onClick={() => navigate('/admin/stores')}
+                          onClick={() => navigate(`/${vendorMode ? 'vendor' : 'admin'}/stores`)}
                           className="inline-flex min-h-11 items-center gap-2 rounded-2xl border border-white/70 bg-white/90 px-4 py-2 text-sm font-bold text-gray-800 shadow-md shadow-gray-900/10 backdrop-blur transition hover:bg-white focus:outline-none focus:ring-2 focus:ring-yellow-300"
                         >
                           <ChevronLeft size={17} aria-hidden="true" />
@@ -1267,7 +1269,7 @@ const StoresPage: React.FC = () => {
                             {loadingDetail ? 'Cargando...' : getConfiguredScheduleSummary(schedules)}
                           </dd>
                         </div>
-                        <div className="flex items-start justify-between px-4 py-2">
+                        {!vendorMode && <div className="flex items-start justify-between px-4 py-2">
                           <dt className="flex items-center gap-2 text-sm text-gray-500">
                             <Users size={14} className="mt-0.5 flex-shrink-0 text-gray-400" aria-hidden="true" />
                             Vendedores
@@ -1284,7 +1286,7 @@ const StoresPage: React.FC = () => {
                                   </span>
                             }
                           </dd>
-                        </div>
+                        </div>}
                       </dl>
 
                       {store.status !== 'TEMPORARILY_CLOSED' && (
@@ -1304,7 +1306,7 @@ const StoresPage: React.FC = () => {
                     <div className="border-y border-gray-100 bg-gray-50/50 px-4 py-3 md:px-7">
                       <div className="overflow-x-auto">
                         <div className="inline-flex rounded-xl border border-gray-200 bg-white p-1 gap-0.5">
-                          {DETAIL_TABS.map(tab => {
+                          {DETAIL_TABS.filter(tab => !vendorMode || tab.id !== 'staff').map(tab => {
                             const Icon = tab.icon;
                             const isActive = activeTab === tab.id;
                             return (
@@ -1355,12 +1357,12 @@ const StoresPage: React.FC = () => {
                   <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-yellow-50 text-amber-700">
                     <StoreIcon size={24} aria-hidden="true" />
                   </div>
-                  <h3 className="text-lg font-bold text-gray-950">No hay tiendas registradas</h3>
-                  <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-gray-500">Crea la primera tienda para empezar a configurar horarios, responsables y disponibilidad.</p>
-                  <button type="button" onClick={() => { setCreateImage(undefined); setCreateImageFile(null); setCreateBanner(undefined); setCreateBannerFile(null); setShowCreate(true); }} className="mt-5 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-yellow-400 px-4 py-2 text-sm font-bold text-gray-950 transition hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-300">
+                  <h3 className="text-lg font-bold text-gray-950">{vendorMode ? 'No tienes tiendas asignadas' : 'No hay tiendas registradas'}</h3>
+                  <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-gray-500">{vendorMode ? 'Contacta al administrador para que te asigne una tienda.' : 'Crea la primera tienda para empezar a configurar horarios, responsables y disponibilidad.'}</p>
+                  {!vendorMode && <button type="button" onClick={() => { setCreateImage(undefined); setCreateImageFile(null); setCreateBanner(undefined); setCreateBannerFile(null); setShowCreate(true); }} className="mt-5 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-yellow-400 px-4 py-2 text-sm font-bold text-gray-950 transition hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-300">
                     <Plus size={16} aria-hidden="true" />
                     Nueva tienda
-                  </button>
+                  </button>}
                 </div>
               ) : visibleStores.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-gray-200 bg-white p-10 text-center shadow-sm">
