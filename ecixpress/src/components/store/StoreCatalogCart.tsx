@@ -642,6 +642,9 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName,
     </div>
   );
 
+  const dropdownProduct = qtyDropdownOpenId ? productById.get(qtyDropdownOpenId) ?? null : null;
+  const dropdownAvailable = dropdownProduct ? availableStock(dropdownProduct) : 0;
+
   return (
     <>
     <div className="space-y-4">
@@ -879,86 +882,6 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName,
                               <span className="text-[10px] text-gray-400">(+{available} disponibles)</span>
                               <ChevronDown size={12} className={`transition-transform ${qtyDropdownOpenId === product.id ? 'rotate-180' : ''}`} />
                             </button>
-                            {qtyDropdownOpenId === product.id && (
-                              <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                                <div className="absolute inset-0 bg-black/40" onClick={() => { setQtyDropdownOpenId(null); setCustomQtyOpenId(null); setCustomQtyValue(''); }} />
-                                <div className="relative bg-white rounded-2xl p-5 w-full max-w-xs shadow-2xl">
-                                  <h4 className="text-sm font-bold text-gray-900 mb-3 text-center">
-                                    Cantidad <span className="text-gray-400 font-normal">({available} disponibles)</span>
-                                  </h4>
-                                  {customQtyOpenId === product.id ? (
-                                    <div>
-                                      <input
-                                        type="number"
-                                        value={customQtyValue}
-                                        onChange={(e) => setCustomQtyValue(e.target.value)}
-                                        min={1}
-                                        max={available}
-                                        placeholder={`Máx ${available}`}
-                                        className="w-full px-3 py-2.5 text-sm text-gray-700 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-300"
-                                        autoFocus
-                                        onKeyDown={(e) => {
-                                          if (e.key === 'Enter') {
-                                            const n = parseInt(customQtyValue);
-                                            if (n > 0 && n <= available) {
-                                              setSelectedAddQty((prev) => ({ ...prev, [product.id]: n }));
-                                              setQtyDropdownOpenId(null);
-                                              setCustomQtyOpenId(null);
-                                              setCustomQtyValue('');
-                                            }
-                                          }
-                                        }}
-                                      />
-                                      <div className="flex gap-2 mt-2">
-                                        <button
-                                          onClick={() => {
-                                            const n = parseInt(customQtyValue);
-                                            if (n > 0 && n <= available) {
-                                              setSelectedAddQty((prev) => ({ ...prev, [product.id]: n }));
-                                              setQtyDropdownOpenId(null);
-                                              setCustomQtyOpenId(null);
-                                              setCustomQtyValue('');
-                                            }
-                                          }}
-                                          className="flex-1 py-2.5 rounded-xl text-sm font-medium bg-amber-400 text-white"
-                                        >
-                                          Ok
-                                        </button>
-                                        <button
-                                          onClick={() => { setCustomQtyOpenId(null); setCustomQtyValue(''); }}
-                                          className="flex-1 py-2.5 rounded-xl text-sm font-medium bg-gray-100 text-gray-600"
-                                        >
-                                          Cancelar
-                                        </button>
-                                      </div>
-                                    </div>
-                                  ) : (
-                                    <div>
-                                      <div className="flex gap-3 justify-center mb-3">
-                                        {Array.from({ length: Math.min(3, available) }, (_, i) => i + 1).map((n) => (
-                                          <button
-                                            key={n}
-                                            onClick={() => {
-                                              setSelectedAddQty((prev) => ({ ...prev, [product.id]: n }));
-                                              setQtyDropdownOpenId(null);
-                                            }}
-                                            className={`w-14 h-14 rounded-xl text-lg font-bold transition-colors ${(selectedAddQty[product.id] ?? 1) === n ? 'bg-amber-400 text-white shadow-lg shadow-amber-300/40' : 'bg-gray-100 text-gray-700 hover:bg-amber-50 hover:text-amber-700'}`}
-                                          >
-                                            {n}
-                                          </button>
-                                        ))}
-                                      </div>
-                                      <button
-                                        onClick={() => setCustomQtyOpenId(product.id)}
-                                        className="w-full py-2.5 rounded-xl text-sm font-medium text-gray-500 hover:bg-gray-50 border border-gray-200 transition"
-                                      >
-                                        Otra cantidad...
-                                      </button>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            )}
                           </div>
                           <button
                             onClick={() => changeQuantity(product, selectedAddQty[product.id] ?? 1)}
@@ -1001,6 +924,88 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName,
           </div>
         )}
       </div>
+
+      {/* Popup selector de cantidad — fuera del map para evitar bugs con hover en otras tarjetas */}
+      {dropdownProduct && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40" onClick={() => { setQtyDropdownOpenId(null); setCustomQtyOpenId(null); setCustomQtyValue(''); }} />
+          <div className="relative bg-white rounded-2xl p-5 w-full max-w-xs shadow-2xl">
+            <h4 className="text-sm font-bold text-gray-900 mb-3 text-center">
+              Cantidad <span className="text-gray-400 font-normal">({dropdownAvailable} disponibles)</span>
+            </h4>
+            {customQtyOpenId === dropdownProduct.id ? (
+              <div>
+                <input
+                  type="number"
+                  value={customQtyValue}
+                  onChange={(e) => setCustomQtyValue(e.target.value)}
+                  min={1}
+                  max={dropdownAvailable}
+                  placeholder={`Máx ${dropdownAvailable}`}
+                  className="w-full px-3 py-2.5 text-sm text-gray-700 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-300"
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      const n = parseInt(customQtyValue);
+                      if (n > 0 && n <= dropdownAvailable) {
+                        setSelectedAddQty((prev) => ({ ...prev, [dropdownProduct.id]: n }));
+                        setQtyDropdownOpenId(null);
+                        setCustomQtyOpenId(null);
+                        setCustomQtyValue('');
+                      }
+                    }
+                  }}
+                />
+                <div className="flex gap-2 mt-2">
+                  <button
+                    onClick={() => {
+                      const n = parseInt(customQtyValue);
+                      if (n > 0 && n <= dropdownAvailable) {
+                        setSelectedAddQty((prev) => ({ ...prev, [dropdownProduct.id]: n }));
+                        setQtyDropdownOpenId(null);
+                        setCustomQtyOpenId(null);
+                        setCustomQtyValue('');
+                      }
+                    }}
+                    className="flex-1 py-2.5 rounded-xl text-sm font-medium bg-amber-400 text-white"
+                  >
+                    Ok
+                  </button>
+                  <button
+                    onClick={() => { setCustomQtyOpenId(null); setCustomQtyValue(''); }}
+                    className="flex-1 py-2.5 rounded-xl text-sm font-medium bg-gray-100 text-gray-600"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div>
+                <div className="flex gap-3 justify-center mb-3">
+                  {Array.from({ length: Math.min(3, dropdownAvailable) }, (_, i) => i + 1).map((n) => (
+                    <button
+                      key={n}
+                      onClick={() => {
+                        setSelectedAddQty((prev) => ({ ...prev, [dropdownProduct.id]: n }));
+                        setQtyDropdownOpenId(null);
+                      }}
+                      className={`w-14 h-14 rounded-xl text-lg font-bold transition-colors ${(selectedAddQty[dropdownProduct.id] ?? 1) === n ? 'bg-amber-400 text-white shadow-lg shadow-amber-300/40' : 'bg-gray-100 text-gray-700 hover:bg-amber-50 hover:text-amber-700'}`}
+                    >
+                      {n}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  onClick={() => setCustomQtyOpenId(dropdownProduct.id)}
+                  className="w-full py-2.5 rounded-xl text-sm font-medium text-gray-500 hover:bg-gray-50 border border-gray-200 transition"
+                >
+                  Otra cantidad...
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Carrito — botón flotante + drawer (todas las pantallas) */}
       {itemCount > 0 && (
