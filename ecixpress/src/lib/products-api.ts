@@ -101,8 +101,8 @@ export interface CreateProductInput {
 
 export interface ProductAssetFiles {
   front: File;
-  left: File;
-  back: File;
+  left?: File;
+  back?: File;
 }
 
 export type StockOperation = 'set' | 'add' | 'subtract';
@@ -210,8 +210,8 @@ export const productsApi = {
       if (value !== undefined && value !== null) formData.append(key, String(value));
     }
     formData.append('front', files.front);
-    formData.append('left', files.left);
-    formData.append('back', files.back);
+    if (files.left) formData.append('left', files.left);
+    if (files.back) formData.append('back', files.back);
     return catalogFetch<Product>('/with-assets', token, { method: 'POST', body: formData });
   },
 
@@ -247,7 +247,7 @@ export const productsApi = {
   createProduct: (input: CreateProductInput, token?: string | null) =>
     productsApi.create(input, token),
 
-  /** Alta con 3 imágenes obligatorias y generación 3D en segundo plano. */
+  /** Alta con 1 o 3 imágenes y generación 3D en segundo plano. */
   createProductWithAssets: (input: CreateProductInput, files: ProductAssetFiles, token?: string | null) =>
     productsApi.createWithAssets(input, files, token),
 
