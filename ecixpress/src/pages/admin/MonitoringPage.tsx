@@ -31,6 +31,21 @@ const HEALTH_POLL_MS = 5000;
 const LATENCY_POLL_MS = 15000;
 const POPUP_RANGES = [10, 30, 60] as const;
 
+// La salud de microservicios identifica cada servicio con una clave corta (identity, orders...),
+// pero Application Insights registra su telemetría bajo el AppRoleName real del proceso Node
+// (identity-service, orders-service...). "gateway" es la única excepción sin sufijo — por eso
+// era el único que, por coincidencia, mostraba datos de latencia/tráfico.
+const APP_ROLE_NAME: Record<string, string> = {
+  gateway: 'gateway',
+  identity: 'identity-service',
+  products: 'products-service',
+  orders: 'orders-service',
+  financial: 'financial-service',
+  fulfillment: 'fulfillment-service',
+  notifications: 'notifications-service',
+  reporting: 'reporting-service',
+};
+
 const isMoneyCol = (c: string) => /monto/i.test(c) || c === 'total_recargas' || c === 'total_charged';
 
 const fmtCell = (col: string, val: unknown): string => {
@@ -214,7 +229,7 @@ const MonitoringPage: React.FC = () => {
                 </div>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                   {(health ?? []).map((s) => {
-                    const pt = latestByService[s.service];
+                    const pt = latestByService[APP_ROLE_NAME[s.service] ?? s.service];
                     const ms = pt?.avgMs;
                     return (
                       <button
@@ -512,7 +527,7 @@ const LatencyPopup: React.FC<{ service: { key: string; label: string }; onClose:
   }, [service.key]);
 
   const series = useMemo(
-    () => (data?.points ?? []).filter((p) => p.service === service.key)
+    () => (data?.points ?? []).filter((p) => p.service === (APP_ROLE_NAME[service.key] ?? service.key))
       .map((p) => ({ t: new Date(p.timestamp).getTime(), avgMs: p.avgMs, p95Ms: p.p95Ms, p99Ms: p.p99Ms, requests: p.requests })),
     [data, service.key],
   );
