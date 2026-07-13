@@ -18,7 +18,6 @@ import {
 import {
   deliveryMethodLabel,
   failureReasonLabel,
-  pickupStatusHint,
   pickupStatusLabel,
   pickupStatusTone,
 } from '../../lib/fulfillment-ui';
@@ -37,13 +36,8 @@ function useCountdown(iso?: string): string | null {
   if (!iso) return null;
   const diff = new Date(iso).getTime() - now;
   if (diff <= 0) return null;
-  const totalMin = Math.floor(diff / 60000);
-  const hours = Math.floor(totalMin / 60);
-  const minutes = totalMin % 60;
-  const seconds = Math.floor((diff % 60000) / 1000);
-  if (hours > 0) return `${hours} h ${minutes} min`;
-  if (minutes > 0) return `${minutes} min ${seconds} s`;
-  return `${seconds} s`;
+  const totalMinutes = Math.ceil(diff / 60000);
+  return `${totalMinutes} min`;
 }
 
 export const OrderFulfillmentPanel: React.FC<{ order: OrderResponse }> = ({ order }) => {
@@ -53,7 +47,7 @@ export const OrderFulfillmentPanel: React.FC<{ order: OrderResponse }> = ({ orde
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notReady, setNotReady] = useState(false);
-  const [copied, setCopied] = useState<'short' | 'token' | null>(null);
+  const [copied, setCopied] = useState<'short' | null>(null);
 
   const countdown = useCountdown(code?.expiresAt);
   const expired = useMemo(
@@ -106,7 +100,7 @@ export const OrderFulfillmentPanel: React.FC<{ order: OrderResponse }> = ({ orde
     void load();
   }, [load]);
 
-  const copy = async (value: string, which: 'short' | 'token') => {
+  const copy = async (value: string, which: 'short') => {
     try {
       await navigator.clipboard.writeText(value);
       setCopied(which);
@@ -237,8 +231,8 @@ export const OrderFulfillmentPanel: React.FC<{ order: OrderResponse }> = ({ orde
             />
           </div>
           <p className="text-xs font-bold uppercase tracking-[0.16em] text-gray-400">Codigo corto</p>
-          <div className="mt-1 flex items-center gap-2">
-            <span className="text-2xl font-black tracking-[0.24em] text-gray-950">{code.shortCode}</span>
+          <div className="mt-1 flex w-full items-center justify-center gap-1">
+            <span className="min-w-0 whitespace-nowrap text-lg font-black tracking-[0.08em] text-gray-950">{code.shortCode}</span>
             <button
               type="button"
               onClick={() => copy(code.shortCode, 'short')}
@@ -253,11 +247,10 @@ export const OrderFulfillmentPanel: React.FC<{ order: OrderResponse }> = ({ orde
         <div className="space-y-4">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-600">Retiro en tienda</p>
-            <h3 className="text-xl font-black text-gray-950">Muestra este QR al recibir tu pedido</h3>
-            <p className="mt-1 max-w-xl text-sm text-gray-500">{pickupStatusHint[code.status]}</p>
+            <h3 className="text-base font-semibold text-gray-950">Presenta este QR en la tienda para retirar tu pedido</h3>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div>
             <div className="rounded-2xl border border-amber-100 bg-white/80 p-4">
               <div className="flex items-center gap-2 text-sm font-black text-gray-900">
                 <Clock size={16} className="text-amber-600" />
@@ -276,22 +269,6 @@ export const OrderFulfillmentPanel: React.FC<{ order: OrderResponse }> = ({ orde
               )}
             </div>
 
-            <div className="rounded-2xl border border-amber-100 bg-white/80 p-4">
-              <p className="text-xs font-bold uppercase tracking-[0.16em] text-gray-400">Token respaldo</p>
-              <div className="mt-2 flex items-center gap-2">
-                <code className="min-w-0 flex-1 truncate rounded-xl bg-gray-50 px-3 py-2 text-xs text-gray-500">
-                  {code.token}
-                </code>
-                <button
-                  type="button"
-                  onClick={() => copy(code.token, 'token')}
-                  className="rounded-xl p-2 text-gray-400 transition hover:bg-yellow-50 hover:text-amber-600"
-                  title="Copiar token"
-                >
-                  {copied === 'token' ? <Check size={16} className="text-emerald-500" /> : <Copy size={16} />}
-                </button>
-              </div>
-            </div>
           </div>
         </div>
       </div>

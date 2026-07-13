@@ -6,7 +6,7 @@ import Sidebar from '../../components/home/Sidebar';
 import TrianglePattern from '../../components/home/TrianglePattern';
 import ModalShell from '../../components/wallet/ModalShell';
 import { OrderFulfillmentPanel } from '../../components/orders/OrderFulfillmentPanel';
-import { OrderProgressTimeline, isActiveOrder } from '../../components/orders/OrderProgressTimeline';
+import { OrderProgressTimeline } from '../../components/orders/OrderProgressTimeline';
 import { useAuth } from '../../context/AuthContext';
 import { useWallet } from '../../context/WalletContext';
 import { useOrdersApi } from '../../hooks/useOrdersApi';
@@ -39,17 +39,6 @@ const PAYMENT_LABEL: Record<OrderResponse['paymentMethod'], string> = {
   transfer: 'Transferencia',
 };
 
-const DELIVERY_LABEL: Record<OrderResponse['deliveryMethod'], string> = {
-  pickup: 'Retiro en tienda',
-  delivery: 'Entrega',
-};
-
-function statusChangedAt(order: OrderResponse, status: OrderStatus): string | undefined {
-  return [...order.statusHistory]
-    .reverse()
-    .find((entry) => entry.toStatus === status)?.occurredAt;
-}
-
 const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -78,16 +67,7 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
   const socketRef = useRef<Socket | null>(null);
 
   const selected = useMemo(() => orders.find((o) => o.id === selectedId) ?? null, [orders, selectedId]);
-  const selectedIsActive = selected ? isActiveOrder(selected.status) : false;
-  const selectedDeliveredAt = selected
-    ? statusChangedAt(selected, 'DELIVERED') ?? selected.cancelledAt ?? selected.updatedAt
-    : undefined;
   const selectedItemCount = selected?.items.reduce((sum, item) => sum + item.quantity, 0) ?? 0;
-  const selectedMilestoneLabel = selectedIsActive
-    ? 'Siguiente paso'
-    : selected?.status === 'DELIVERED'
-      ? 'Entrega'
-      : 'Cierre';
   const visibleOrders = useMemo(() => {
     const byStatus = filter === 'ALL' ? orders : orders.filter((o) => o.status === filter);
     const query = search.trim().toLowerCase();
@@ -114,6 +94,7 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
     });
 
   const openOrderSummary = (id: string) => {
+    setActionMsg(null);
     const index = visibleOrders.findIndex((order) => order.id === id);
     if (index >= 0) setPage(Math.floor(index / PAGE_SIZE) + 1);
     const next = new URLSearchParams(searchParams);
@@ -129,6 +110,7 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
     order.status === 'DRAFT' ? continueDraft(order) : openOrderSummary(order.id);
 
   const closeOrderSummary = () => {
+    setActionMsg(null);
     const next = new URLSearchParams(searchParams);
     next.delete('orderId');
     setSearchParams(next);
@@ -219,7 +201,12 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
       const updated = await api.cancelOrder(order.id, { reason: 'Cancelado por el comprador' });
       upsertOrder(updated);
     } catch (e) {
-      setActionMsg(e instanceof Error ? e.message : 'No se pudo cancelar');
+      const message = e instanceof Error ? e.message : '';
+      setActionMsg(
+        message.includes('IN_PREPARATION')
+          ? 'Tu pedido ya está en preparación y no se puede cancelar.'
+          : message || 'No se pudo cancelar el pedido.',
+      );
     }
   };
 
@@ -343,9 +330,6 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
                   <span className="text-gray-950">Pedidos</span>
                 </nav>
                 <h1 className="font-display text-3xl font-bold tracking-normal text-gray-900 md:text-4xl">Mis pedidos</h1>
-                <p className="mt-2 max-w-2xl text-sm font-medium text-gray-600">
-                  Haz seguimiento, revisa el detalle y contacta a la tienda cuando lo necesites.
-                </p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <button
@@ -426,7 +410,7 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
           </div>
 
           {successMsg && <div className="rounded-xl bg-green-50 border border-green-300 px-4 py-3 text-sm font-bold text-green-700">{successMsg}</div>}
-          {actionMsg && <div className="rounded-xl bg-yellow-50 border border-yellow-200 px-4 py-3 text-sm text-gray-700">{actionMsg}</div>}
+          {actionMsg && !selected && <div className="rounded-xl bg-yellow-50 border border-yellow-200 px-4 py-3 text-sm text-gray-700">{actionMsg}</div>}
           {error && <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">{error}</div>}
 
           <div className="space-y-5">
@@ -591,6 +575,7 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
                   <p className="mt-1 text-sm text-gray-500">
                     Pedido {selected.orderNumber} · {selectedItemCount} producto{selectedItemCount === 1 ? '' : 's'}
                   </p>
+                  <p className="mt-1 text-sm text-gray-500">{formatDateTime(selected.createdAt)}</p>
                 </div>
               </div>
               <span className={`inline-flex w-fit rounded-full px-4 py-2 text-sm font-black ${statusTone[selected.status]}`}>
@@ -598,55 +583,18 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
               </span>
             </div>
 
+            {actionMsg && (
+              <div role="alert" className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                <XCircle size={17} className="shrink-0 text-amber-600" aria-hidden="true" />
+                <span>{actionMsg}</span>
+              </div>
+            )}
+
             <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
               <div className="space-y-6">
-                <section className="rounded-3xl border border-amber-100 bg-white/80 p-5">
-                  <div className="grid gap-5 md:grid-cols-2">
-                    <div>
-                      <h3 className="text-lg font-black text-gray-950">Inicio</h3>
-                      <p className="mt-1 text-sm font-semibold text-gray-700">{formatDateTime(selected.createdAt)}</p>
-                      <p className="mt-2 text-sm text-gray-500">{selected.storeName}</p>
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-black text-gray-950">{selectedMilestoneLabel}</h3>
-                      <p className="mt-1 text-sm font-semibold text-gray-700">
-                        {selectedIsActive ? statusLabel[selected.status] : formatDateTime(selectedDeliveredAt)}
-                      </p>
-                      <p className="mt-2 text-sm text-gray-500">{DELIVERY_LABEL[selected.deliveryMethod]}</p>
-                    </div>
-                  </div>
-                </section>
-
-                <OrderProgressTimeline
-                  order={selected}
-                  variant={selectedIsActive ? 'vertical' : 'horizontal'}
-                  showDates={!selectedIsActive}
-                />
+                <OrderProgressTimeline order={selected} />
 
                 <OrderFulfillmentPanel order={selected} />
-
-                <section className="rounded-3xl border border-gray-100 bg-white/80 p-5">
-                  <h3 className="mb-4 text-lg font-black text-gray-950">Resumen del pedido</h3>
-                  <div className="space-y-3">
-                    {selected.items.map((item) => (
-                      <div key={item.id} className="grid gap-3 border-b border-gray-100 pb-3 last:border-b-0 last:pb-0 sm:grid-cols-[56px_1fr_auto] sm:items-center">
-                        {item.imageUrl ? (
-                          <img src={item.imageUrl} alt={item.name} className="h-14 w-14 rounded-2xl object-contain" />
-                        ) : (
-                          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-50 text-lg font-black text-amber-700">
-                            {item.name.trim()[0]?.toUpperCase() ?? 'P'}
-                          </div>
-                        )}
-                        <div className="min-w-0">
-                          <p className="font-black text-gray-950">{item.name}</p>
-                          {item.description && <p className="line-clamp-2 text-sm text-gray-500">{item.description}</p>}
-                          <p className="mt-1 text-xs font-semibold text-gray-400">x{item.quantity} · {formatCOP(item.unitPrice)}</p>
-                        </div>
-                        <p className="font-black text-gray-950">{formatCOP(item.totalAmount)}</p>
-                      </div>
-                    ))}
-                  </div>
-                </section>
 
                 {selected.rating && (
                   <section className="rounded-3xl border border-emerald-100 bg-emerald-50 p-4 text-sm">
@@ -659,29 +607,56 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
               </div>
 
               <aside className="space-y-4">
-                <section className="rounded-3xl border border-gray-100 bg-white p-5 shadow-sm">
-                  <h3 className="text-lg font-black text-gray-950">Costos</h3>
-                  <dl className="mt-4 space-y-3 text-sm">
+                <section className="rounded-3xl border border-amber-100 bg-white p-5 shadow-sm">
+                  <h3 className="text-lg font-black text-gray-950">Resumen</h3>
+
+                  <div className="mt-4 space-y-3">
+                    {selected.items.map((item) => (
+                      <div key={item.id} className="grid grid-cols-[40px_1fr_auto] items-center gap-3">
+                        {item.imageUrl ? (
+                          <img src={item.imageUrl} alt={item.name} className="h-10 w-10 rounded-xl object-contain" />
+                        ) : (
+                          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-sm font-black text-amber-700">
+                            {item.name.trim()[0]?.toUpperCase() ?? 'P'}
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-bold text-gray-900">{item.name}</p>
+                          <p className="text-xs font-semibold text-gray-400">x{item.quantity} · {formatCOP(item.unitPrice)}</p>
+                        </div>
+                        <p className="text-sm font-black text-gray-950 tabular-nums">{formatCOP(item.totalAmount)}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="my-4 border-t border-dashed border-amber-200" />
+
+                  <dl className="space-y-2.5 text-sm">
                     <div className="flex justify-between gap-3">
                       <dt className="text-gray-500">Productos</dt>
-                      <dd className="font-bold text-gray-900">{formatCOP(selected.subtotalAmount)}</dd>
+                      <dd className="font-bold text-gray-900 tabular-nums">{formatCOP(selected.subtotalAmount)}</dd>
                     </div>
                     <div className="flex justify-between gap-3">
                       <dt className="text-gray-500">Descuentos</dt>
-                      <dd className="font-bold text-emerald-600">
+                      <dd className="font-bold text-emerald-600 tabular-nums">
                         {selected.discountAmount > 0 ? `-${formatCOP(selected.discountAmount)}` : formatCOP(0)}
                       </dd>
                     </div>
-                    <div className="flex justify-between gap-3 border-t border-gray-100 pt-3 text-base">
-                      <dt className="font-black text-gray-950">Total</dt>
-                      <dd className="font-black text-gray-950">{formatCOP(selected.totalAmount)}</dd>
-                    </div>
                   </dl>
-                </section>
 
-                <section className="rounded-3xl border border-gray-100 bg-white p-5 shadow-sm">
-                  <h3 className="text-lg font-black text-gray-950">Método de pago</h3>
-                  <p className="mt-3 text-sm font-bold text-gray-700">{PAYMENT_LABEL[selected.paymentMethod]}</p>
+                  <div className="my-4 border-t border-dashed border-amber-200" />
+
+                  <div className="flex items-baseline justify-between">
+                    <span className="text-base font-black text-gray-950">Total</span>
+                    <span className="text-2xl font-black text-amber-600 tabular-nums">{formatCOP(selected.totalAmount)}</span>
+                  </div>
+
+                  <div className="my-4 border-t border-dashed border-amber-200" />
+
+                  <div className="flex items-center justify-between gap-3 text-sm">
+                    <span className="text-gray-500">Método de pago</span>
+                    <span className="font-bold text-gray-900">{PAYMENT_LABEL[selected.paymentMethod]}</span>
+                  </div>
                   {selected.pickupExpiresAt && (
                     <p className="mt-3 rounded-2xl bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700">
                       Recoger antes de {formatDateTime(selected.pickupExpiresAt)}
@@ -690,13 +665,13 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
                 </section>
 
                 <section className="rounded-3xl border border-gray-100 bg-white p-5 shadow-sm">
-                  <h3 className="text-lg font-black text-gray-950">Acciones</h3>
+                  <h3 className="text-lg font-black text-gray-950">Gestionar pedido</h3>
                   <div className="mt-4 grid gap-2">
-                    <button onClick={() => navigate(`/messages?orderId=${selected.id}`)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-yellow-400 px-4 py-2 text-sm font-black text-gray-950 transition hover:bg-yellow-500">
+                    <button onClick={() => navigate(`/messages?orderId=${selected.id}`)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-amber-200 bg-white px-4 py-2 text-sm font-normal text-amber-800 shadow-sm transition hover:border-amber-300 hover:bg-amber-50 focus:outline-none focus:ring-2 focus:ring-yellow-300">
                       <MessageCircle size={16} /> Chat con la tienda
                     </button>
                     {isPayable(selected.status) && (
-                      <button onClick={openRecharge} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-blue-500 px-4 py-2 text-sm font-black text-white transition hover:bg-blue-600">
+                      <button onClick={openRecharge} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-amber-200 bg-white px-4 py-2 text-sm font-normal text-amber-800 shadow-sm transition hover:border-amber-300 hover:bg-amber-50 focus:outline-none focus:ring-2 focus:ring-yellow-300">
                         <CreditCard size={16} /> Pagar
                       </button>
                     )}
@@ -704,28 +679,28 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
                       <button
                         onClick={() => handleReorder(selected)}
                         disabled={reorderingId === selected.id}
-                        className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-black text-gray-700 transition hover:bg-yellow-50 disabled:cursor-wait disabled:opacity-70"
+                        className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-amber-200 bg-white px-4 py-2 text-sm font-normal text-amber-800 shadow-sm transition hover:border-amber-300 hover:bg-amber-50 focus:outline-none focus:ring-2 focus:ring-yellow-300 disabled:cursor-wait disabled:opacity-70"
                       >
                         {reorderingId === selected.id ? <><Loader2 size={16} className="animate-spin" /> Recreando...</> : <><RotateCcw size={16} /> Reordenar</>}
                       </button>
                     )}
                     {isRateable(selected.status) && !selected.rating && (
-                      <button onClick={() => setRating({ open: true, score: 5, comment: '' })} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-2 text-sm font-black text-white transition hover:bg-emerald-600">
+                      <button onClick={() => setRating({ open: true, score: 5, comment: '' })} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-amber-200 bg-white px-4 py-2 text-sm font-normal text-amber-800 shadow-sm transition hover:border-amber-300 hover:bg-amber-50 focus:outline-none focus:ring-2 focus:ring-yellow-300">
                         <Star size={16} /> Calificar
                       </button>
                     )}
                     {isReturnable(selected.status) && (
-                      <button onClick={openReturn} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-purple-500 px-4 py-2 text-sm font-black text-white transition hover:bg-purple-600">
+                      <button onClick={openReturn} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-amber-200 bg-white px-4 py-2 text-sm font-normal text-amber-800 shadow-sm transition hover:border-amber-300 hover:bg-amber-50 focus:outline-none focus:ring-2 focus:ring-yellow-300">
                         <Undo2 size={16} /> Devolver
                       </button>
                     )}
                     {isCancellable(selected.status) && (
-                      <button onClick={() => handleCancel(selected)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-red-500 px-4 py-2 text-sm font-black text-white transition hover:bg-red-600">
+                      <button onClick={() => handleCancel(selected)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-amber-200 bg-white px-4 py-2 text-sm font-normal text-amber-800 shadow-sm transition hover:border-amber-300 hover:bg-amber-50 focus:outline-none focus:ring-2 focus:ring-yellow-300">
                         <XCircle size={16} /> Cancelar
                       </button>
                     )}
                     {(selected.status === 'DELIVERED' || selected.status === 'CANCELLED' || selected.status === 'FAILED') && (
-                      <button onClick={() => handleDelete(selected)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-red-200 bg-white px-4 py-2 text-sm font-black text-red-600 transition hover:bg-red-50">
+                      <button onClick={() => handleDelete(selected)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-amber-200 bg-white px-4 py-2 text-sm font-normal text-amber-800 shadow-sm transition hover:border-amber-300 hover:bg-amber-50 focus:outline-none focus:ring-2 focus:ring-yellow-300">
                         <Trash2 size={16} /> Borrar pedido
                       </button>
                     )}
