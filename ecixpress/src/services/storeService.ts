@@ -73,6 +73,39 @@ export interface CreateClosureDto {
 const DAY_NAMES = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 export const getDayName = (day: number) => DAY_NAMES[day] ?? `Día ${day}`;
 
+/** Estado real de apertura de una tienda AHORA (estado + horario). Espeja la lógica de
+ *  identity `checkStoreAvailability`, para que el cliente vea/actúe igual que valida el backend. */
+export interface StoreOpenState {
+  open: boolean;
+  reason: 'CLOSED' | 'TEMPORARILY_CLOSED' | 'OUT_OF_SCHEDULE' | null;
+  label: string;
+}
+
+export const getStoreOpenState = (
+  status: Store['status'],
+  schedules: StoreSchedule[] = [],
+): StoreOpenState => {
+  if (status === 'CLOSED') return { open: false, reason: 'CLOSED', label: 'Cerrado' };
+  if (status === 'TEMPORARILY_CLOSED') return { open: false, reason: 'TEMPORARILY_CLOSED', label: 'Cierre temporal' };
+  const now = new Date();
+  const day = now.getDay();
+  const time = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  const within = schedules.some(
+    (s) => s.isActive && s.dayOfWeek === day && s.openTime.slice(0, 5) <= time && time < s.closeTime.slice(0, 5),
+  );
+  if (!within) return { open: false, reason: 'OUT_OF_SCHEDULE', label: 'Fuera de horario' };
+  return { open: true, reason: null, label: 'Abierto' };
+};
+
+/** Traduce la razón de indisponibilidad (backend o local) a un mensaje amable para el cliente. */
+export const storeClosedMessage = (reasonOrError: string): string => {
+  const r = reasonOrError.toUpperCase();
+  if (r.includes('OUT_OF_SCHEDULE')) return 'La tienda está fuera de su horario de atención en este momento.';
+  if (r.includes('TEMPORARILY_CLOSED')) return 'La tienda está temporalmente cerrada.';
+  if (r.includes('INACTIVE') || r.includes('CLOSED')) return 'La tienda está cerrada.';
+  return reasonOrError;
+};
+
 export interface ScheduleGroup {
   label: string;
   openTime: string;

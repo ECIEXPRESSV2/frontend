@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Search, Plus, Minus, ShoppingCart, Loader2, ImageOff, X, Tag, Check, Trash2, Box, ChevronDown } from 'lucide-react';
+import { Search, Plus, Minus, ShoppingCart, Loader2, ImageOff, X, Tag, Check, Trash2, Box, ChevronDown, Clock } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -10,6 +10,7 @@ import type { OrderResponse, CartQuoteResponse } from '../../lib/orders-api';
 import { formatCOP } from '../../lib/format';
 import Product3DViewerModal from './Product3DViewerModal';
 import CheckoutInvoiceModal from '../cart/CheckoutInvoiceModal';
+import { storeClosedMessage } from '../../services/storeService';
 
 interface StoreCatalogCartProps {
   storeId: string;
@@ -21,6 +22,10 @@ interface StoreCatalogCartProps {
    */
   search?: string;
   onSearchChange?: (value: string) => void;
+  /** La tienda está cerrada/fuera de horario: se bloquean las acciones de pedido. */
+  closed?: boolean;
+  /** Etiqueta a mostrar cuando `closed` (p. ej. "Fuera de horario", "Cerrado"). */
+  closedLabel?: string;
 }
 
 /**
@@ -36,7 +41,7 @@ const LOW_STOCK_THRESHOLD = 5;
  * asíncrona, por lo que tras cada cambio refrescamos la orden para mostrar el total
  * autoritativo. Mientras llega, mostramos un total provisional con el precio de lista.
  */
-const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName, search: controlledSearch, onSearchChange }) => {
+const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName, search: controlledSearch, onSearchChange, closed = false, closedLabel = 'Fuera de horario' }) => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const resumeDraftId = searchParams.get('draft');
@@ -336,7 +341,7 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName,
       setOrder(draft);
       return draft.id;
     } catch (e) {
-      toast.error((e as Error).message || 'No se pudo iniciar el carrito');
+      toast.error(storeClosedMessage((e as Error).message) || 'No se pudo iniciar el carrito');
       return null;
     } finally {
       creatingDraft.current = false;
@@ -400,6 +405,11 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName,
   };
 
   const changeQuantity = (product: Product, nextQty: number): void => {
+    // Tienda cerrada / fuera de horario: no se permite agregar ni modificar el carrito.
+    if (closed) {
+      toast.info(`${storeName} está ${closedLabel.toLowerCase()}. No puedes hacer pedidos ahora.`);
+      return;
+    }
     const available = availableStock(product);
     // Se intentó pedir más de lo disponible: no se permite (se acota) y el recuadro avisa vibrando.
     if (nextQty > available) {
@@ -540,7 +550,7 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName,
       setMobileCartOpen(false);
       navigate('/orders');
     } catch (e) {
-      toast.error((e as Error).message || 'No se pudo confirmar el pedido');
+      toast.error(storeClosedMessage((e as Error).message) || 'No se pudo confirmar el pedido');
     } finally {
       setCheckingOut(false);
     }
@@ -630,10 +640,18 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName,
         </div>
       </div>
 
+      {/* Aviso de tienda cerrada / fuera de horario */}
+      {closed && (
+        <div className="flex items-center gap-2 rounded-xl bg-red-50 ring-1 ring-red-200 px-3 py-2 text-xs font-medium text-red-700">
+          <Clock size={14} className="shrink-0" />
+          La tienda está {closedLabel.toLowerCase()}. No puedes hacer pedidos en este momento.
+        </div>
+      )}
+
       {/* Botón confirmar */}
       <button
         onClick={handleConfirm}
-        disabled={quoting || checkingOut || itemCount === 0}
+        disabled={closed || quoting || checkingOut || itemCount === 0}
         className="w-full py-3 rounded-xl bg-gradient-to-r from-yellow-400 to-yellow-500 text-white font-semibold text-sm shadow-md shadow-yellow-300/50 hover:from-yellow-500 hover:to-yellow-600 hover:shadow-yellow-300/70 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
       >
         {quoting ? <Loader2 size={16} className="animate-spin" /> : null}
