@@ -314,6 +314,7 @@ const StoreDetail: React.FC<StoreDetailProps> = ({ storeId: storeIdProp, onBack 
                 onSearchChange={setProductSearch}
                 closed={!openState.open}
                 closedLabel={openState.label}
+                schedules={schedules}
               />
             </div>
           </div>

@@ -30,7 +30,8 @@ export function useOrdersApi() {
       ordersApi.setCartItem(orderId, payload, await getToken()),
     quoteCart: async (orderId: string, items: QuoteCartItem[]) =>
       ordersApi.quoteCart(orderId, items, await getToken()),
-    checkout: async (orderId: string) => ordersApi.checkout(orderId, await getToken()),
+    checkout: async (orderId: string, body?: { scheduledPickupAt?: string; closeTime?: string }) =>
+      ordersApi.checkout(orderId, await getToken(), body),
     requestReturn: async (orderId: string, payload: RequestReturnRequest) =>
       ordersApi.requestReturn(orderId, payload, await getToken()),
     cancelOrder: async (id: string, payload: { actorType?: string; reason?: string }) =>

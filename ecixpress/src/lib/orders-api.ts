@@ -330,8 +330,11 @@ export const ordersApi = {
       body: JSON.stringify({ items }),
     }),
 
-  checkout: (orderId: string, token?: string | null) =>
-    requestJson<OrderResponse>(`/orders/${orderId}/checkout`, token, { method: 'POST' }),
+  checkout: (orderId: string, token?: string | null, body?: { scheduledPickupAt?: string; closeTime?: string }) =>
+    requestJson<OrderResponse>(`/orders/${orderId}/checkout`, token, {
+      method: 'POST',
+      body: body && (body.scheduledPickupAt || body.closeTime) ? JSON.stringify(body) : undefined,
+    }),
 
   requestReturn: (orderId: string, payload: RequestReturnRequest, token?: string | null) =>
     requestJson<OrderResponse>(`/orders/${orderId}/returns`, token, { method: 'POST', body: JSON.stringify(payload) }),
