@@ -48,6 +48,12 @@ type CampusGeoJson = {
 interface Props {
   open: boolean;
   onClose: () => void;
+  /**
+   * Modo "selección": si se provee, al elegir una tienda se llama a `onSelect(store)` y se
+   * cierra el modal, en vez de navegar a la tienda. Lo usa el centro de monitoreo para elegir
+   * la tienda de un filtro. Sin esta prop, el modal navega como en el flujo de nuevo pedido.
+   */
+  onSelect?: (store: Store) => void;
 }
 
 function getCentroid(geometry: CampusGeometry): [number, number] {
@@ -125,7 +131,7 @@ function createStorePin(
   };
 }
 
-const StoreMapModal: React.FC<Props> = ({ open, onClose }) => {
+const StoreMapModal: React.FC<Props> = ({ open, onClose, onSelect }) => {
   const navigate = useNavigate();
   const { getToken } = useAuth();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -148,8 +154,9 @@ const StoreMapModal: React.FC<Props> = ({ open, onClose }) => {
   const panelReqRef = useRef<string | null>(null); // guarda contra respuestas obsoletas
   const selRef = useRef<string | null>(null);      // edificio (location) resaltado en verde
 
-  const goToStore = (storeId: string) => {
-    navigate(`/store/${storeId}`);
+  const pickStore = (store: Store) => {
+    if (onSelect) onSelect(store);
+    else navigate(`/store/${store.id}`);
     onClose();
   };
 
@@ -432,7 +439,7 @@ const StoreMapModal: React.FC<Props> = ({ open, onClose }) => {
 
                   <div className="px-3 pb-2 pt-1">
                     <button
-                      onClick={() => goToStore(panelStore.id)}
+                      onClick={() => pickStore(panelStore)}
                       className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-yellow-400 px-4 py-2 text-sm font-bold text-gray-950 shadow-sm transition hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-300"
                     >
                       <Check size={16} /> Elegir tienda

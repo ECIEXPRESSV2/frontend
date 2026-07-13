@@ -83,3 +83,153 @@ async function reportingFetch<T>(path: string): Promise<T> {
 /** Overview del centro de monitoreo. `hours` acota la ventana (1–720, default 24). */
 export const getMonitoringOverview = (hours = 24) =>
   reportingFetch<OverviewResponse>(`/kpis/overview?hours=${hours}`);
+
+// ─── Salud de microservicios ──────────────────────────────────────────────────
+
+export interface ServiceHealth {
+  service: string;
+  label: string;
+  up: boolean;
+  /** Tiempo de respuesta del ping a /health (ms). null si está caído. */
+  responseMs: number | null;
+  statusCode?: number;
+  checkedAt: string;
+}
+
+/** Estado (activo/caído) + tiempo de respuesta de cada microservicio. Para polling. */
+export const getServicesHealth = () => reportingFetch<ServiceHealth[]>('/kpis/health');
+
+// ─── Latencia (App Insights; vacío en local) ──────────────────────────────────
+
+export interface LatencyPoint {
+  timestamp: string;
+  service: string;
+  avgMs: number;
+  p95Ms: number;
+  p99Ms: number;
+  requests: number;
+}
+
+export interface LatencyResponse {
+  minutes: number;
+  generatedAt: string;
+  /** false en local (sin App Insights): points viene vacío. */
+  enabled: boolean;
+  points: LatencyPoint[];
+}
+
+/** Serie de latencia promedio por minuto y servicio (últimos `minutes`). */
+export const getLatency = (minutes = 10) =>
+  reportingFetch<LatencyResponse>(`/kpis/latency?minutes=${minutes}`);
+
+// ─── Flujo de eventos entre microservicios (App Insights; vacío en local) ──────
+
+export interface EventCountRow { service: string; routingKey: string; eventos: number }
+export interface EventFailRow { service: string; tipo: string; fallos: number; muestra: string }
+
+export interface EventFlowResponse {
+  minutes: number;
+  generatedAt: string;
+  enabled: boolean;
+  published: EventCountRow[];
+  received: EventCountRow[];
+  failed: EventFailRow[];
+}
+
+/** Eventos generados/recibidos/fallidos por servicio (últimos `minutes`). */
+export const getEventFlow = (minutes = 60) =>
+  reportingFetch<EventFlowResponse>(`/kpis/events?minutes=${minutes}`);
+
+// ─── Deploy (GitHub Actions público + revisión Container Apps) ─────────────────
+
+export interface GithubDeploy {
+  available: boolean;
+  repo?: string;
+  workflow?: string;
+  status?: string;
+  conclusion?: string | null;
+  branch?: string;
+  event?: string;
+  commitMessage?: string;
+  actor?: string;
+  currentStage?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+  url?: string;
+  note?: string;
+}
+
+export interface RevisionInfo {
+  available: boolean;
+  app?: string;
+  latestRevision?: string;
+  activeRevision?: string;
+  replicas?: number;
+  runningState?: string;
+  createdTime?: string;
+  note?: string;
+}
+
+export interface ServiceDeploy {
+  service: string;
+  github: GithubDeploy;
+  revision: RevisionInfo;
+}
+
+/** Estado de deploy de un microservicio (workflow de GitHub + revisión de Container Apps). */
+export const getServiceDeploy = (service: string) =>
+  reportingFetch<ServiceDeploy>(`/kpis/deploy/${service}`);
+
+// ─── Backlog del Service Bus (Azure Monitor metrics; solo desplegado) ──────────
+
+export interface ServiceBusEntity { entity: string; active: number; deadLettered: number }
+export interface ServiceBusBacklog {
+  available: boolean;
+  generatedAt: string;
+  entities: ServiceBusEntity[];
+  note?: string;
+}
+
+/** Mensajes activos y dead-letter por entidad/suscripción del Service Bus. */
+export const getServiceBusBacklog = () =>
+  reportingFetch<ServiceBusBacklog>('/kpis/servicebus');
+
+// ─── Consultas rápidas (catálogo extensible) ──────────────────────────────────
+
+export interface QuickParamMeta {
+  name: string;
+  type: 'uuid' | 'int' | 'bigint';
+  required: boolean;
+  label: string;
+  default: string | number | null;
+  /** 'store' => el dashboard muestra el selector de tienda (modal) en vez de un input. */
+  widget: 'store' | null;
+}
+
+export interface QuickQueryMeta {
+  key: string;
+  label: string;
+  description: string;
+  db: string;
+  /** false si falta la connection string de esa BD en reporting. */
+  available: boolean;
+  params: QuickParamMeta[];
+}
+
+export interface QuickQueryResult {
+  key: string;
+  label: string;
+  columns: string[];
+  rows: Record<string, unknown>[];
+}
+
+/** Catálogo de consultas rápidas disponibles (con sus parámetros). */
+export const getQuickCatalog = () => reportingFetch<QuickQueryMeta[]>('/kpis/quick');
+
+/** Ejecuta una consulta rápida del catálogo con sus parámetros. */
+export const runQuickQuery = (key: string, params: Record<string, string> = {}) => {
+  const qs = new URLSearchParams(
+    Object.entries(params).filter(([, v]) => v !== '' && v != null),
+  ).toString();
+  return reportingFetch<QuickQueryResult>(`/kpis/quick/${key}${qs ? `?${qs}` : ''}`);
+};
