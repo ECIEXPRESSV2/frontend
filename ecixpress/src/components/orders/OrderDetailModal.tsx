@@ -30,8 +30,8 @@ const PAYMENT_LABEL: Record<string, string> = {
 
 const STATUS_LABEL: Record<string, string> = {
   CONFIRMED: 'Confirmado',
-  IN_PREPARATION: 'En preparación',
-  READY_FOR_PICKUP: 'Listo para recoger',
+  IN_PREPARATION: 'Listo para retirar',
+  READY_FOR_PICKUP: 'Listo para retirar',
   DELIVERED: 'Entregado',
   CANCELLED: 'Cancelado',
 };

@@ -41,14 +41,19 @@ const Sidebar: React.FC<SidebarProps> = ({
   onMessagesClick,
 }) => {
   const navigate = useNavigate();
-  const { userProfile, signOut, isAdmin, isVendor } = useAuth();
+  const { userProfile, signOut, isAdmin } = useAuth();
+  // Sección "Vendedor" del sidebar: solo para quien tiene el rol VENDOR asignado
+  // (isVendor() también es true para ADMIN, pero esa sección le pertenece únicamente
+  // al vendedor correspondiente, no a todo administrador).
+  const hasVendorRole = userProfile?.roles.includes('VENDOR') ?? false;
   // Centro de monitoreo: visible para ADMIN o ANALYST (rol de solo lectura de métricas).
   const canMonitor =
     (userProfile?.roles.includes('ADMIN') || userProfile?.roles.includes('ANALYST')) ?? false;
   const { balanceLabel, loading: walletLoading } = useWallet();
   const { unreadCount: unreadNotifications } = useNotifications();
   const { unreadMessagesCount } = useChat();
-  const firstName = (userProfile?.fullName || userProfile?.email || 'Usuario').trim().split(/\s+/)[0] || 'Usuario';
+  const rawFirstName = (userProfile?.fullName || userProfile?.email || 'Usuario').trim().split(/\s+/)[0] || 'Usuario';
+  const firstName = rawFirstName.charAt(0).toUpperCase() + rawFirstName.slice(1);
   const [internalExpanded, setInternalExpanded] = useState(defaultExpanded);
   const [mapOpen, setMapOpen] = useState(false);
   // Carritos pendientes: CartDraftsBell hace su propio fetch y solo nos avisa si hay
@@ -102,6 +107,10 @@ const Sidebar: React.FC<SidebarProps> = ({
     { id: 'profile', icon: User, label: 'Perfil', path: '/profile' },
     { id: 'orders', icon: Clipboard, label: 'Pedidos', path: null },
   ];
+  // En el riel de escritorio, Perfil se muestra al final (junto a billetera/nuevo pedido)
+  // en vez de al inicio, para que no compita en jerarquía con Inicio y Pedidos.
+  const topMenuItems = menuItems.filter((item) => item.id !== 'profile');
+  const profileItem = menuItems.find((item) => item.id === 'profile')!;
 
   const adminItems = [
     { id: 'admin-users', icon: User, label: 'Usuarios', path: '/admin/users' },
@@ -117,7 +126,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   // Secciones de vendedor/admin/monitoreo: en el bottom nav móvil no caben como pestañas
   // propias, así que se agrupan detrás de una pestaña "Más" (solo se muestra si aplica).
-  const hasMoreItems = isVendor() || isAdmin() || canMonitor;
+  const hasMoreItems = hasVendorRole || isAdmin() || canMonitor;
 
   const handleLogout = async () => {
     setUserMenuOpen(false);
@@ -314,7 +323,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Main Navigation */}
       <nav className="flex-1 flex flex-col gap-1 w-full px-3 overflow-y-auto">
-        {menuItems.map((item) => {
+        {topMenuItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeItem === item.id;
           return (
@@ -344,7 +353,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         )}
 
         {/* Vendor section */}
-        {isVendor() && (
+        {hasVendorRole && (
           <>
             {isExpanded && <p className="text-xs text-gray-500 font-medium px-1 pt-3 pb-1 uppercase tracking-wider">Vendedor</p>}
             {!isExpanded && <div className="border-t border-gray-100 my-2" />}
@@ -414,30 +423,42 @@ const Sidebar: React.FC<SidebarProps> = ({
           </>
         )}
 
-        {/* Wallet + Nuevo pedido: pegados al fondo del nav con mt-auto */}
+        {/* Perfil + Wallet + Nuevo pedido: pegados al fondo del nav con mt-auto. Perfil se
+            saca del bloque principal para que no compita en jerarquía con Inicio/Pedidos. */}
         <div className="mt-auto flex flex-col gap-1 pt-4">
+          <button
+            onClick={() => handleMenuClick(profileItem)}
+            className={`relative w-full h-11 rounded-xl flex items-center transition-all duration-300 ease-in-out group overflow-hidden
+              ${activeItem === 'profile' ? 'bg-amber-100 text-amber-800 shadow-sm' : 'text-gray-600 hover:bg-white/70 hover:text-amber-700'}
+              ${isExpanded ? 'px-4' : 'justify-center'}`}
+            title={profileItem.label}
+          >
+            <User size={18} className="transition-transform duration-300 group-hover:scale-110 flex-shrink-0" />
+            {isExpanded && <span className="ml-3 font-medium text-sm whitespace-nowrap">{profileItem.label}</span>}
+            {activeItem === 'profile' && <div className="absolute left-0 w-1 h-6 bg-amber-400 rounded-r-full" />}
+          </button>
           <button
             onClick={() => navigate('/profile/pagos')}
             title={`Saldo disponible: ${balanceLabel}`}
-            className={`w-full rounded-xl flex items-center bg-gradient-to-r from-amber-400 to-amber-500 text-white shadow-sm hover:shadow-md transition-all overflow-hidden
+            className={`w-full rounded-xl flex items-center bg-[linear-gradient(135deg,var(--accent-300),var(--accent-400))] text-gray-900 shadow-sm hover:shadow-md transition-all overflow-hidden
               ${isExpanded ? 'p-3' : 'h-11 justify-center'}`}
           >
             <Wallet size={18} className="flex-shrink-0" />
             {isExpanded && (
               <div className="ml-3 text-left">
-                <p className="text-[10px] text-white/80 uppercase tracking-wider leading-none">Saldo</p>
-                <p className="text-base font-bold leading-tight">{walletLoading ? '—' : balanceLabel}</p>
+                <p className="text-[10px] text-gray-900/70 uppercase tracking-wider leading-none">Saldo</p>
+                <p className="text-base font-normal leading-tight">{walletLoading ? '—' : balanceLabel}</p>
               </div>
             )}
           </button>
           <button
             onClick={() => setMapOpen(true)}
-            className={`w-full h-11 rounded-xl flex items-center bg-gradient-to-r from-amber-400 to-amber-500 text-white shadow-md hover:from-amber-500 hover:to-amber-600 transition-all overflow-hidden
+            className={`w-full h-11 rounded-xl flex items-center bg-[linear-gradient(135deg,var(--accent-300),var(--accent-400))] text-gray-900 shadow-md hover:brightness-95 transition-all overflow-hidden
               ${isExpanded ? 'px-4' : 'justify-center'}`}
             title="Nuevo pedido"
           >
             <Plus size={18} className="flex-shrink-0" />
-            {isExpanded && <span className="ml-3 font-medium text-sm whitespace-nowrap">Nuevo pedido</span>}
+            {isExpanded && <span className="ml-3 font-normal text-sm whitespace-nowrap">Nuevo pedido</span>}
           </button>
         </div>
       </nav>
@@ -527,7 +548,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             aria-label="Más opciones"
             className="animate-menu-pop fixed inset-x-3 bottom-[5.5rem] z-[70] max-h-[60vh] overflow-y-auto rounded-2xl border border-white/60 bg-white/95 p-1.5 backdrop-blur-2xl [box-shadow:0_16px_40px_rgba(0,0,0,0.18)] md:hidden"
           >
-            {isVendor() && (
+            {hasVendorRole && (
               <>
                 <p className="px-3 pt-2 pb-1 text-xs font-medium uppercase tracking-wider text-gray-500">Vendedor</p>
                 {vendorItems.map((item) => {
