@@ -64,7 +64,7 @@ const ActiveOrderBanner: React.FC<ActiveOrderBannerProps> = ({ order, onOpen, on
         <aside className="hidden rounded-3xl border border-white bg-white/85 p-4 shadow-sm lg:block">
           <div className="mb-3 flex items-center gap-2 text-sm font-black text-gray-950">
             <StoreIcon size={16} className="text-[var(--accent-600)]" aria-hidden="true" />
-            En preparación
+            {statusLabel[order.status]}
           </div>
           <div className="flex items-center gap-3">
             {firstItem?.imageUrl ? (

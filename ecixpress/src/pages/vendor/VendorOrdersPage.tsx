@@ -16,21 +16,16 @@ interface VendorOrdersPageProps {
   onBack?: () => void;
 }
 
-/**
- * Siguiente estado que el vendedor puede aplicar a un pedido siguiendo el flujo de
- * preparación (RF-08). El backend valida la transición; aquí solo ofrecemos el botón.
- */
 const NEXT_STATUS: Partial<Record<OrderStatus, { status: OrderStatus; label: string }>> = {
-  CONFIRMED: { status: 'IN_PREPARATION', label: 'Iniciar preparación' },
-  IN_PREPARATION: { status: 'READY_FOR_PICKUP', label: 'Marcar como listo' },
+  CONFIRMED: { status: 'READY_FOR_PICKUP', label: 'Listo para retirar' },
+  IN_PREPARATION: { status: 'READY_FOR_PICKUP', label: 'Listo para retirar' },
   READY_FOR_PICKUP: { status: 'DELIVERED', label: 'Marcar como entregado' },
 };
 
 const STATUS_FILTERS: Array<{ value: 'ALL' | OrderStatus; label: string }> = [
   { value: 'ALL', label: 'Todos' },
   { value: 'CONFIRMED', label: 'Confirmado' },
-  { value: 'IN_PREPARATION', label: 'En preparación' },
-  { value: 'READY_FOR_PICKUP', label: 'Listo' },
+  { value: 'READY_FOR_PICKUP', label: 'Listo para retirar' },
   { value: 'DELIVERED', label: 'Entregado' },
 ];
 
@@ -118,6 +113,15 @@ const VendorOrdersPage: React.FC<VendorOrdersPageProps> = ({ onBack }) => {
     setActionMsg(null);
     setUpdatingId(order.id);
     try {
+      // Orders-service exige pasar por IN_PREPARATION; se completa internamente
+      // para que el vendedor tenga una sola acción visible.
+      if (order.status === 'CONFIRMED') {
+        await api.updateOrderStatus(order.id, {
+          status: 'IN_PREPARATION',
+          actorType: 'fulfillment',
+          actorId: userProfile?.id,
+        });
+      }
       const updated = await api.updateOrderStatus(order.id, {
         status: next.status,
         actorType: 'fulfillment',

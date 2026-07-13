@@ -789,7 +789,7 @@ const StoresPage: React.FC<StoresPageProps> = ({ vendorMode = false }) => {
     if (activeTab === 'schedules') {
       return (
         <div className="space-y-4">
-          <div className="rounded-2xl border border-yellow-100 bg-yellow-50/60 p-4 space-y-3">
+          <div className="rounded-2xl border border-yellow-200 bg-yellow-50 p-4 space-y-3">
             {/* Atajos rápidos */}
             <div className="flex flex-wrap gap-2">
               <span className="text-xs font-semibold text-amber-700 self-center mr-1">Atajo:</span>
@@ -1029,7 +1029,7 @@ const StoresPage: React.FC<StoresPageProps> = ({ vendorMode = false }) => {
               Asignar
             </button>
           </div>
-          <p className="mt-2 text-xs text-amber-700">El usuario debe tener rol vendedor para operar la tienda.</p>
+          <p className="mt-2 text-xs text-amber-700">Selecciona un vendedor para operar la tienda.</p>
         </div>
 
         {staffList.length === 0 ? (

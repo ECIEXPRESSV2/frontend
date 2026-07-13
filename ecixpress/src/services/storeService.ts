@@ -73,6 +73,49 @@ export interface CreateClosureDto {
 const DAY_NAMES = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 export const getDayName = (day: number) => DAY_NAMES[day] ?? `Día ${day}`;
 
+export interface ScheduleGroup {
+  label: string;
+  openTime: string;
+  closeTime: string;
+  days: number[];
+}
+
+/**
+ * Agrupa días consecutivos (Lunes a Domingo) con el mismo horario en una sola línea
+ * ("Lunes a Viernes · 8:00 – 18:00") para que el horario real de la tienda se lea
+ * corto y no abrume al comprador con las 7 filas del día por día.
+ */
+const labelForDays = (days: number[]): string => {
+  if (days.length === 1) return getDayName(days[0]);
+  if (days.length === 2) return `${getDayName(days[0])} y ${getDayName(days[1])}`;
+  return `${getDayName(days[0])} a ${getDayName(days.at(-1)!)}`;
+};
+
+export const groupSchedules = (schedules: StoreSchedule[]): ScheduleGroup[] => {
+  const weekOrder = [1, 2, 3, 4, 5, 6, 0];
+  const byDay = new Map(schedules.filter((s) => s.isActive).map((s) => [s.dayOfWeek, s]));
+  const groups: { days: number[]; openTime: string; closeTime: string }[] = [];
+  let previousDay: number | null = null;
+
+  for (const day of weekOrder) {
+    const s = byDay.get(day);
+    if (!s) {
+      previousDay = null;
+      continue;
+    }
+    const last = groups.at(-1);
+    const isConsecutive = last?.openTime === s.openTime && last?.closeTime === s.closeTime && previousDay !== null;
+    if (last && isConsecutive) {
+      last.days.push(day);
+    } else {
+      groups.push({ days: [day], openTime: s.openTime, closeTime: s.closeTime });
+    }
+    previousDay = day;
+  }
+
+  return groups.map((g) => ({ ...g, label: labelForDays(g.days) }));
+};
+
 export const getStores = (token: string) =>
   apiFetch<Store[]>('/stores', token);
 
