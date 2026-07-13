@@ -359,7 +359,7 @@ const DeliveriesPage: React.FC<DeliveriesPageProps> = () => {
                       <div className="sm:col-span-2">
                         <dt className="text-gray-400">Pedido</dt>
                         <dd className="font-medium text-gray-800">
-                          {validation.order.orderNumber}
+                          {validation.order.orderNumber || 'Código de pedido no disponible'}
                         </dd>
                       </div>
                     </dl>
@@ -563,7 +563,7 @@ const DeliveriesPage: React.FC<DeliveriesPageProps> = () => {
             Vas a confirmar la entrega del pedido{' '}
             <span className="font-semibold">
               {validation.kind === 'valid'
-                ? validation.order.orderNumber
+                ? validation.order.orderNumber || 'seleccionado'
                 : ''}
             </span>
             . El comprador será notificado y se liberará el pago a la tienda.
