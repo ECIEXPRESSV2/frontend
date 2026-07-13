@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import type { Store } from '../../services/storeService';
+import { getStoreOpenState, type Store } from '../../services/storeService';
 import { FAVORITES_CHIP_ID, type HomeSection } from './homeSections';
 import CategoryChips, { type ChipOption } from './CategoryChips';
 import StoreCarousel from './StoreCarousel';
@@ -103,17 +103,22 @@ const OurStoresSection: React.FC<OurStoresSectionProps> = ({
         )
       ) : (
         <StoreCarousel>
-          {shownStores.map((store) => (
-            <StoreItem
-              key={store.id}
-              id={store.id as unknown as number}
-              name={store.name}
-              imageUrl={store.imageUrl || STORE_FALLBACK_IMAGE}
-              fallbackUrl={STORE_FALLBACK_IMAGE}
-              size="sm"
-              onClick={() => onStoreClick(store)}
-            />
-          ))}
+          {shownStores.map((store) => {
+            const openState = getStoreOpenState(store.status, store.schedules);
+            return (
+              <StoreItem
+                key={store.id}
+                id={store.id as unknown as number}
+                name={store.name}
+                imageUrl={store.imageUrl || STORE_FALLBACK_IMAGE}
+                fallbackUrl={STORE_FALLBACK_IMAGE}
+                size="sm"
+                closed={!openState.open}
+                closedLabel={openState.label}
+                onClick={() => onStoreClick(store)}
+              />
+            );
+          })}
         </StoreCarousel>
       )}
     </section>

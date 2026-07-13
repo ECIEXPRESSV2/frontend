@@ -7,7 +7,7 @@ import StoreCatalogCart from '../../components/store/StoreCatalogCart';
 import { useAuth } from '../../context/AuthContext';
 import { useFavorites } from '../../hooks/useFavorites';
 import { useRefreshOnScrollTop } from '../../hooks/useRefreshOnScrollTop';
-import { getStoreById, getStoreSchedules, getDayName, type Store, type StoreSchedule } from '../../services/storeService';
+import { getStoreById, getStoreSchedules, getDayName, getStoreOpenState, type Store, type StoreSchedule } from '../../services/storeService';
 
 const STATUS_LABELS: Record<string, { label: string; dot: string; color: string }> = {
   OPEN: { label: 'Abierto', dot: 'bg-green-500', color: 'text-green-700 bg-green-50 ring-1 ring-green-200' },
@@ -131,7 +131,14 @@ const StoreDetail: React.FC<StoreDetailProps> = ({ storeId: storeIdProp, onBack 
     );
   }
 
-  const statusInfo = STATUS_LABELS[store.status] || { label: store.status, dot: 'bg-gray-400', color: 'text-gray-600 bg-gray-50 ring-1 ring-gray-200' };
+  // Estado REAL de apertura (estado de BD + horario). Una tienda OPEN fuera de su franja
+  // debe verse "Fuera de horario" y no dejar pedir (identity lo valida igual en el backend).
+  const openState = getStoreOpenState(store.status, schedules);
+  const statusInfo = openState.open
+    ? STATUS_LABELS.OPEN
+    : openState.reason === 'OUT_OF_SCHEDULE'
+      ? { label: 'Fuera de horario', dot: 'bg-gray-400', color: 'text-gray-700 bg-gray-100 ring-1 ring-gray-200' }
+      : STATUS_LABELS[store.status] || { label: openState.label, dot: 'bg-red-500', color: 'text-red-700 bg-red-50 ring-1 ring-red-200' };
   const storeImage = store.imageUrl;
   const bannerUrl = store.bannerUrl ?? null;
   const logoUrl = store.imageUrl ?? null;
@@ -309,6 +316,8 @@ const StoreDetail: React.FC<StoreDetailProps> = ({ storeId: storeIdProp, onBack 
                 storeName={store.name}
                 search={productSearch}
                 onSearchChange={setProductSearch}
+                closed={!openState.open}
+                closedLabel={openState.label}
               />
             </div>
           </div>

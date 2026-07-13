@@ -9,6 +9,10 @@ interface StoreItemProps {
   isActive?: boolean;
   /** `sm` = círculos compactos del carrusel del Home; `md` = tamaño original. */
   size?: 'md' | 'sm';
+  /** La tienda está cerrada / fuera de horario: se atenúa y se muestra un badge. */
+  closed?: boolean;
+  /** Etiqueta del badge cuando `closed` (p. ej. "Fuera de horario", "Cerrado"). */
+  closedLabel?: string;
   onClick?: () => void;
 }
 
@@ -24,6 +28,8 @@ const StoreItem: React.FC<StoreItemProps> = ({
   fallbackUrl,
   isActive = false,
   size = 'md',
+  closed = false,
+  closedLabel = 'Cerrado',
   onClick
 }) => {
   const sizes = SIZE_CLASSES[size];
@@ -42,7 +48,7 @@ const StoreItem: React.FC<StoreItemProps> = ({
         <img
           src={imageUrl}
           alt={name}
-          className="w-full h-full object-cover"
+          className={`w-full h-full object-cover ${closed ? 'grayscale opacity-60' : ''}`}
           onError={(e) => {
             // Si el logo no existe (404), caemos a la imagen de respaldo una sola vez.
             const img = e.currentTarget;
@@ -51,6 +57,13 @@ const StoreItem: React.FC<StoreItemProps> = ({
         />
         {isActive && (
           <div className="absolute inset-0 bg-[rgb(var(--accent-rgb)/0.18)]" />
+        )}
+        {closed && (
+          <div className="absolute inset-0 flex items-end justify-center bg-black/25 pb-1.5">
+            <span className="max-w-[92%] truncate rounded-full bg-red-600/95 px-1.5 py-0.5 text-[9px] font-semibold leading-none text-white shadow-sm">
+              {closedLabel}
+            </span>
+          </div>
         )}
       </div>
       <span className={`max-w-full truncate text-center text-sm font-medium transition-colors duration-300
