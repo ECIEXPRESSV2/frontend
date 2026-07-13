@@ -7,6 +7,7 @@ import { useWallet } from '../../context/WalletContext';
 import { useOrdersApi } from '../../hooks/useOrdersApi';
 import { productsApi, priceToCents, type Product, type ProductCategory } from '../../lib/products-api';
 import type { OrderResponse, CartQuoteResponse } from '../../lib/orders-api';
+import type { StoreSchedule } from '../../services/storeService';
 import { formatCOP } from '../../lib/format';
 import Product3DViewerModal from './Product3DViewerModal';
 import CheckoutInvoiceModal from '../cart/CheckoutInvoiceModal';
@@ -26,6 +27,8 @@ interface StoreCatalogCartProps {
   closed?: boolean;
   /** Etiqueta a mostrar cuando `closed` (p. ej. "Fuera de horario", "Cerrado"). */
   closedLabel?: string;
+  /** Horarios de la tienda para calcular ventana de programación. */
+  schedules?: StoreSchedule[];
 }
 
 /**
@@ -41,7 +44,7 @@ const LOW_STOCK_THRESHOLD = 5;
  * asíncrona, por lo que tras cada cambio refrescamos la orden para mostrar el total
  * autoritativo. Mientras llega, mostramos un total provisional con el precio de lista.
  */
-const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName, search: controlledSearch, onSearchChange, closed = false, closedLabel = 'Fuera de horario' }) => {
+const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName, search: controlledSearch, onSearchChange, closed = false, closedLabel = 'Fuera de horario', schedules }) => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const resumeDraftId = searchParams.get('draft');
@@ -83,6 +86,12 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName,
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerSrc, setViewerSrc] = useState<string | null>(null);
   const [viewerTitle, setViewerTitle] = useState('');
+  const [scheduledPickupAt, setScheduledPickupAt] = useState<string>('');
+  const todayCloseTime = useMemo(() => {
+    const today = new Date().getDay();
+    const s = schedules?.find((s) => s.isActive && s.dayOfWeek === today);
+    return s ? s.closeTime.slice(0, 5) : '23:59';
+  }, [schedules]);
   const rejectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [mobileCartOpen, setMobileCartOpen] = useState(false);
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
@@ -544,7 +553,7 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName,
     if (!id) return;
     setCheckingOut(true);
     try {
-      await api.checkout(id);
+      await api.checkout(id, { scheduledPickupAt: scheduledPickupAt || undefined });
       toast.success('Pedido recibido. Validando disponibilidad de stock…');
       setInvoiceOpen(false);
       setMobileCartOpen(false);
@@ -1071,6 +1080,9 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName,
         loading={quoting}
         paying={checkingOut}
         walletBalance={wallet?.balance ?? 0}
+        scheduledPickupAt={scheduledPickupAt}
+        onScheduleChange={setScheduledPickupAt}
+        todayCloseTime={todayCloseTime}
         onClose={() => setInvoiceOpen(false)}
         onPay={handlePay}
         onRecharge={openRecharge}
