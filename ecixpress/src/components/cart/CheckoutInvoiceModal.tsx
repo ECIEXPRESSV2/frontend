@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { X, Loader2, ImageOff, Tag, Lock, ShieldCheck, ReceiptText, AlertTriangle, Clock } from 'lucide-react';
 import { formatCOP } from '../../lib/format';
@@ -14,6 +14,9 @@ interface CheckoutInvoiceModalProps {
   paying: boolean;
   /** Saldo de la billetera en centavos COP. */
   walletBalance: number;
+  scheduledPickupAt: string;
+  onScheduleChange: (val: string) => void;
+  todayCloseTime: string;
   onClose: () => void;
   onPay: () => void;
   onRecharge: () => void;
@@ -56,6 +59,9 @@ const CheckoutInvoiceModal: React.FC<CheckoutInvoiceModalProps> = ({
   loading,
   paying,
   walletBalance,
+  scheduledPickupAt,
+  onScheduleChange,
+  todayCloseTime,
   onClose,
   onPay,
   onRecharge,
@@ -75,6 +81,32 @@ const CheckoutInvoiceModal: React.FC<CheckoutInvoiceModalProps> = ({
 
   const now = new Date();
   const insufficient = !!quote && walletBalance < quote.totalAmount;
+
+  const timeSlots = useMemo(() => {
+    const slots: string[] = [];
+    const [closeH, closeM] = todayCloseTime.split(':').map(Number);
+    const close = closeH * 60 + closeM;
+    const now = new Date();
+    const currentMin = now.getHours() * 60 + now.getMinutes();
+    const start = Math.ceil((currentMin + 30) / 30) * 30;
+    if (start >= close) return slots;
+    const y = now.getFullYear();
+    const mon = now.getMonth() + 1;
+    const d = now.getDate();
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    for (let m = start; m <= close; m += 30) {
+      const h = Math.floor(m / 60);
+      const minPart = m % 60;
+      const iso = `${y}-${pad(mon)}-${pad(d)}T${pad(h)}:${pad(minPart)}`;
+      slots.push(iso);
+    }
+    return slots;
+  }, [todayCloseTime]);
+
+  const formatSlotTime = (iso: string): string => {
+    const d = new Date(iso);
+    return d.toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit', hour12: true });
+  };
   const payDisabled =
     paying || loading || !quote || quote.totalAmount <= 0 || quote.hasStockIssues || insufficient;
 
@@ -300,6 +332,78 @@ const CheckoutInvoiceModal: React.FC<CheckoutInvoiceModalProps> = ({
                     </motion.div>
                   )}
 
+                  {/* ── Programar recogida ─────────────────────────────── */}
+                  <div className="mt-5 border-t border-dashed border-gray-300 pt-4">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 mb-3">
+                      Recogida
+                    </p>
+                    <div className="flex gap-2">
+                      <motion.button
+                        whileTap={{ scale: 0.97 }}
+                        onClick={() => onScheduleChange('')}
+                        className={`flex-1 rounded-xl py-2.5 text-sm font-medium transition-colors ${
+                          !scheduledPickupAt
+                            ? 'bg-gray-900 text-white shadow-sm'
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        }`}
+                      >
+                        Ahora
+                      </motion.button>
+                      <motion.button
+                        whileTap={{ scale: 0.97 }}
+                        onClick={() => {
+                          if (!scheduledPickupAt) {
+                            const d = new Date(Date.now() + 60 * 60 * 1000);
+                            const pad = (n: number) => n.toString().padStart(2, '0');
+                            onScheduleChange(
+                              `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+                            );
+                          }
+                        }}
+                        className={`flex-1 rounded-xl py-2.5 text-sm font-medium transition-colors ${
+                          scheduledPickupAt
+                            ? 'bg-gray-900 text-white shadow-sm'
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        }`}
+                      >
+                        Programar
+                      </motion.button>
+                    </div>
+
+                    {scheduledPickupAt && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        className="mt-3"
+                      >
+                        <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto">
+                          {timeSlots.map((iso) => (
+                            <motion.button
+                              key={iso}
+                              whileTap={{ scale: 0.95 }}
+                              onClick={() => onScheduleChange(iso)}
+                              className={`rounded-xl px-3 py-2 text-sm font-medium transition-colors ${
+                                scheduledPickupAt === iso
+                                  ? 'bg-gray-900 text-white shadow-sm'
+                                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                              }`}
+                            >
+                              {formatSlotTime(iso)}
+                            </motion.button>
+                          ))}
+                          {timeSlots.length === 0 && (
+                            <p className="text-xs text-gray-500 py-2">
+                              No hay horarios disponibles para hoy
+                            </p>
+                          )}
+                        </div>
+                        <p className="mt-2 text-[11px] text-gray-500">
+                          Selecciona la hora para recoger tu pedido
+                        </p>
+                      </motion.div>
+                    )}
+                  </div>
+
                   {/* Pagar */}
                   <motion.button
                     onClick={onPay}
@@ -318,7 +422,7 @@ const CheckoutInvoiceModal: React.FC<CheckoutInvoiceModalProps> = ({
                     )}
                     <span className="relative flex items-center justify-center gap-2">
                       {paying ? <Loader2 size={18} className="animate-spin" /> : <Lock size={16} />}
-                      {paying ? 'Procesando…' : 'Pagar ahora'}
+                      {paying ? 'Procesando…' : scheduledPickupAt ? 'Programar pedido' : 'Pagar ahora'}
                     </span>
                   </motion.button>
 
