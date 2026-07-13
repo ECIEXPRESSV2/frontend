@@ -74,8 +74,6 @@ const MonitoringPage: React.FC = () => {
   const [events, setEvents] = useState<EventFlowResponse | null>(null);
   const [bus, setBus] = useState<ServiceBusBacklog | null>(null);
 
-  const [ordersByStore, setOrdersByStore] = useState<QuickQueryResult | null>(null);
-
   const [catalog, setCatalog] = useState<QuickQueryMeta[]>([]);
   const [selectedKey, setSelectedKey] = useState<string>('');
   const [params, setParams] = useState<Record<string, string>>({});
@@ -111,11 +109,6 @@ const MonitoringPage: React.FC = () => {
     try { setBus(await getServiceBusBacklog()); } catch { /* Azure metrics puede no estar */ }
   }, []);
 
-  const loadOrdersByStore = useCallback(async () => {
-    try { setOrdersByStore(await runQuickQuery('orders-by-store')); }
-    catch (err) { toast.error(errMsg(err)); }
-  }, []);
-
   useEffect(() => {
     (async () => {
       setLoading(true);
@@ -124,7 +117,7 @@ const MonitoringPage: React.FC = () => {
         const cat = await getQuickCatalog();
         setCatalog(cat);
         setSelectedKey((prev) => prev || cat[0]?.key || '');
-        await Promise.all([pollHealth(), pollLatency(), loadOrdersByStore(), loadEvents(), loadBus()]);
+        await Promise.all([pollHealth(), pollLatency(), loadEvents(), loadBus()]);
       } catch (err) {
         setBootError(errMsg(err));
         toast.error(errMsg(err));
@@ -132,7 +125,7 @@ const MonitoringPage: React.FC = () => {
         setLoading(false);
       }
     })();
-  }, [pollHealth, pollLatency, loadOrdersByStore]);
+  }, [pollHealth, pollLatency]);
 
   useEffect(() => {
     const h = setInterval(pollHealth, HEALTH_POLL_MS);
@@ -206,7 +199,7 @@ const MonitoringPage: React.FC = () => {
                 )}
               </div>
               <button
-                onClick={() => { pollHealth(); pollLatency(); loadOrdersByStore(); loadEvents(); loadBus(); }}
+                onClick={() => { pollHealth(); pollLatency(); loadEvents(); loadBus(); }}
                 className="inline-flex min-h-11 items-center gap-2 rounded-2xl border border-white/70 bg-white/80 px-4 py-2 text-sm font-bold text-gray-700 shadow-sm backdrop-blur transition hover:bg-white hover:text-gray-950"
               >
                 <RefreshCw size={16} /> Actualizar
@@ -261,15 +254,6 @@ const MonitoringPage: React.FC = () => {
 
               {/* ── Backlog del Service Bus ── */}
               <ServiceBusSection data={bus} />
-
-              {/* ── Pedidos por tienda ── */}
-              <section className="rounded-3xl border border-white/70 bg-white/85 p-5 shadow-lg shadow-gray-200/50 backdrop-blur-xl">
-                <div className="mb-4 flex items-center gap-2">
-                  <Store size={18} className="text-amber-500" />
-                  <h2 className="text-base font-bold text-gray-900">Pedidos por tienda</h2>
-                </div>
-                <ResultTable result={ordersByStore} empty="Aún no hay pedidos." />
-              </section>
 
               {/* ── Consultas rápidas ── */}
               <section className="rounded-3xl border border-white/70 bg-white/85 p-5 shadow-lg shadow-gray-200/50 backdrop-blur-xl">
@@ -412,7 +396,7 @@ const EventsSection: React.FC<{ data: EventFlowResponse | null }> = ({ data }) =
               <AlertTriangle size={14} className="text-red-500" /> Fallidos
             </div>
             {data.failed.length === 0 ? (
-              <p className="py-4 text-center text-xs text-gray-400">Sin fallos 🎉</p>
+              <p className="py-4 text-center text-xs text-gray-400">Sin fallos</p>
             ) : (
               <div className="space-y-1.5">
                 {data.failed.slice(0, 8).map((f, i) => (
@@ -466,7 +450,7 @@ const ServiceBusSection: React.FC<{ data: ServiceBusBacklog | null }> = ({ data 
         {data?.note ?? 'Solo en el entorno desplegado (Azure Monitor metrics).'}
       </p>
     ) : data.entities.length === 0 ? (
-      <p className="py-6 text-center text-sm text-gray-400">Sin mensajes en el bus 🎉</p>
+      <p className="py-6 text-center text-sm text-gray-400">Sin mensajes en el bus</p>
     ) : (
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
@@ -495,11 +479,9 @@ const ServiceBusSection: React.FC<{ data: ServiceBusBacklog | null }> = ({ data 
 );
 
 /** Popup con la gráfica de latencia promedio histórica de un servicio + filtro de tiempo. */
-type Metric = 'avgMs' | 'p95Ms' | 'p99Ms' | 'requests';
+type Metric = 'avgMs' | 'requests';
 const METRICS: { key: Metric; label: string; unit: string }[] = [
   { key: 'avgMs', label: 'Promedio', unit: 'ms' },
-  { key: 'p95Ms', label: 'p95', unit: 'ms' },
-  { key: 'p99Ms', label: 'p99', unit: 'ms' },
   { key: 'requests', label: 'Peticiones', unit: '/min' },
 ];
 
@@ -528,7 +510,7 @@ const LatencyPopup: React.FC<{ service: { key: string; label: string }; onClose:
 
   const series = useMemo(
     () => (data?.points ?? []).filter((p) => p.service === (APP_ROLE_NAME[service.key] ?? service.key))
-      .map((p) => ({ t: new Date(p.timestamp).getTime(), avgMs: p.avgMs, p95Ms: p.p95Ms, p99Ms: p.p99Ms, requests: p.requests })),
+      .map((p) => ({ t: new Date(p.timestamp).getTime(), avgMs: p.avgMs, requests: p.requests })),
     [data, service.key],
   );
   const meanOf = (k: Metric) => series.length ? Math.round(series.reduce((a, s) => a + s[k], 0) / series.length) : null;
@@ -582,11 +564,9 @@ const LatencyPopup: React.FC<{ service: { key: string; label: string }; onClose:
             </div>
           ) : (
             <>
-              <AreaChart points={chartPoints} />
+              <AreaChart points={chartPoints} unit={unit} />
               <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-sm">
                 <span className="text-gray-500">Promedio: <b className="text-gray-900">{meanOf('avgMs')} ms</b></span>
-                <span className="text-gray-500">p95: <b className="text-gray-900">{meanOf('p95Ms')} ms</b></span>
-                <span className="text-gray-500">p99: <b className="text-gray-900">{meanOf('p99Ms')} ms</b></span>
                 <span className="text-gray-500">Peticiones/min: <b className="text-gray-900">{meanOf('requests')}</b></span>
                 <span className="text-gray-500">Pico ({METRICS.find((m) => m.key === metric)!.label}): <b className="text-gray-900">{peak}{unit === 'ms' ? ' ms' : ''}</b></span>
               </div>
@@ -659,16 +639,20 @@ const DeployBlock: React.FC<{ deploy: ServiceDeploy | null }> = ({ deploy }) => 
 };
 
 /** Gráfica de área SVG en amarillo (como la referencia). */
-const AreaChart: React.FC<{ points: { t: number; y: number }[] }> = ({ points }) => {
+const AreaChart: React.FC<{ points: { t: number; y: number }[]; unit: string }> = ({ points, unit }) => {
   const W = 560, H = 160, P = 8;
   const xs = points.map((p) => p.t);
   const ys = points.map((p) => p.y);
   const minX = Math.min(...xs), maxX = Math.max(...xs);
-  const minY = 0, maxY = Math.max(...ys) * 1.15 || 1;
+  const rawMaxY = Math.max(...ys);
+  const minY = 0, maxY = rawMaxY * 1.15 || 1;
   const sx = (x: number) => P + ((x - minX) / (maxX - minX || 1)) * (W - 2 * P);
   const sy = (y: number) => H - P - ((y - minY) / (maxY - minY || 1)) * (H - 2 * P);
   const line = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${sx(p.t).toFixed(1)} ${sy(p.y).toFixed(1)}`).join(' ');
   const area = `${line} L ${sx(maxX).toFixed(1)} ${H - P} L ${sx(minX).toFixed(1)} ${H - P} Z`;
+  // Rótulos del eje Y: cada métrica autoescala a su propio máximo, así que la silueta puede
+  // lucir parecida entre Promedio y Peticiones aunque los valores reales sean muy distintos.
+  // Mostrar el techo y el piso deja ver el cambio real de escala al cambiar de tab.
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="h-40 w-full" preserveAspectRatio="none" role="img" aria-label="Latencia promedio">
       <defs>
@@ -682,6 +666,8 @@ const AreaChart: React.FC<{ points: { t: number; y: number }[] }> = ({ points })
       ))}
       <path d={area} fill="url(#latFill)" />
       <path d={line} fill="none" stroke="rgb(234 165 43)" strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />
+      <text x={P + 4} y={P + 12} fontSize="11" fill="rgb(107 114 128)">{Math.round(rawMaxY).toLocaleString('es-CO')}{unit}</text>
+      <text x={P + 4} y={H - P - 4} fontSize="11" fill="rgb(107 114 128)">0{unit}</text>
     </svg>
   );
 };
