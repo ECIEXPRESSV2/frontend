@@ -42,6 +42,7 @@ export interface PickupCodeResponse {
 /** Datos del pedido cuando el código es válido (UC-03). */
 export interface ValidatedOrder {
   orderId: string;
+  orderNumber: string;
   buyerId: string;
   storeId: string;
   expiresAt: string;
@@ -58,8 +59,10 @@ export interface ValidateCodeResponse {
 export interface DeliveryResponse {
   id: string;
   orderId: string;
+  orderNumber: string | null;
   storeId: string;
   confirmedByUserId: string;
+  confirmedByUserName: string | null;
   method: DeliveryMethod | null;
   failureReason: DeliveryFailureReason | null;
   deliveredAt: string;

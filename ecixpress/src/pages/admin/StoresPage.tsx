@@ -51,6 +51,18 @@ type StoreDetailCache = {
   users: UserItem[];
 };
 
+const loadAllUsers = async (token: string): Promise<UserItem[]> => {
+  const firstPage = await getUsers(token, { page: '1', limit: '100' });
+  if (firstPage.meta.totalPages <= 1) return firstPage.data;
+
+  const remainingPages = await Promise.all(
+    Array.from({ length: firstPage.meta.totalPages - 1 }, (_, index) =>
+      getUsers(token, { page: String(index + 2), limit: '100' }),
+    ),
+  );
+  return [firstPage, ...remainingPages].flatMap(page => page.data);
+};
+
 const TYPE_META: Record<Store['type'], { label: string; icon: typeof StoreIcon; className: string }> = {
   CAFETERIA: {
     label: 'Cafetería',
@@ -448,7 +460,10 @@ const StoresPage: React.FC<StoresPageProps> = ({ vendorMode = false }) => {
       setSchedules(cached.schedules);
       setClosures(cached.closures);
       setStaffList(cached.staff);
-      setAllUsers(cached.users);
+      const token = await getToken();
+      const users = await loadAllUsers(token).catch(() => cached.users);
+      setAllUsers(users);
+      setPageCache(cacheKey, { ...cached, users });
       return;
     }
 
@@ -458,10 +473,10 @@ const StoresPage: React.FC<StoresPageProps> = ({ vendorMode = false }) => {
       const [sched, clos, rawUsers, storeDetail] = await Promise.all([
         getStoreSchedules(store.id, token).catch(() => []),
         getStoreClosures(store.id, token).catch(() => []),
-        vendorMode ? Promise.resolve([]) : getUsers(token).catch(() => []),
+        vendorMode ? Promise.resolve([]) : loadAllUsers(token).catch(() => []),
         getStoreById(store.id, token).catch(() => null),
       ]);
-      const userList = Array.isArray(rawUsers) ? rawUsers : (rawUsers as { data: UserItem[] }).data ?? [];
+      const userList = rawUsers;
       const staff = storeDetail?.staff ?? [];
       setSchedules(sched);
       setClosures(clos);
@@ -789,7 +804,7 @@ const StoresPage: React.FC<StoresPageProps> = ({ vendorMode = false }) => {
     if (activeTab === 'schedules') {
       return (
         <div className="space-y-4">
-          <div className="rounded-2xl border border-yellow-100 bg-yellow-50/60 p-4 space-y-3">
+          <div className="rounded-2xl border border-yellow-200 bg-yellow-50 p-4 space-y-3">
             {/* Atajos rápidos */}
             <div className="flex flex-wrap gap-2">
               <span className="text-xs font-semibold text-amber-700 self-center mr-1">Atajo:</span>
@@ -1029,7 +1044,7 @@ const StoresPage: React.FC<StoresPageProps> = ({ vendorMode = false }) => {
               Asignar
             </button>
           </div>
-          <p className="mt-2 text-xs text-amber-700">El usuario debe tener rol vendedor para operar la tienda.</p>
+          <p className="mt-2 text-xs text-amber-700">Selecciona un vendedor para operar la tienda.</p>
         </div>
 
         {staffList.length === 0 ? (

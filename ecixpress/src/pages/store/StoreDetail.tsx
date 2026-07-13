@@ -7,7 +7,7 @@ import StoreCatalogCart from '../../components/store/StoreCatalogCart';
 import { useAuth } from '../../context/AuthContext';
 import { useFavorites } from '../../hooks/useFavorites';
 import { useRefreshOnScrollTop } from '../../hooks/useRefreshOnScrollTop';
-import { getStoreById, getStoreSchedules, getDayName, getStoreOpenState, type Store, type StoreSchedule } from '../../services/storeService';
+import { getStoreById, getStoreSchedules, getStoreOpenState, groupSchedules, type Store, type StoreSchedule } from '../../services/storeService';
 
 const STATUS_LABELS: Record<string, { label: string; dot: string; color: string }> = {
   OPEN: { label: 'Abierto', dot: 'bg-green-500', color: 'text-green-700 bg-green-50 ring-1 ring-green-200' },
@@ -260,40 +260,36 @@ const StoreDetail: React.FC<StoreDetailProps> = ({ storeId: storeIdProp, onBack 
 
           <div className="space-y-6">
             {/* Schedules */}
-            <details className="group rounded-2xl border border-gray-100 bg-white overflow-hidden" open={false}>
-              <summary className="flex items-center gap-2 px-6 py-4 cursor-pointer select-none list-none">
-                <span className="flex items-center justify-center w-8 h-8 rounded-full bg-yellow-100 text-yellow-600">
+            <div className="rounded-2xl border border-gray-100 bg-white overflow-hidden">
+              <div className="flex items-center gap-2 px-6 py-4">
+                <span className="flex items-center justify-center w-8 h-8 text-amber-700">
                   <Clock size={16} />
                 </span>
                 <h2 className="font-bold text-gray-900">Horarios de Atención</h2>
-                <span className="ml-auto text-xs text-gray-400 group-open:rotate-180 transition-transform">?</span>
-              </summary>
+              </div>
               <div className="px-6 pb-5">
                 {schedules.length === 0 ? (
                   <p className="text-gray-500 text-sm">No hay horarios configurados.</p>
                 ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                    {schedules
-                      .filter(s => s.isActive)
-                      .sort((a, b) => a.dayOfWeek - b.dayOfWeek)
-                      .map(s => {
-                        const isToday = s.dayOfWeek === TODAY_INDEX;
-                        return (
-                          <div
-                            key={s.id}
-                            className={`flex justify-between items-center px-4 py-2.5 rounded-xl text-sm ${
-                              isToday ? 'bg-yellow-400 text-white font-semibold' : 'bg-yellow-50 text-gray-700'
-                            }`}
-                          >
-                            <span className="font-medium">{getDayName(s.dayOfWeek)}{isToday && ' · Hoy'}</span>
-                            <span className={isToday ? 'text-white/90' : 'text-gray-500'}>{s.openTime} – {s.closeTime}</span>
-                          </div>
-                        );
-                      })}
+                  <div className="flex flex-col gap-2">
+                    {groupSchedules(schedules).map((group) => {
+                      const isToday = group.days.includes(TODAY_INDEX);
+                      return (
+                        <div
+                          key={group.label}
+                          className={`flex justify-between items-center px-4 py-2.5 rounded-xl text-sm ${
+                            isToday ? 'bg-yellow-50 border border-yellow-200 text-amber-900 font-semibold' : 'bg-yellow-50/50 text-gray-800'
+                          }`}
+                        >
+                          <span className="font-medium">{group.label}{isToday && ' · Hoy'}</span>
+                          <span className={isToday ? 'text-amber-800' : 'text-gray-600'}>{group.openTime} – {group.closeTime}</span>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
-            </details>
+            </div>
 
             {/* Menú + carrito — catálogo de products-service, carrito como orden DRAFT */}
             <div className="rounded-2xl border border-gray-100 bg-white p-6">

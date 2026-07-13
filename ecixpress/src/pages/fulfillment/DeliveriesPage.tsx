@@ -5,37 +5,34 @@ import {
   CheckCircle2,
   XCircle,
   PackageCheck,
-  ClipboardX,
   Search,
   ChevronLeft,
   ChevronRight,
-  Store,
+  Store as StoreIcon,
   AlertTriangle,
   Camera,
+  QrCode,
 } from 'lucide-react';
 import Sidebar from '../../components/home/Sidebar';
 import TrianglePattern from '../../components/home/TrianglePattern';
 
 import ModalShell from '../../components/wallet/ModalShell';
 import QrScannerModal from '../../components/fulfillment/QrScannerModal';
-import FormInput from '../../components/ui/FormInput';
 import { useAuth } from '../../context/AuthContext';
 import { useFulfillmentApi } from '../../hooks/useFulfillmentApi';
 import { useRefreshOnScrollTop } from '../../hooks/useRefreshOnScrollTop';
 import {
   FulfillmentApiError,
-  type DeliveryFailureReason,
   type PaginatedDeliveries,
   type ValidatedOrder,
 } from '../../lib/fulfillment-api';
 import {
   deliveryMethodLabel,
-  FAILURE_REASONS,
   failureReasonLabel,
   validationErrorLabel,
 } from '../../lib/fulfillment-ui';
 import { formatDateTime } from '../../lib/format';
-import { getMyStores, getStoreById } from '../../services/storeService';
+import { getMyStores, getStoreById, type Store } from '../../services/storeService';
 
 interface DeliveriesPageProps {
   onBack?: () => void;
@@ -50,8 +47,7 @@ const PAGE_SIZE = 10;
 
 /**
  * Centro de entregas del vendedor. Reúne los casos de uso operativos de Fulfillment:
- * validar (UC-03) y confirmar (UC-04) por código, entrega manual (UC-05) y fallida (UC-06)
- * por pedido, e historial paginado por tienda (UC-10).
+ * validar (UC-03) y confirmar (UC-04) por código, e historial paginado por tienda (UC-10).
  */
 const DeliveriesPage: React.FC<DeliveriesPageProps> = () => {
   const { userProfile, getToken } = useAuth();
@@ -67,13 +63,13 @@ const DeliveriesPage: React.FC<DeliveriesPageProps> = () => {
   const [scannerOpen, setScannerOpen] = useState(false);
   const [storeName, setStoreName] = useState<string | null>(null);
 
-  // ── Gestión manual por pedido ────────────────────────────────
-  const [orderId, setOrderId] = useState('');
-  const [manualOpen, setManualOpen] = useState(false);
-  const [failureOpen, setFailureOpen] = useState(false);
-
   // ── Historial por tienda ─────────────────────────────────────
+  // El vendedor busca su tienda por nombre (coincidencia parcial, no exacta) en vez de
+  // tener que saberse el ID; internamente se resuelve al storeId real que pide la API.
+  const [myStores, setMyStores] = useState<Store[]>([]);
   const [storeId, setStoreId] = useState('');
+  const [storeQuery, setStoreQuery] = useState('');
+  const [storeDropdownOpen, setStoreDropdownOpen] = useState(false);
   const [methodFilter, setMethodFilter] = useState<'' | 'QR' | 'MANUAL'>('');
   const [orderDir, setOrderDir] = useState<'DESC' | 'ASC'>('DESC');
   const [page, setPage] = useState(1);
@@ -96,7 +92,6 @@ const DeliveriesPage: React.FC<DeliveriesPageProps> = () => {
       const result = await api.validateCode(trimmed);
       if (result.valid && result.order) {
         setValidation({ kind: 'valid', order: result.order });
-        setOrderId(result.order.orderId); // prefill para gestión manual
         // Resuelve el nombre de la tienda (endpoint público de identity) para no mostrar el UUID.
         setStoreName(null);
         void getStoreById(result.order.storeId, null)
@@ -137,7 +132,8 @@ const DeliveriesPage: React.FC<DeliveriesPageProps> = () => {
       if (delivery.alreadyDelivered) {
         toast.warning(`Este pedido ya había sido entregado.`);
       } else {
-        toast.success(`Entrega confirmada para el pedido ${delivery.orderId}.`);
+        const orderNumber = validation.kind === 'valid' ? validation.order.orderNumber : null;
+        toast.success(`Entrega confirmada para el pedido ${orderNumber ?? delivery.orderNumber ?? 'seleccionado'}.`);
       }
       setCode('');
       resetValidation();
@@ -157,7 +153,7 @@ const DeliveriesPage: React.FC<DeliveriesPageProps> = () => {
     async (toPage: number, storeOverride = storeId) => {
       const store = storeOverride.trim();
       if (!store) {
-        setHistoryError('Ingresa el ID de la tienda para ver su historial.');
+        setHistoryError('Selecciona una tienda para ver su historial.');
         return;
       }
       setHistoryLoading(true);
@@ -180,7 +176,7 @@ const DeliveriesPage: React.FC<DeliveriesPageProps> = () => {
         setHistoryLoading(false);
       }
     },
-    [api, storeId, orderDir, methodFilter],
+    [api, methodFilter, orderDir, storeId],
   );
 
   const resolveHistoryStoreId = useCallback(async () => {
@@ -188,24 +184,54 @@ const DeliveriesPage: React.FC<DeliveriesPageProps> = () => {
     if (currentStore) return currentStore;
 
     const profileStore = (userProfile as { storeId?: string } | null)?.storeId?.trim();
-    if (profileStore) {
-      setStoreId(profileStore);
-      return profileStore;
+    const stores = myStores.length > 0 ? myStores : await getMyStores(await getToken());
+    const match = stores.find((s) => s.id === profileStore) ?? stores[0];
+    if (match) {
+      setStoreId(match.id);
+      setStoreQuery(match.name);
+      return match.id;
     }
+    return '';
+  }, [getToken, storeId, userProfile, myStores]);
 
-    const token = await getToken();
-    const stores = await getMyStores(token);
-    const firstStore = stores[0]?.id ?? '';
-    if (firstStore) setStoreId(firstStore);
-    return firstStore;
-  }, [getToken, storeId, userProfile]);
-
-  // Prefill del store del vendedor si el perfil lo trae (mejor recognition que recall).
+  // Carga las tiendas del vendedor una vez, para que el buscador de historial filtre por
+  // nombre (coincidencia parcial) en vez de exigir el ID de la tienda, y para dejar
+  // preseleccionada la tienda del perfil (mejor recognition que recall).
   useEffect(() => {
-    const profileStore = (userProfile as { storeId?: string } | null)?.storeId;
-    if (profileStore && !storeId) setStoreId(profileStore);
+    let cancelled = false;
+    (async () => {
+      try {
+        const token = await getToken();
+        const stores = await getMyStores(token);
+        if (cancelled) return;
+        setMyStores(stores);
+        if (storeId) return;
+        const profileStore = (userProfile as { storeId?: string } | null)?.storeId;
+        const preselected = stores.find((s) => s.id === profileStore) ?? stores[0];
+        if (preselected) {
+          setStoreId(preselected.id);
+          setStoreQuery(preselected.name);
+        }
+      } catch {
+        // Silencioso: el vendedor puede escribir el nombre igual y reintentar "Buscar".
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userProfile]);
+  }, []);
+
+  const filteredStores =
+    storeQuery.trim().length === 0
+      ? myStores
+      : myStores.filter((s) => s.name.toLowerCase().includes(storeQuery.trim().toLowerCase()));
+
+  const selectStore = (store: Store) => {
+    setStoreId(store.id);
+    setStoreQuery(store.name);
+    setStoreDropdownOpen(false);
+  };
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -268,16 +294,24 @@ const DeliveriesPage: React.FC<DeliveriesPageProps> = () => {
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-2">
-                  <div className="flex min-h-[150px] flex-col justify-between rounded-2xl border border-yellow-100 bg-yellow-50/60 p-4">
+                  <div className="flex min-h-[150px] flex-col justify-between rounded-2xl border border-amber-100 bg-white p-4">
                     <div className="flex items-center gap-2 text-sm font-bold text-amber-700">
                       <Camera size={17} aria-hidden="true" />
                       Cámara
                     </div>
+                    <div className="flex flex-1 items-center justify-center py-3" aria-hidden="true">
+                      <div className="inline-flex h-14 w-14 items-center justify-center rounded-xl border border-amber-100 bg-amber-50 text-amber-500">
+                        <QrCode size={32} strokeWidth={1.8} />
+                      </div>
+                    </div>
                     <button
                       onClick={() => setScannerOpen(true)}
-                      className="mt-4 inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-yellow-400 to-yellow-500 px-4 py-3 text-sm font-bold text-white shadow-md shadow-yellow-200/60 transition-all hover:from-yellow-500 hover:to-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-300"
+                      className="inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-xl border border-amber-200 bg-white px-4 py-3 text-sm font-semibold text-amber-800 shadow-sm transition hover:border-amber-300 hover:bg-amber-50 focus:outline-none focus:ring-2 focus:ring-yellow-300"
                     >
-                      <Camera size={18} /> Escanear QR
+                      <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-amber-100 text-amber-600">
+                        <ScanLine size={18} aria-hidden="true" />
+                      </span>
+                      Escanear QR
                     </button>
                   </div>
 
@@ -324,16 +358,21 @@ const DeliveriesPage: React.FC<DeliveriesPageProps> = () => {
                       </div>
                       <div className="sm:col-span-2">
                         <dt className="text-gray-400">Pedido</dt>
-                        <dd className="font-medium text-gray-800 break-all">{validation.order.orderId}</dd>
+                        <dd className="font-medium text-gray-800">
+                          {validation.order.orderNumber || 'Código de pedido no disponible'}
+                        </dd>
                       </div>
                     </dl>
                     {/* Con un código válido, la única acción es confirmar por QR/código (UC-04).
                         La entrega manual y la fallida viven abajo, para el caso SIN código. */}
                     <button
                       onClick={() => setConfirmOpen(true)}
-                      className="w-full inline-flex items-center justify-center gap-2 py-3 rounded-xl bg-gradient-to-r from-yellow-400 to-yellow-500 text-white font-semibold hover:from-yellow-500 hover:to-yellow-600 transition-all"
+                      className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-amber-200 bg-white px-4 py-3 text-sm font-semibold text-amber-800 shadow-sm transition hover:border-amber-300 hover:bg-amber-50 focus:outline-none focus:ring-2 focus:ring-yellow-300"
                     >
-                      <PackageCheck size={18} /> Confirmar entrega
+                      <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-amber-100 text-amber-600">
+                        <PackageCheck size={17} aria-hidden="true" />
+                      </span>
+                      Confirmar entrega
                     </button>
                   </div>
                 )}
@@ -346,46 +385,53 @@ const DeliveriesPage: React.FC<DeliveriesPageProps> = () => {
                 )}
               </section>
 
-              {/* Gestión manual por pedido (UC-05 / UC-06) */}
-              <section className="rounded-2xl bg-white/70 backdrop-blur-xl border border-white/60 shadow-sm p-6 space-y-4">
-                <div className="flex items-center gap-2">
-                  <ClipboardX size={20} className="text-yellow-500" />
-                  <h2 className="text-lg font-bold text-gray-900">Entrega sin código</h2>
-                </div>
-                <p className="text-sm text-gray-500">
-                  Úsala cuando <strong>no hay un código que validar</strong>: el comprador no puede mostrar el QR
-                  (cámara falla, código vencido) o no se presentó. Solo necesitas el ID del pedido. Requiere
-                  acceso a la tienda del pedido.
-                </p>
-                <FormInput label="ID del pedido" value={orderId} onChange={setOrderId} placeholder="ord_123" />
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <button
-                    onClick={() => setManualOpen(true)}
-                    disabled={!orderId.trim()}
-                    className="flex-1 inline-flex items-center justify-center gap-2 py-3 rounded-xl bg-white border border-gray-200 text-gray-700 font-semibold hover:bg-yellow-50 hover:text-yellow-600 transition-all disabled:opacity-50"
-                  >
-                    <PackageCheck size={16} /> Entrega manual
-                  </button>
-                  <button
-                    onClick={() => setFailureOpen(true)}
-                    disabled={!orderId.trim()}
-                    className="flex-1 inline-flex items-center justify-center gap-2 py-3 rounded-xl bg-white border border-red-200 text-red-600 font-semibold hover:bg-red-50 transition-all disabled:opacity-50"
-                  >
-                    <XCircle size={16} /> Marcar fallida
-                  </button>
-                </div>
-              </section>
             </div>
 
             {/* ── Columna derecha: historial (UC-10) ── */}
             <section className="rounded-2xl bg-white/60 backdrop-blur-xl border border-white/50 shadow-sm p-6 space-y-4">
               <div className="flex items-center gap-2">
-                <Store size={20} className="text-yellow-500" />
+                <StoreIcon size={20} className="text-yellow-500" />
                 <h2 className="text-lg font-bold text-gray-900">Historial de entregas</h2>
               </div>
 
               <div className="space-y-3">
-                <FormInput label="ID de la tienda" value={storeId} onChange={setStoreId} placeholder="str_9" />
+                <div className="relative">
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Tienda</label>
+                  <input
+                    type="text"
+                    value={storeQuery}
+                    onChange={(e) => {
+                      setStoreQuery(e.target.value);
+                      setStoreId('');
+                      setStoreDropdownOpen(true);
+                    }}
+                    onFocus={() => setStoreDropdownOpen(true)}
+                    onBlur={() => setTimeout(() => setStoreDropdownOpen(false), 150)}
+                    placeholder="Escribe el nombre de tu tienda…"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm bg-white/60 outline-none focus:border-yellow-400 focus:ring-2 focus:ring-yellow-100"
+                  />
+                  {storeDropdownOpen && filteredStores.length > 0 && (
+                    <div className="absolute z-10 mt-1 w-full max-h-56 overflow-y-auto rounded-xl border border-gray-200 bg-white shadow-lg">
+                      {filteredStores.map((s) => (
+                        <button
+                          key={s.id}
+                          type="button"
+                          onMouseDown={() => selectStore(s)}
+                          className={`flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm transition hover:bg-yellow-50 ${
+                            s.id === storeId ? 'bg-yellow-50 text-amber-800 font-semibold' : 'text-gray-700'
+                          }`}
+                        >
+                          {s.name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {storeDropdownOpen && storeQuery.trim().length > 0 && filteredStores.length === 0 && (
+                    <div className="absolute z-10 mt-1 w-full rounded-xl border border-gray-200 bg-white p-3 text-sm text-gray-500 shadow-lg">
+                      No encontramos una tienda tuya con ese nombre.
+                    </div>
+                  )}
+                </div>
                 <div className="flex flex-wrap gap-3">
                   <div className="flex-1 min-w-[140px]">
                     <label className="block text-sm font-semibold text-gray-700 mb-1">Método</label>
@@ -394,7 +440,7 @@ const DeliveriesPage: React.FC<DeliveriesPageProps> = () => {
                       onChange={(e) => setMethodFilter(e.target.value as typeof methodFilter)}
                       className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm bg-white/60 outline-none focus:border-yellow-400 focus:ring-2 focus:ring-yellow-100"
                     >
-                      <option value="">Todos (incluye fallidas)</option>
+                      <option value="">Todas</option>
                       <option value="QR">Código QR</option>
                       <option value="MANUAL">Manual</option>
                     </select>
@@ -414,9 +460,12 @@ const DeliveriesPage: React.FC<DeliveriesPageProps> = () => {
                 <button
                   onClick={() => loadHistory(1)}
                   disabled={historyLoading || !storeId.trim()}
-                  className="w-full inline-flex items-center justify-center gap-2 py-3 rounded-xl bg-yellow-400 text-white font-semibold shadow-md shadow-yellow-200/60 hover:bg-yellow-500 transition-all disabled:opacity-50"
+                  className="inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-xl border border-amber-200 bg-white px-4 py-3 text-sm font-semibold text-amber-800 shadow-sm transition hover:border-amber-300 hover:bg-amber-50 focus:outline-none focus:ring-2 focus:ring-yellow-300 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  <Search size={16} /> {historyLoading ? 'Buscando…' : 'Buscar entregas'}
+                  <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-amber-100 text-amber-600">
+                    <Search size={17} aria-hidden="true" />
+                  </span>
+                  {historyLoading ? 'Buscando…' : 'Buscar entregas'}
                 </button>
               </div>
 
@@ -438,7 +487,9 @@ const DeliveriesPage: React.FC<DeliveriesPageProps> = () => {
                       {history.data.map((d) => (
                         <div key={d.id} className="rounded-xl bg-white/70 border border-white/60 p-3 text-sm">
                           <div className="flex items-center justify-between gap-2">
-                            <span className="font-semibold text-gray-800 break-all">{d.orderId}</span>
+                            <span className="font-semibold text-gray-800">
+                              {d.orderNumber ?? 'Código de pedido no disponible'}
+                            </span>
                             {d.method ? (
                               <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700">
                                 {deliveryMethodLabel[d.method]}
@@ -450,7 +501,8 @@ const DeliveriesPage: React.FC<DeliveriesPageProps> = () => {
                             )}
                           </div>
                           <p className="text-xs text-gray-500 mt-1">
-                            {formatDateTime(d.deliveredAt)} · por {d.confirmedByUserId}
+                            {formatDateTime(d.deliveredAt)} · por{' '}
+                            {d.confirmedByUserName ?? 'Vendedor de la tienda'}
                           </p>
                           {d.note && <p className="text-xs text-gray-600 mt-1 italic">“{d.note}”</p>}
                         </div>
@@ -510,7 +562,9 @@ const DeliveriesPage: React.FC<DeliveriesPageProps> = () => {
           <p className="text-sm text-gray-600">
             Vas a confirmar la entrega del pedido{' '}
             <span className="font-semibold">
-              {validation.kind === 'valid' ? validation.order.orderId : ''}
+              {validation.kind === 'valid'
+                ? validation.order.orderNumber || 'seleccionado'
+                : ''}
             </span>
             . El comprador será notificado y se liberará el pago a la tienda.
           </p>
@@ -531,186 +585,7 @@ const DeliveriesPage: React.FC<DeliveriesPageProps> = () => {
           </div>
         </div>
       </ModalShell>
-
-      {/* Entrega manual (UC-05) */}
-      <ManualDeliveryModal
-        open={manualOpen}
-        orderId={orderId}
-        onClose={() => setManualOpen(false)}
-        onDone={() => {
-          setManualOpen(false);
-          if (storeId) void loadHistory(1);
-        }}
-      />
-
-      {/* Entrega fallida (UC-06) */}
-      <DeliveryFailureModal
-        open={failureOpen}
-        orderId={orderId}
-        onClose={() => setFailureOpen(false)}
-        onDone={() => {
-          setFailureOpen(false);
-          if (storeId) void loadHistory(1);
-        }}
-      />
     </div>
-  );
-};
-
-/** Modal de entrega manual (UC-05): motivo obligatorio + nota opcional. */
-const ManualDeliveryModal: React.FC<{
-  open: boolean;
-  orderId: string;
-  onClose: () => void;
-  onDone: () => void;
-}> = ({ open, orderId, onClose, onDone }) => {
-  const api = useFulfillmentApi();
-  const [reason, setReason] = useState('');
-  const [note, setNote] = useState('');
-  const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    if (open) {
-      setReason('');
-      setNote('');
-    }
-  }, [open]);
-
-  const submit = async () => {
-    if (!reason.trim()) return;
-    setSaving(true);
-    try {
-      const result = await api.manualDelivery(orderId, {
-        reason: reason.trim(),
-        note: note.trim() || undefined,
-      });
-      if (result.alreadyDelivered) {
-        toast.warning(`Este pedido ya había sido entregado.`);
-      } else {
-        toast.success(`Entrega manual registrada para ${orderId}.`);
-      }
-      onDone();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'No pudimos registrar la entrega manual.');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <ModalShell open={open} onClose={onClose} title="Entrega manual" subtitle={`Pedido ${orderId}`}>
-      <div className="space-y-4">
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1">
-            Motivo <span className="text-red-500">*</span>
-          </label>
-          <textarea
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            rows={2}
-            placeholder="Ej.: La cámara del vendedor no escaneaba el QR."
-            className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm bg-white/60 outline-none focus:border-yellow-400 focus:ring-2 focus:ring-yellow-100"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1">Nota (opcional)</label>
-          <textarea
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            rows={2}
-            placeholder="Detalle adicional, ej.: el comprador mostró su cédula."
-            className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm bg-white/60 outline-none focus:border-yellow-400 focus:ring-2 focus:ring-yellow-100"
-          />
-        </div>
-        <button
-          onClick={submit}
-          disabled={saving || !reason.trim()}
-          className="w-full py-3 rounded-xl bg-gradient-to-r from-yellow-400 to-yellow-500 text-white font-semibold hover:from-yellow-500 hover:to-yellow-600 transition-all disabled:opacity-50"
-        >
-          {saving ? 'Registrando…' : 'Registrar entrega manual'}
-        </button>
-      </div>
-    </ModalShell>
-  );
-};
-
-/** Modal de entrega fallida (UC-06): motivo tipificado; OTHER exige nota. */
-const DeliveryFailureModal: React.FC<{
-  open: boolean;
-  orderId: string;
-  onClose: () => void;
-  onDone: () => void;
-}> = ({ open, orderId, onClose, onDone }) => {
-  const api = useFulfillmentApi();
-  const [reason, setReason] = useState<DeliveryFailureReason>('CUSTOMER_NO_SHOW');
-  const [note, setNote] = useState('');
-  const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    if (open) {
-      setReason('CUSTOMER_NO_SHOW');
-      setNote('');
-    }
-  }, [open]);
-
-  const noteRequired = reason === 'OTHER';
-  const canSubmit = !noteRequired || note.trim().length > 0;
-
-  const submit = async () => {
-    if (!canSubmit) return;
-    setSaving(true);
-    try {
-      await api.deliveryFailure(orderId, { reason, note: note.trim() || undefined });
-      toast.success(`Entrega fallida registrada para ${orderId}.`);
-      onDone();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'No pudimos registrar la entrega fallida.');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <ModalShell open={open} onClose={onClose} title="Registrar entrega fallida" subtitle={`Pedido ${orderId}`}>
-      <div className="space-y-4">
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1">Motivo</label>
-          <select
-            value={reason}
-            onChange={(e) => setReason(e.target.value as DeliveryFailureReason)}
-            className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm bg-white/60 outline-none focus:border-yellow-400 focus:ring-2 focus:ring-yellow-100"
-          >
-            {FAILURE_REASONS.map((r) => (
-              <option key={r} value={r}>
-                {failureReasonLabel[r]}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1">
-            Nota {noteRequired && <span className="text-red-500">*</span>}
-          </label>
-          <textarea
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            rows={2}
-            placeholder={noteRequired ? 'Describe qué pasó (obligatorio).' : 'Detalle opcional.'}
-            className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm bg-white/60 outline-none focus:border-yellow-400 focus:ring-2 focus:ring-yellow-100"
-          />
-          {noteRequired && (
-            <p className="text-xs text-gray-400 mt-1">Cuando el motivo es “Otro”, la nota es obligatoria.</p>
-          )}
-        </div>
-        <button
-          onClick={submit}
-          disabled={saving || !canSubmit}
-          className="w-full py-3 rounded-xl bg-red-500 text-white font-semibold hover:bg-red-600 transition-all disabled:opacity-50"
-        >
-          {saving ? 'Registrando…' : 'Registrar fallo'}
-        </button>
-      </div>
-    </ModalShell>
   );
 };
 

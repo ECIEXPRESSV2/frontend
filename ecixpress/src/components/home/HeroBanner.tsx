@@ -17,6 +17,7 @@ interface HeroBannerProps {
  * controles fijos (toggle, buscador y cápsula del avatar).
  */
 const HeroBanner: React.FC<HeroBannerProps> = ({ userName, onNewOrder, sectionToggle }) => {
+  const displayName = userName.charAt(0).toUpperCase() + userName.slice(1);
   return (
     <section className="theme-surface relative overflow-hidden rounded-[32px] border border-white/60 bg-[linear-gradient(140deg,rgb(var(--accent-rgb)/0.32)_0%,rgba(255,255,255,0.60)_42%,rgb(var(--accent-rgb)/0.14)_72%,rgb(var(--accent-rgb)/0.36)_100%)] backdrop-blur-2xl [box-shadow:0_28px_50px_-28px_rgb(var(--accent-rgb)/0.45)]">
       {/* Fondos decorativos de acento */}
@@ -28,7 +29,7 @@ const HeroBanner: React.FC<HeroBannerProps> = ({ userName, onNewOrder, sectionTo
         <div className="animate-fade-in-up space-y-4">
           {sectionToggle && <div className="md:hidden">{sectionToggle}</div>}
           <h1 className="font-display text-2xl font-semibold leading-tight text-gray-900 md:text-[clamp(1.6rem,2.6vw,2.4rem)]">
-            Bienvenido {userName}, a <span className="text-[var(--accent-600)]">ECIEXPRESS</span>
+            Te damos la bienvenida, {displayName}, a <span className="text-[var(--accent-600)]">ECIEXPRESS</span>
           </h1>
 
           <p className="max-w-md text-sm text-gray-600 md:text-base">
