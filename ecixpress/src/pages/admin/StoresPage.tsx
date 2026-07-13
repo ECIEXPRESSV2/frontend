@@ -17,6 +17,7 @@ import {
   Search,
   Store as StoreIcon,
   Tag,
+  TrendingUp,
   Users,
   X,
 } from 'lucide-react';
@@ -38,10 +39,11 @@ import { getUsers, type UserItem } from '../../services/userService';
 import { deletePageCache, getPageCache, pageCacheKeys, setPageCache } from '../../services/pageCache';
 import { fileToDataUrl, compressImageToWebp } from '../../services/storeAssets';
 import StoreGalleryManager from '../../components/store/StoreGalleryManager';
+import StoreFinancePanel from '../../components/store/StoreFinancePanel';
 import { useRefreshOnScrollTop } from '../../hooks/useRefreshOnScrollTop';
 import TrianglePattern from '../../components/home/TrianglePattern';
 
-type TabType = 'schedules' | 'staff' | 'gallery' | 'menu';
+type TabType = 'schedules' | 'staff' | 'gallery' | 'menu' | 'finance';
 type StatusAction = { store: Store; nextStatus: Store['status'] } | null;
 
 type StoreDetailCache = {
@@ -116,6 +118,7 @@ const DETAIL_TABS: Array<{ id: TabType; label: string; icon: typeof StoreIcon }>
   { id: 'staff', label: 'Vendedores', icon: Users },
   { id: 'gallery', label: 'Galería', icon: Images },
   { id: 'menu', label: 'Menú', icon: Tag },
+  { id: 'finance', label: 'Finanzas', icon: TrendingUp },
 ];
 
 const STORES_PAGE_SIZE = 6;
@@ -797,6 +800,14 @@ const StoresPage: React.FC<StoresPageProps> = ({ vendorMode = false }) => {
       return (
         <div className="rounded-2xl border border-gray-100 bg-white p-4 md:p-5">
           <StoreGalleryManager storeId={selectedStore.id} />
+        </div>
+      );
+    }
+
+    if (activeTab === 'finance') {
+      return (
+        <div className="rounded-2xl border border-gray-100 bg-white p-4 md:p-5">
+          <StoreFinancePanel storeId={selectedStore.id} />
         </div>
       );
     }
