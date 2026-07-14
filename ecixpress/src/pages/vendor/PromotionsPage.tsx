@@ -81,7 +81,7 @@ const PromotionsPage: React.FC = () => {
     }
   };
 
-  useEffect(() => { void load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [storeId]);
+  useEffect(() => { void load();   }, [storeId]);
 
   useRefreshOnScrollTop(load, { disabled: loading || !storeId });
 

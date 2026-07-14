@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { io, Socket } from 'socket.io-client';
 import { ArrowLeft, RefreshCw, MessageCircle, Store as StoreIcon, User, ChevronRight, ChevronLeft, XCircle, Loader2, Search, X } from 'lucide-react';
@@ -9,6 +9,7 @@ import { useOrdersApi } from '../../hooks/useOrdersApi';
 import { useRefreshOnScrollTop } from '../../hooks/useRefreshOnScrollTop';
 import { getMyStores } from '../../services/storeService';
 import { ORDERS_API_BASE_URL, type OrderResponse, type OrderStatus } from '../../lib/orders-api';
+import { fulfillmentApi, type FulfillmentIdentity } from '../../lib/fulfillment-api';
 import { formatCOP, formatDateTime } from '../../lib/format';
 import { statusLabel, statusTone, isCancellable } from '../../lib/orders-ui';
 
@@ -33,7 +34,7 @@ const PAGE_SIZE = 4;
 
 const VendorOrdersPage: React.FC<VendorOrdersPageProps> = ({ onBack }) => {
   const navigate = useNavigate();
-  const { userProfile, getToken } = useAuth();
+  const { userProfile, getToken, isAdmin, isVendor } = useAuth();
   const api = useOrdersApi();
 
   const [orders, setOrders] = useState<OrderResponse[]>([]);
@@ -46,12 +47,29 @@ const VendorOrdersPage: React.FC<VendorOrdersPageProps> = ({ onBack }) => {
   const [page, setPage] = useState(1);
 
   const socketRef = useRef<Socket | null>(null);
+  const ordersRef = useRef<OrderResponse[]>([]);
+
+  const subscribeToOrder = useCallback((orderId: string) => {
+    socketRef.current?.emit('order:subscribe', { orderId });
+  }, []);
+
+  const subscribeToAll = useCallback((list: OrderResponse[]) => {
+    const socket = socketRef.current;
+    if (socket?.connected) {
+      list.forEach((o) => socket.emit('order:subscribe', { orderId: o.id }));
+    }
+  }, []);
 
   const upsertOrder = (order: OrderResponse) =>
     setOrders((current) => {
       const exists = current.some((o) => o.id === order.id);
       return exists ? current.map((o) => (o.id === order.id ? order : o)) : [order, ...current];
     });
+
+  const fulfillmentIdentity = useMemo((): FulfillmentIdentity => ({
+    userId: userProfile?.id ?? '',
+    role: isAdmin() ? 'ADMIN' : isVendor() ? 'VENDOR' : 'CUSTOMER',
+  }), [userProfile?.id, isAdmin, isVendor]);
 
   const load = async () => {
     if (!userProfile?.id) return;
@@ -67,6 +85,8 @@ const VendorOrdersPage: React.FC<VendorOrdersPageProps> = ({ onBack }) => {
         .filter((order) => order.status !== 'DRAFT')
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
       setOrders(merged);
+      ordersRef.current = merged;
+      subscribeToAll(merged);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'No se pudieron cargar los pedidos');
     } finally {
@@ -94,8 +114,12 @@ const VendorOrdersPage: React.FC<VendorOrdersPageProps> = ({ onBack }) => {
       if (!active) return;
       socket = io(`${ORDERS_API_BASE_URL}/communication`, { transports: ['websocket'], auth: { token } });
       socketRef.current = socket;
+      socket.on('connect', () => {
+        subscribeToAll(ordersRef.current);
+      });
       socket.on('order:new', (payload: OrderResponse) => {
         if (payload.status !== 'DRAFT') upsertOrder(payload);
+        subscribeToOrder(payload.id);
       });
       socket.on('order:status-updated', (payload: OrderResponse) => upsertOrder(payload));
     })();
@@ -105,7 +129,7 @@ const VendorOrdersPage: React.FC<VendorOrdersPageProps> = ({ onBack }) => {
       socketRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [subscribeToAll, subscribeToOrder]);
 
   const advanceStatus = async (order: OrderResponse) => {
     const next = NEXT_STATUS[order.status];
@@ -128,6 +152,21 @@ const VendorOrdersPage: React.FC<VendorOrdersPageProps> = ({ onBack }) => {
         actorId: userProfile?.id,
       });
       upsertOrder(updated);
+
+      // Al avanzar a DELIVERED también notificamos a Fulfillment para que publique
+      // `delivery.confirmed` y se disparen las notificaciones al comprador.
+      if (next.status === 'DELIVERED') {
+        try {
+          await fulfillmentApi.manualDelivery(
+            order.id,
+            { reason: 'Entrega directa desde el panel de pedidos' },
+            fulfillmentIdentity,
+          );
+        } catch {
+          // No bloqueante: el estado ya se actualizó. El vendedor puede usar la
+          // pantalla de entregas si necesita reconfirmar.
+        }
+      }
     } catch (e) {
       setActionMsg(e instanceof Error ? e.message : 'No se pudo actualizar el estado');
     } finally {
