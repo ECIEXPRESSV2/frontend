@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { Suspense, lazy, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
 import { Activity, RefreshCw, Play, Store, Gauge, Loader2, X, Radio, Send, Inbox, AlertTriangle, Layers, GitBranch, ExternalLink, TrendingUp, Clock, Percent, Save, PiggyBank, ChevronLeft, ChevronRight } from 'lucide-react';
 import Sidebar from '../../components/home/Sidebar';
@@ -187,6 +187,12 @@ const MonitoringPage: React.FC = () => {
     for (const p of latency?.points ?? []) map[p.service] = p; // points vienen ordenados asc
     return map;
   }, [latency]);
+  // Serie completa (últimos 10 min) por servicio, para la mini-gráfica de peticiones de la tarjeta.
+  const seriesByService = useMemo(() => {
+    const map: Record<string, LatencyPoint[]> = {};
+    for (const p of latency?.points ?? []) (map[p.service] ??= []).push(p);
+    return map;
+  }, [latency]);
   const latencyEnabled = latency?.enabled ?? false;
 
   const selectedQuery = useMemo(
@@ -270,13 +276,15 @@ const MonitoringPage: React.FC = () => {
                 </div>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                   {(health ?? []).map((s) => {
-                    const pt = latestByService[APP_ROLE_NAME[s.service] ?? s.service];
+                    const roleName = APP_ROLE_NAME[s.service] ?? s.service;
+                    const pt = latestByService[roleName];
                     const ms = pt?.avgMs;
+                    const series = seriesByService[roleName] ?? [];
                     return (
                       <button
                         key={s.service}
                         onClick={() => setPopupService({ key: s.service, label: s.label })}
-                        className="rounded-2xl border border-white/70 bg-white/85 p-4 text-left shadow-sm backdrop-blur-xl transition hover:border-amber-200 hover:shadow-md"
+                        className="flex flex-col gap-3 rounded-2xl border border-white/70 bg-white/85 p-5 text-left shadow-sm backdrop-blur-xl transition-all duration-200 hover:-translate-y-1 hover:scale-[1.02] hover:border-amber-300 hover:shadow-xl"
                       >
                         <div className="flex items-center justify-between">
                           <span className="font-semibold text-gray-900">{s.label}</span>
@@ -285,12 +293,13 @@ const MonitoringPage: React.FC = () => {
                             {s.up ? 'Activo' : 'Caído'}
                           </span>
                         </div>
-                        <div className="mt-2 flex items-center gap-1.5 text-sm text-gray-500">
+                        <div className="flex items-center gap-1.5 text-sm text-gray-500">
                           <Gauge size={14} className="text-gray-400" />
                           {ms != null
                             ? <><span className="font-semibold text-gray-800">{Math.round(ms).toLocaleString('es-CO')} ms</span><span className="text-xs text-gray-400">· {Math.round(pt?.requests ?? 0).toLocaleString('es-CO')} req/min</span></>
                             : <span className="text-xs text-gray-400">{latencyEnabled ? 'sin tráfico este minuto' : 'latencia/tráfico solo en desplegado'}</span>}
                         </div>
+                        <MiniSparkline values={series.map((p) => p.requests)} />
                       </button>
                     );
                   })}
@@ -748,6 +757,33 @@ const DeployBlock: React.FC<{ deploy: ServiceDeploy | null }> = ({ deploy }) => 
   );
 };
 
+/** Mini vista previa (sin ejes) de la serie de peticiones/min de los últimos 10 min, dentro
+ *  de la tarjeta de salud de un microservicio. */
+const MiniSparkline: React.FC<{ values: number[] }> = ({ values }) => {
+  const gradientId = useId();
+  if (values.length < 2) {
+    return <div className="flex h-12 items-center justify-center text-[11px] text-gray-300">Sin datos suficientes</div>;
+  }
+  const W = 200, H = 48, P = 2;
+  const maxY = Math.max(...values) * 1.15 || 1;
+  const sx = (i: number) => P + (i / (values.length - 1)) * (W - 2 * P);
+  const sy = (v: number) => H - P - (v / maxY) * (H - 2 * P);
+  const line = values.map((v, i) => `${i === 0 ? 'M' : 'L'} ${sx(i).toFixed(1)} ${sy(v).toFixed(1)}`).join(' ');
+  const area = `${line} L ${sx(values.length - 1).toFixed(1)} ${H - P} L ${sx(0).toFixed(1)} ${H - P} Z`;
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="h-12 w-full" preserveAspectRatio="none" role="img" aria-label="Peticiones por minuto (últimos 10 min)">
+      <defs>
+        <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="rgb(245 185 66 / 0.35)" />
+          <stop offset="100%" stopColor="rgb(245 185 66 / 0.02)" />
+        </linearGradient>
+      </defs>
+      <path d={area} fill={`url(#${gradientId})`} />
+      <path d={line} fill="none" stroke="rgb(234 165 43)" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
+    </svg>
+  );
+};
+
 /** Gráfica de área SVG en amarillo (como la referencia). */
 const AreaChart: React.FC<{ points: { t: number; y: number }[]; unit: string }> = ({ points, unit }) => {
   const W = 560, H = 160, P = 8;
@@ -820,7 +856,7 @@ const StoreEarningsCard: React.FC<{
     <button
       type="button"
       onClick={onClick}
-      className={`flex w-52 flex-shrink-0 snap-start flex-col items-center gap-4 rounded-3xl border p-6 text-center shadow-sm transition hover:shadow-md ${tone.card}`}
+      className={`flex w-52 flex-shrink-0 snap-start flex-col items-center gap-4 rounded-3xl border p-6 text-center shadow-sm transition-all duration-200 hover:-translate-y-1 hover:scale-[1.04] hover:shadow-xl ${tone.card}`}
     >
       <div className={`flex h-16 w-16 items-center justify-center overflow-hidden rounded-full ${tone.circle}`}>
         {store.imageUrl ? (
