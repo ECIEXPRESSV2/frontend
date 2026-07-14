@@ -1,6 +1,6 @@
-import React, { Suspense, lazy, useCallback, useEffect, useMemo, useState } from 'react';
+import React, { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
-import { Activity, RefreshCw, Play, Store, Gauge, Loader2, X, Radio, Send, Inbox, AlertTriangle, Layers, GitBranch, ExternalLink, TrendingUp, Clock, Percent, Save } from 'lucide-react';
+import { Activity, RefreshCw, Play, Store, Gauge, Loader2, X, Radio, Send, Inbox, AlertTriangle, Layers, GitBranch, ExternalLink, TrendingUp, Clock, Percent, Save, PiggyBank, ChevronLeft, ChevronRight } from 'lucide-react';
 import Sidebar from '../../components/home/Sidebar';
 import { CardSkeleton } from '../../components/common/LoadingSkeleton';
 import TrianglePattern from '../../components/home/TrianglePattern';
@@ -91,6 +91,10 @@ const MonitoringPage: React.FC = () => {
   const [storeEarnings, setStoreEarnings] = useState<Record<string, StoreEarnings>>({});
   const [earningsLoading, setEarningsLoading] = useState(true);
   const [earningsStore, setEarningsStore] = useState<StoreT | null>(null);
+  const earningsScrollRef = useRef<HTMLDivElement>(null);
+  const scrollEarnings = (dir: 1 | -1) => {
+    earningsScrollRef.current?.scrollBy({ left: dir * 460, behavior: 'smooth' });
+  };
 
   const [catalog, setCatalog] = useState<QuickQueryMeta[]>([]);
   const [selectedKey, setSelectedKey] = useState<string>('');
@@ -311,15 +315,40 @@ const MonitoringPage: React.FC = () => {
                 ) : stores.length === 0 ? (
                   <p className="py-6 text-center text-sm text-gray-400">Sin tiendas.</p>
                 ) : (
-                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-                    {stores.map((s) => (
-                      <StoreEarningsCard
-                        key={s.id}
-                        store={s}
-                        earnings={storeEarnings[s.id]}
-                        onClick={() => setEarningsStore(s)}
-                      />
-                    ))}
+                  <div className="relative">
+                    <div
+                      ref={earningsScrollRef}
+                      className="flex gap-4 overflow-x-auto scroll-smooth snap-x snap-mandatory pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                    >
+                      {stores.map((s) => (
+                        <StoreEarningsCard
+                          key={s.id}
+                          store={s}
+                          earnings={storeEarnings[s.id]}
+                          onClick={() => setEarningsStore(s)}
+                        />
+                      ))}
+                    </div>
+                    {stores.length > 3 && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => scrollEarnings(-1)}
+                          aria-label="Anterior"
+                          className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-3 flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 shadow-md hover:bg-gray-50 hover:text-gray-800"
+                        >
+                          <ChevronLeft size={18} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => scrollEarnings(1)}
+                          aria-label="Siguiente"
+                          className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-3 flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 shadow-md hover:bg-gray-50 hover:text-gray-800"
+                        >
+                          <ChevronRight size={18} />
+                        </button>
+                      </>
+                    )}
                   </div>
                 )}
               </section>
@@ -761,29 +790,39 @@ const marginOf = (e: StoreEarnings | undefined): number | null => {
   return (e.totals.netAmount / e.totals.grossAmount) * 100;
 };
 
-/** Tarjeta de tienda: solo logo + nombre. El fondo comunica el margen del mes: rojo si es
- *  negativo, naranja pálido si es menor a 10%, verde si es 10% o más. */
+type EarningsTone = 'neutral' | 'red' | 'orange' | 'green';
+
+const toneOf = (margin: number | null): EarningsTone => {
+  if (margin === null) return 'neutral';
+  if (margin < 0) return 'red';
+  if (margin < 10) return 'orange';
+  return 'green';
+};
+
+const TONE_STYLES: Record<EarningsTone, { card: string; circle: string; icon: string; text: string }> = {
+  neutral: { card: 'border-gray-200 bg-white hover:border-gray-300', circle: 'bg-gray-100', icon: 'text-gray-400', text: 'text-gray-400' },
+  red:     { card: 'border-red-300 bg-red-50 hover:border-red-400', circle: 'bg-red-100', icon: 'text-red-500', text: 'text-red-600' },
+  orange:  { card: 'border-orange-200 bg-orange-50/80 hover:border-orange-300', circle: 'bg-orange-100', icon: 'text-orange-500', text: 'text-orange-600' },
+  green:   { card: 'border-green-300 bg-green-50 hover:border-green-400', circle: 'bg-green-100', icon: 'text-green-600', text: 'text-green-700' },
+};
+
+/** Tarjeta de tienda: logo, margen del mes (%) y alcancía, todo coloreado según el mismo
+ *  tono — rojo si el margen es negativo, naranja pálido si es menor a 10%, verde si es 10%
+ *  o más. Ancho fijo para vivir dentro del carrusel horizontal. */
 const StoreEarningsCard: React.FC<{
   store: StoreT;
   earnings?: StoreEarnings;
   onClick: () => void;
 }> = ({ store, earnings, onClick }) => {
   const margin = marginOf(earnings);
-  const tone =
-    margin === null
-      ? 'border-gray-200 bg-white hover:border-gray-300'
-      : margin < 0
-        ? 'border-red-300 bg-red-50 hover:border-red-400'
-        : margin < 10
-          ? 'border-orange-200 bg-orange-50/80 hover:border-orange-300'
-          : 'border-green-300 bg-green-50 hover:border-green-400';
+  const tone = TONE_STYLES[toneOf(margin)];
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`flex flex-col items-center gap-2 rounded-2xl border p-4 text-center shadow-sm transition hover:shadow-md ${tone}`}
+      className={`flex w-52 flex-shrink-0 snap-start flex-col items-center gap-4 rounded-3xl border p-6 text-center shadow-sm transition hover:shadow-md ${tone.card}`}
     >
-      <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-white shadow">
+      <div className={`flex h-16 w-16 items-center justify-center overflow-hidden rounded-full ${tone.circle}`}>
         {store.imageUrl ? (
           <img
             src={store.imageUrl}
@@ -792,10 +831,22 @@ const StoreEarningsCard: React.FC<{
             onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
           />
         ) : (
-          <Store size={22} className="text-gray-400" />
+          <Store size={26} className={tone.icon} />
         )}
       </div>
-      <span className="line-clamp-2 text-sm font-semibold text-gray-900">{store.name}</span>
+
+      <div>
+        <p className={`text-3xl font-black tabular-nums ${tone.text}`}>
+          {margin === null ? '—' : `${margin.toFixed(1)}%`}
+        </p>
+        <p className="mt-1 text-xs font-semibold text-gray-400">Ganancia del mes</p>
+      </div>
+
+      <span className="line-clamp-2 text-sm font-bold text-gray-900">{store.name}</span>
+
+      <div className={`flex h-12 w-12 items-center justify-center rounded-full ${tone.circle}`}>
+        <PiggyBank size={20} className={tone.icon} />
+      </div>
     </button>
   );
 };
