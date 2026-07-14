@@ -1,11 +1,10 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
-import { TrendingUp, Wallet, Percent, Clock, Save, Loader2, PiggyBank } from 'lucide-react';
+import { TrendingUp, Wallet, Percent, Clock, Loader2, PiggyBank } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import {
   getStoreEarnings,
   getStoreCommission,
-  updatePeakConfig,
   formatCOP,
   PEAK_DAY_CODES,
   getPeakDayLabel,
@@ -17,13 +16,13 @@ interface StoreFinancePanelProps {
   storeId: string;
 }
 
-/** Quita los segundos de un 'HH:mm[:ss]' para poblar un <input type="time">. */
-const toTimeInput = (v: string | null): string => (v ? v.slice(0, 5) : '');
+/** Quita los segundos de un 'HH:mm[:ss]' para mostrarlo compacto. */
+const toTimeDisplay = (v: string | null): string => (v ? v.slice(0, 5) : '—');
 
 /**
  * Panel financiero del vendedor por tienda: ganancias del mes (bruto, descuento por uso de
- * la app y neto) y edición de la franja de hora pico (recargo que paga el comprador), al
- * mismo nivel que el vendedor gestiona su galería y su horario.
+ * la app y neto) y la franja de hora pico vigente. Solo lectura: la hora pico y la comisión
+ * las edita un ADMIN desde el centro de analíticas (Ganancias por tienda).
  */
 const StoreFinancePanel: React.FC<StoreFinancePanelProps> = ({ storeId }) => {
   const { userProfile } = useAuth();
@@ -32,13 +31,6 @@ const StoreFinancePanel: React.FC<StoreFinancePanelProps> = ({ storeId }) => {
   const [earnings, setEarnings] = useState<StoreEarnings | null>(null);
   const [commission, setCommission] = useState<StoreCommissionInfo | null>(null);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-
-  // Estado editable del formulario de hora pico.
-  const [feePercent, setFeePercent] = useState('');
-  const [start, setStart] = useState('');
-  const [end, setEnd] = useState('');
-  const [days, setDays] = useState<string[]>([]);
 
   const load = useCallback(async () => {
     if (!userId) return;
@@ -50,10 +42,6 @@ const StoreFinancePanel: React.FC<StoreFinancePanelProps> = ({ storeId }) => {
       ]);
       setEarnings(e);
       setCommission(c);
-      setFeePercent(String(c.peakFeePercent ?? 0));
-      setStart(toTimeInput(c.peakHoursStart));
-      setEnd(toTimeInput(c.peakHoursEnd));
-      setDays(c.peakDays ?? []);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'No se pudo cargar la información financiera');
     } finally {
@@ -62,36 +50,6 @@ const StoreFinancePanel: React.FC<StoreFinancePanelProps> = ({ storeId }) => {
   }, [storeId, userId]);
 
   useEffect(() => { load(); }, [load]);
-
-  const toggleDay = (code: string) =>
-    setDays((prev) => (prev.includes(code) ? prev.filter((d) => d !== code) : [...prev, code]));
-
-  const save = async () => {
-    const fee = Number(feePercent);
-    if (!Number.isFinite(fee) || fee < 0 || fee > 100) {
-      toast.error('El recargo de hora pico debe estar entre 0 y 100.');
-      return;
-    }
-    if ((start && !end) || (!start && end)) {
-      toast.error('Indica hora de inicio y fin de la franja pico.');
-      return;
-    }
-    setSaving(true);
-    try {
-      await updatePeakConfig(storeId, userId, {
-        peakFeePercent: fee,
-        peakHoursStart: start || undefined,
-        peakHoursEnd: end || undefined,
-        peakDays: days,
-      });
-      toast.success('Hora pico actualizada.');
-      await load();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'No se pudo guardar la hora pico');
-    } finally {
-      setSaving(false);
-    }
-  };
 
   if (loading) {
     return (
@@ -172,68 +130,35 @@ const StoreFinancePanel: React.FC<StoreFinancePanelProps> = ({ storeId }) => {
           )}
         </div>
         <p className="text-xs text-gray-400 mb-3">
-          Recargo que paga el comprador cuando compra dentro de la franja. Muévela como tu horario.
+          Recargo que paga el comprador cuando compra dentro de la franja. La edita un
+          administrador de ECIExpress.
         </p>
 
-        <div className="space-y-3">
-          <div className="flex flex-wrap gap-2">
-            {PEAK_DAY_CODES.map((code) => {
-              const active = days.includes(code);
-              return (
-                <button
-                  key={code}
-                  type="button"
-                  onClick={() => toggleDay(code)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
-                    active ? 'bg-yellow-400 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                  }`}
-                >
-                  {getPeakDayLabel(code)}
-                </button>
-              );
-            })}
+        {commission && (commission.peakDays?.length ?? 0) > 0 ? (
+          <div className="space-y-3">
+            <div className="flex flex-wrap gap-2">
+              {PEAK_DAY_CODES.map((code) => {
+                const active = (commission.peakDays ?? []).includes(code);
+                return (
+                  <span
+                    key={code}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${
+                      active ? 'bg-yellow-400 text-white' : 'bg-gray-100 text-gray-400'
+                    }`}
+                  >
+                    {getPeakDayLabel(code)}
+                  </span>
+                );
+              })}
+            </div>
+            <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm">
+              <span className="text-gray-500">Recargo: <b className="text-gray-900">{commission.peakFeePercent}%</b></span>
+              <span className="text-gray-500">Franja: <b className="text-gray-900">{toTimeDisplay(commission.peakHoursStart)} – {toTimeDisplay(commission.peakHoursEnd)}</b></span>
+            </div>
           </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <label className="flex flex-col gap-1">
-              <span className="text-[11px] font-semibold text-gray-500">Recargo (%)</span>
-              <input
-                type="number" min={0} max={100} step={0.5}
-                value={feePercent}
-                onChange={(e) => setFeePercent(e.target.value)}
-                className="px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-300"
-              />
-            </label>
-            <label className="flex flex-col gap-1">
-              <span className="text-[11px] font-semibold text-gray-500">Inicio</span>
-              <input
-                type="time"
-                value={start}
-                onChange={(e) => setStart(e.target.value)}
-                className="px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-300"
-              />
-            </label>
-            <label className="flex flex-col gap-1">
-              <span className="text-[11px] font-semibold text-gray-500">Fin</span>
-              <input
-                type="time"
-                value={end}
-                onChange={(e) => setEnd(e.target.value)}
-                className="px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-300"
-              />
-            </label>
-          </div>
-
-          <button
-            type="button"
-            onClick={save}
-            disabled={saving}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-yellow-400 text-white text-sm font-semibold hover:bg-yellow-500 disabled:opacity-50"
-          >
-            {saving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
-            Guardar hora pico
-          </button>
-        </div>
+        ) : (
+          <p className="text-gray-400 text-sm">Sin hora pico configurada.</p>
+        )}
       </div>
     </div>
   );

@@ -245,8 +245,9 @@ export interface StoreCommissionInfo {
   totalCharged: number;
 }
 
-/** Campos editables por el vendedor de su franja de hora pico. */
-export interface UpdatePeakConfigDto {
+/** Campos editables por un admin: comisión de plataforma + franja de hora pico. */
+export interface UpdateCommissionConfigDto {
+  platformFeePercent?: number;
   peakFeePercent?: number;
   peakHoursStart?: string;
   peakHoursEnd?: string;
@@ -261,12 +262,16 @@ export const getStoreEarnings = (storeId: string, userId: string) =>
 export const getStoreCommission = (storeId: string, userId: string) =>
   financialFetch<StoreCommissionInfo>(`/stores/${storeId}/commission`, userId);
 
-/** Actualiza la hora pico (franja + recargo) de una tienda. Devuelve el Store actualizado. */
-export const updatePeakConfig = (storeId: string, userId: string, data: UpdatePeakConfigDto) =>
-  financialFetch<{ id: string; peakFeePercent: number }>(`/stores/${storeId}/peak-config`, userId, {
-    method: 'PATCH',
-    body: JSON.stringify(data),
-  });
+/**
+ * Actualiza la comisión de plataforma y/o la hora pico (franja + recargo) de una tienda.
+ * Solo ADMIN (AdminGuard en financial-service). Devuelve el Store actualizado.
+ */
+export const updateCommissionConfig = (storeId: string, userId: string, data: UpdateCommissionConfigDto) =>
+  financialFetch<{ id: string; platformFeePercent: number; peakFeePercent: number }>(
+    `/admin/stores/${storeId}/commission-config`,
+    userId,
+    { method: 'PATCH', body: JSON.stringify(data) },
+  );
 
 /** Días de la semana en el formato que espera financial (MON..SUN), en orden. */
 export const PEAK_DAY_CODES = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'] as const;
