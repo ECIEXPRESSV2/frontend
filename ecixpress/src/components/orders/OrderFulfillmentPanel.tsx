@@ -198,6 +198,29 @@ export const OrderFulfillmentPanel: React.FC<{ order: OrderResponse }> = ({ orde
     );
   }
 
+  // Expired: mostrar estado vencido con advertencia visual
+  const codeExpired = code && code.status === 'EXPIRED';
+  if (codeExpired) {
+    return (
+      <section className="rounded-3xl border border-red-200 bg-gradient-to-br from-red-50 to-orange-50 p-5">
+        <div className="flex items-start gap-3">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-100 text-red-600 shadow-sm">
+            <Clock size={22} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h3 className="text-lg font-black text-red-800">QR vencido — producto no reclamado</h3>
+            <p className="mt-1 text-sm text-red-700">
+              El código de retiro venció el {formatDateTime(code.expiresAt)} sin usarse.
+            </p>
+            <p className="mt-2 text-sm text-red-800">
+              Si crees que hay un error, comunícate con la tienda.
+            </p>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   if (notReady || !code) {
     return (
       <section className="rounded-3xl border border-amber-100 bg-amber-50/50 p-5">

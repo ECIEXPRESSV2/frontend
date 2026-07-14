@@ -25,7 +25,7 @@ export const pickupStatusTone: Record<PickupCodeStatus, string> = {
 export const pickupStatusHint: Record<PickupCodeStatus, string> = {
   ACTIVE: 'Muestra este código al vendedor para recoger tu pedido.',
   USED: 'Este código ya fue utilizado: tu pedido fue entregado.',
-  EXPIRED: 'El código venció. Comunícate con la tienda si aún no recoges tu pedido.',
+  EXPIRED: 'Código vencido — producto no reclamado. Si crees que hay un error, comunícate con la tienda.',
   INVALIDATED: 'El código fue anulado porque el pedido se canceló.',
 };
 
