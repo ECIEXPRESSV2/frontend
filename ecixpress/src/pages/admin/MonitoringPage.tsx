@@ -1,11 +1,22 @@
-import React, { Suspense, lazy, useCallback, useEffect, useMemo, useState } from 'react';
+import React, { Suspense, lazy, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
-import { Activity, RefreshCw, Play, Store, Gauge, Loader2, X, Radio, Send, Inbox, AlertTriangle, Layers, GitBranch, ExternalLink } from 'lucide-react';
+import { Activity, RefreshCw, Play, Store, Gauge, Loader2, X, Radio, Send, Inbox, AlertTriangle, Layers, GitBranch, ExternalLink, TrendingUp, Clock, Percent, Save, PiggyBank, ChevronLeft, ChevronRight } from 'lucide-react';
 import Sidebar from '../../components/home/Sidebar';
 import { CardSkeleton } from '../../components/common/LoadingSkeleton';
 import TrianglePattern from '../../components/home/TrianglePattern';
 import { formatCOP } from '../../lib/format';
-import type { Store as StoreT } from '../../services/storeService';
+import { useAuth } from '../../context/AuthContext';
+import { getStores, type Store as StoreT } from '../../services/storeService';
+import {
+  getStoreEarnings,
+  getStoreCommission,
+  updateCommissionConfig,
+  PEAK_DAY_CODES,
+  getPeakDayLabel,
+  type StoreEarnings,
+  type StoreCommissionInfo,
+  type UpdateCommissionConfigDto,
+} from '../../services/financialService';
 import {
   getServicesHealth,
   getQuickCatalog,
@@ -68,13 +79,22 @@ const errMsg = (err: unknown): string =>
       : 'Error en el centro de monitoreo';
 
 const MonitoringPage: React.FC = () => {
+  const { getToken, userProfile, isAdmin } = useAuth();
   const [health, setHealth] = useState<ServiceHealth[] | null>(null);
   const [healthAt, setHealthAt] = useState<Date | null>(null);
   const [latency, setLatency] = useState<LatencyResponse | null>(null);
   const [events, setEvents] = useState<EventFlowResponse | null>(null);
   const [bus, setBus] = useState<ServiceBusBacklog | null>(null);
 
-  const [ordersByStore, setOrdersByStore] = useState<QuickQueryResult | null>(null);
+  // Ganancias por tienda: tarjeta por tienda (logo + nombre) coloreada por margen.
+  const [stores, setStores] = useState<StoreT[]>([]);
+  const [storeEarnings, setStoreEarnings] = useState<Record<string, StoreEarnings>>({});
+  const [earningsLoading, setEarningsLoading] = useState(true);
+  const [earningsStore, setEarningsStore] = useState<StoreT | null>(null);
+  const earningsScrollRef = useRef<HTMLDivElement>(null);
+  const scrollEarnings = (dir: 1 | -1) => {
+    earningsScrollRef.current?.scrollBy({ left: dir * 460, behavior: 'smooth' });
+  };
 
   const [catalog, setCatalog] = useState<QuickQueryMeta[]>([]);
   const [selectedKey, setSelectedKey] = useState<string>('');
@@ -111,10 +131,29 @@ const MonitoringPage: React.FC = () => {
     try { setBus(await getServiceBusBacklog()); } catch { /* Azure metrics puede no estar */ }
   }, []);
 
-  const loadOrdersByStore = useCallback(async () => {
-    try { setOrdersByStore(await runQuickQuery('orders-by-store')); }
-    catch (err) { toast.error(errMsg(err)); }
-  }, []);
+  const loadStoreEarnings = useCallback(async () => {
+    const uid = userProfile?.id;
+    if (!uid) return;
+    setEarningsLoading(true);
+    try {
+      const token = await getToken();
+      const list = await getStores(token);
+      setStores(list);
+      const results = await Promise.all(
+        list.map((s) => getStoreEarnings(s.id, uid).catch(() => null)),
+      );
+      const map: Record<string, StoreEarnings> = {};
+      list.forEach((s, i) => {
+        const r = results[i];
+        if (r) map[s.id] = r;
+      });
+      setStoreEarnings(map);
+    } catch (err) {
+      toast.error(errMsg(err));
+    } finally {
+      setEarningsLoading(false);
+    }
+  }, [userProfile?.id, getToken]);
 
   useEffect(() => {
     (async () => {
@@ -124,7 +163,7 @@ const MonitoringPage: React.FC = () => {
         const cat = await getQuickCatalog();
         setCatalog(cat);
         setSelectedKey((prev) => prev || cat[0]?.key || '');
-        await Promise.all([pollHealth(), pollLatency(), loadOrdersByStore(), loadEvents(), loadBus()]);
+        await Promise.all([pollHealth(), pollLatency(), loadEvents(), loadBus()]);
       } catch (err) {
         setBootError(errMsg(err));
         toast.error(errMsg(err));
@@ -132,7 +171,9 @@ const MonitoringPage: React.FC = () => {
         setLoading(false);
       }
     })();
-  }, [pollHealth, pollLatency, loadOrdersByStore]);
+  }, [pollHealth, pollLatency]);
+
+  useEffect(() => { loadStoreEarnings(); }, [loadStoreEarnings]);
 
   useEffect(() => {
     const h = setInterval(pollHealth, HEALTH_POLL_MS);
@@ -144,6 +185,12 @@ const MonitoringPage: React.FC = () => {
   const latestByService = useMemo(() => {
     const map: Record<string, LatencyPoint> = {};
     for (const p of latency?.points ?? []) map[p.service] = p; // points vienen ordenados asc
+    return map;
+  }, [latency]);
+  // Serie completa (últimos 10 min) por servicio, para la mini-gráfica de peticiones de la tarjeta.
+  const seriesByService = useMemo(() => {
+    const map: Record<string, LatencyPoint[]> = {};
+    for (const p of latency?.points ?? []) (map[p.service] ??= []).push(p);
     return map;
   }, [latency]);
   const latencyEnabled = latency?.enabled ?? false;
@@ -206,7 +253,7 @@ const MonitoringPage: React.FC = () => {
                 )}
               </div>
               <button
-                onClick={() => { pollHealth(); pollLatency(); loadOrdersByStore(); loadEvents(); loadBus(); }}
+                onClick={() => { pollHealth(); pollLatency(); loadEvents(); loadBus(); loadStoreEarnings(); }}
                 className="inline-flex min-h-11 items-center gap-2 rounded-2xl border border-white/70 bg-white/80 px-4 py-2 text-sm font-bold text-gray-700 shadow-sm backdrop-blur transition hover:bg-white hover:text-gray-950"
               >
                 <RefreshCw size={16} /> Actualizar
@@ -229,13 +276,15 @@ const MonitoringPage: React.FC = () => {
                 </div>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                   {(health ?? []).map((s) => {
-                    const pt = latestByService[APP_ROLE_NAME[s.service] ?? s.service];
+                    const roleName = APP_ROLE_NAME[s.service] ?? s.service;
+                    const pt = latestByService[roleName];
                     const ms = pt?.avgMs;
+                    const series = seriesByService[roleName] ?? [];
                     return (
                       <button
                         key={s.service}
                         onClick={() => setPopupService({ key: s.service, label: s.label })}
-                        className="rounded-2xl border border-white/70 bg-white/85 p-4 text-left shadow-sm backdrop-blur-xl transition hover:border-amber-200 hover:shadow-md"
+                        className="flex flex-col gap-3 rounded-2xl border border-white/70 bg-white/85 p-5 text-left shadow-sm backdrop-blur-xl transition-all duration-200 hover:-translate-y-1 hover:scale-[1.02] hover:border-amber-300 hover:shadow-xl"
                       >
                         <div className="flex items-center justify-between">
                           <span className="font-semibold text-gray-900">{s.label}</span>
@@ -244,12 +293,13 @@ const MonitoringPage: React.FC = () => {
                             {s.up ? 'Activo' : 'Caído'}
                           </span>
                         </div>
-                        <div className="mt-2 flex items-center gap-1.5 text-sm text-gray-500">
+                        <div className="flex items-center gap-1.5 text-sm text-gray-500">
                           <Gauge size={14} className="text-gray-400" />
                           {ms != null
                             ? <><span className="font-semibold text-gray-800">{Math.round(ms).toLocaleString('es-CO')} ms</span><span className="text-xs text-gray-400">· {Math.round(pt?.requests ?? 0).toLocaleString('es-CO')} req/min</span></>
                             : <span className="text-xs text-gray-400">{latencyEnabled ? 'sin tráfico este minuto' : 'latencia/tráfico solo en desplegado'}</span>}
                         </div>
+                        <MiniSparkline values={series.map((p) => p.requests)} />
                       </button>
                     );
                   })}
@@ -262,13 +312,54 @@ const MonitoringPage: React.FC = () => {
               {/* ── Backlog del Service Bus ── */}
               <ServiceBusSection data={bus} />
 
-              {/* ── Pedidos por tienda ── */}
+              {/* ── Ganancias por tienda ── */}
               <section className="rounded-3xl border border-white/70 bg-white/85 p-5 shadow-lg shadow-gray-200/50 backdrop-blur-xl">
                 <div className="mb-4 flex items-center gap-2">
-                  <Store size={18} className="text-amber-500" />
-                  <h2 className="text-base font-bold text-gray-900">Pedidos por tienda</h2>
+                  <TrendingUp size={18} className="text-amber-500" />
+                  <h2 className="text-base font-bold text-gray-900">Ganancias por tienda</h2>
+                  <span className="text-xs font-medium text-gray-400">margen del mes · clic para ver detalle</span>
                 </div>
-                <ResultTable result={ordersByStore} empty="Aún no hay pedidos." />
+                {earningsLoading && stores.length === 0 ? (
+                  <CardSkeleton rows={2} />
+                ) : stores.length === 0 ? (
+                  <p className="py-6 text-center text-sm text-gray-400">Sin tiendas.</p>
+                ) : (
+                  <div className="relative">
+                    <div
+                      ref={earningsScrollRef}
+                      className="flex gap-4 overflow-x-auto scroll-smooth snap-x snap-mandatory p-3 -m-3 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                    >
+                      {stores.map((s) => (
+                        <StoreEarningsCard
+                          key={s.id}
+                          store={s}
+                          earnings={storeEarnings[s.id]}
+                          onClick={() => setEarningsStore(s)}
+                        />
+                      ))}
+                    </div>
+                    {stores.length > 3 && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => scrollEarnings(-1)}
+                          aria-label="Anterior"
+                          className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-3 flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 shadow-md hover:bg-gray-50 hover:text-gray-800"
+                        >
+                          <ChevronLeft size={18} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => scrollEarnings(1)}
+                          aria-label="Siguiente"
+                          className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-3 flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 shadow-md hover:bg-gray-50 hover:text-gray-800"
+                        >
+                          <ChevronRight size={18} />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                )}
               </section>
 
               {/* ── Consultas rápidas ── */}
@@ -355,6 +446,18 @@ const MonitoringPage: React.FC = () => {
       {popupService && (
         <LatencyPopup service={popupService} onClose={() => setPopupService(null)} />
       )}
+
+      {/* Popup de ganancias/comisión/hora pico de una tienda. */}
+      {earningsStore && (
+        <StoreEarningsPopup
+          store={earningsStore}
+          earnings={storeEarnings[earningsStore.id]}
+          canEdit={isAdmin()}
+          userId={userProfile?.id ?? ''}
+          onClose={() => setEarningsStore(null)}
+          onSaved={loadStoreEarnings}
+        />
+      )}
     </div>
   );
 };
@@ -412,7 +515,7 @@ const EventsSection: React.FC<{ data: EventFlowResponse | null }> = ({ data }) =
               <AlertTriangle size={14} className="text-red-500" /> Fallidos
             </div>
             {data.failed.length === 0 ? (
-              <p className="py-4 text-center text-xs text-gray-400">Sin fallos 🎉</p>
+              <p className="py-4 text-center text-xs text-gray-400">Sin fallos</p>
             ) : (
               <div className="space-y-1.5">
                 {data.failed.slice(0, 8).map((f, i) => (
@@ -466,7 +569,7 @@ const ServiceBusSection: React.FC<{ data: ServiceBusBacklog | null }> = ({ data 
         {data?.note ?? 'Solo en el entorno desplegado (Azure Monitor metrics).'}
       </p>
     ) : data.entities.length === 0 ? (
-      <p className="py-6 text-center text-sm text-gray-400">Sin mensajes en el bus 🎉</p>
+      <p className="py-6 text-center text-sm text-gray-400">Sin mensajes en el bus</p>
     ) : (
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
@@ -495,11 +598,9 @@ const ServiceBusSection: React.FC<{ data: ServiceBusBacklog | null }> = ({ data 
 );
 
 /** Popup con la gráfica de latencia promedio histórica de un servicio + filtro de tiempo. */
-type Metric = 'avgMs' | 'p95Ms' | 'p99Ms' | 'requests';
+type Metric = 'avgMs' | 'requests';
 const METRICS: { key: Metric; label: string; unit: string }[] = [
   { key: 'avgMs', label: 'Promedio', unit: 'ms' },
-  { key: 'p95Ms', label: 'p95', unit: 'ms' },
-  { key: 'p99Ms', label: 'p99', unit: 'ms' },
   { key: 'requests', label: 'Peticiones', unit: '/min' },
 ];
 
@@ -528,7 +629,7 @@ const LatencyPopup: React.FC<{ service: { key: string; label: string }; onClose:
 
   const series = useMemo(
     () => (data?.points ?? []).filter((p) => p.service === (APP_ROLE_NAME[service.key] ?? service.key))
-      .map((p) => ({ t: new Date(p.timestamp).getTime(), avgMs: p.avgMs, p95Ms: p.p95Ms, p99Ms: p.p99Ms, requests: p.requests })),
+      .map((p) => ({ t: new Date(p.timestamp).getTime(), avgMs: p.avgMs, requests: p.requests })),
     [data, service.key],
   );
   const meanOf = (k: Metric) => series.length ? Math.round(series.reduce((a, s) => a + s[k], 0) / series.length) : null;
@@ -582,11 +683,9 @@ const LatencyPopup: React.FC<{ service: { key: string; label: string }; onClose:
             </div>
           ) : (
             <>
-              <AreaChart points={chartPoints} />
+              <AreaChart points={chartPoints} unit={unit} />
               <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-sm">
                 <span className="text-gray-500">Promedio: <b className="text-gray-900">{meanOf('avgMs')} ms</b></span>
-                <span className="text-gray-500">p95: <b className="text-gray-900">{meanOf('p95Ms')} ms</b></span>
-                <span className="text-gray-500">p99: <b className="text-gray-900">{meanOf('p99Ms')} ms</b></span>
                 <span className="text-gray-500">Peticiones/min: <b className="text-gray-900">{meanOf('requests')}</b></span>
                 <span className="text-gray-500">Pico ({METRICS.find((m) => m.key === metric)!.label}): <b className="text-gray-900">{peak}{unit === 'ms' ? ' ms' : ''}</b></span>
               </div>
@@ -658,17 +757,48 @@ const DeployBlock: React.FC<{ deploy: ServiceDeploy | null }> = ({ deploy }) => 
   );
 };
 
+/** Mini vista previa (sin ejes) de la serie de peticiones/min de los últimos 10 min, dentro
+ *  de la tarjeta de salud de un microservicio. */
+const MiniSparkline: React.FC<{ values: number[] }> = ({ values }) => {
+  const gradientId = useId();
+  if (values.length < 2) {
+    return <div className="flex h-12 items-center justify-center text-[11px] text-gray-300">Sin datos suficientes</div>;
+  }
+  const W = 200, H = 48, P = 2;
+  const maxY = Math.max(...values) * 1.15 || 1;
+  const sx = (i: number) => P + (i / (values.length - 1)) * (W - 2 * P);
+  const sy = (v: number) => H - P - (v / maxY) * (H - 2 * P);
+  const line = values.map((v, i) => `${i === 0 ? 'M' : 'L'} ${sx(i).toFixed(1)} ${sy(v).toFixed(1)}`).join(' ');
+  const area = `${line} L ${sx(values.length - 1).toFixed(1)} ${H - P} L ${sx(0).toFixed(1)} ${H - P} Z`;
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="h-12 w-full" preserveAspectRatio="none" role="img" aria-label="Peticiones por minuto (últimos 10 min)">
+      <defs>
+        <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="rgb(245 185 66 / 0.35)" />
+          <stop offset="100%" stopColor="rgb(245 185 66 / 0.02)" />
+        </linearGradient>
+      </defs>
+      <path d={area} fill={`url(#${gradientId})`} />
+      <path d={line} fill="none" stroke="rgb(234 165 43)" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
+    </svg>
+  );
+};
+
 /** Gráfica de área SVG en amarillo (como la referencia). */
-const AreaChart: React.FC<{ points: { t: number; y: number }[] }> = ({ points }) => {
+const AreaChart: React.FC<{ points: { t: number; y: number }[]; unit: string }> = ({ points, unit }) => {
   const W = 560, H = 160, P = 8;
   const xs = points.map((p) => p.t);
   const ys = points.map((p) => p.y);
   const minX = Math.min(...xs), maxX = Math.max(...xs);
-  const minY = 0, maxY = Math.max(...ys) * 1.15 || 1;
+  const rawMaxY = Math.max(...ys);
+  const minY = 0, maxY = rawMaxY * 1.15 || 1;
   const sx = (x: number) => P + ((x - minX) / (maxX - minX || 1)) * (W - 2 * P);
   const sy = (y: number) => H - P - ((y - minY) / (maxY - minY || 1)) * (H - 2 * P);
   const line = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${sx(p.t).toFixed(1)} ${sy(p.y).toFixed(1)}`).join(' ');
   const area = `${line} L ${sx(maxX).toFixed(1)} ${H - P} L ${sx(minX).toFixed(1)} ${H - P} Z`;
+  // Rótulos del eje Y: cada métrica autoescala a su propio máximo, así que la silueta puede
+  // lucir parecida entre Promedio y Peticiones aunque los valores reales sean muy distintos.
+  // Mostrar el techo y el piso deja ver el cambio real de escala al cambiar de tab.
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="h-40 w-full" preserveAspectRatio="none" role="img" aria-label="Latencia promedio">
       <defs>
@@ -682,7 +812,350 @@ const AreaChart: React.FC<{ points: { t: number; y: number }[] }> = ({ points })
       ))}
       <path d={area} fill="url(#latFill)" />
       <path d={line} fill="none" stroke="rgb(234 165 43)" strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />
+      <text x={P + 4} y={P + 12} fontSize="11" fill="rgb(107 114 128)">{Math.round(rawMaxY).toLocaleString('es-CO')}{unit}</text>
+      <text x={P + 4} y={H - P - 4} fontSize="11" fill="rgb(107 114 128)">0{unit}</text>
     </svg>
+  );
+};
+
+/** Margen del mes (neto/bruto). null si todavía no hay datos (fetch pendiente o falló);
+ *  0 si la tienda simplemente no tuvo pedidos este mes (bruto = 0). */
+const marginOf = (e: StoreEarnings | undefined): number | null => {
+  if (!e) return null;
+  if (e.totals.grossAmount === 0) return 0;
+  return (e.totals.netAmount / e.totals.grossAmount) * 100;
+};
+
+type EarningsTone = 'neutral' | 'red' | 'orange' | 'green';
+
+const toneOf = (margin: number | null): EarningsTone => {
+  if (margin === null) return 'neutral';
+  if (margin < 0) return 'red';
+  if (margin < 10) return 'orange';
+  return 'green';
+};
+
+const TONE_STYLES: Record<EarningsTone, { card: string; circle: string; icon: string; text: string }> = {
+  neutral: { card: 'border-gray-200 bg-white hover:border-gray-300', circle: 'bg-gray-100', icon: 'text-gray-400', text: 'text-gray-400' },
+  red:     { card: 'border-red-300 bg-red-50 hover:border-red-400', circle: 'bg-red-100', icon: 'text-red-500', text: 'text-red-600' },
+  orange:  { card: 'border-orange-200 bg-orange-50/80 hover:border-orange-300', circle: 'bg-orange-100', icon: 'text-orange-500', text: 'text-orange-600' },
+  green:   { card: 'border-green-300 bg-green-50 hover:border-green-400', circle: 'bg-green-100', icon: 'text-green-600', text: 'text-green-700' },
+};
+
+/** Tarjeta de tienda: logo, margen del mes (%) y alcancía, todo coloreado según el mismo
+ *  tono — rojo si el margen es negativo, naranja pálido si es menor a 10%, verde si es 10%
+ *  o más. Ancho fijo para vivir dentro del carrusel horizontal. */
+const StoreEarningsCard: React.FC<{
+  store: StoreT;
+  earnings?: StoreEarnings;
+  onClick: () => void;
+}> = ({ store, earnings, onClick }) => {
+  const margin = marginOf(earnings);
+  const tone = TONE_STYLES[toneOf(margin)];
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex w-52 flex-shrink-0 snap-start flex-col items-center gap-4 rounded-3xl border p-6 text-center shadow-sm transition-all duration-200 hover:-translate-y-1 hover:scale-[1.04] hover:shadow-xl ${tone.card}`}
+    >
+      <div className={`flex h-16 w-16 items-center justify-center overflow-hidden rounded-full ${tone.circle}`}>
+        {store.imageUrl ? (
+          <img
+            src={store.imageUrl}
+            alt={store.name}
+            className="h-full w-full object-cover"
+            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+          />
+        ) : (
+          <Store size={26} className={tone.icon} />
+        )}
+      </div>
+
+      <div>
+        <p className={`text-3xl font-black tabular-nums ${tone.text}`}>
+          {margin === null ? '—' : `${margin.toFixed(1)}%`}
+        </p>
+        <p className="mt-1 text-xs font-semibold text-gray-400">Ganancia del mes</p>
+      </div>
+
+      <span className="line-clamp-2 text-sm font-bold text-gray-900">{store.name}</span>
+
+      <div className={`flex h-12 w-12 items-center justify-center rounded-full ${tone.circle}`}>
+        <PiggyBank size={20} className={tone.icon} />
+      </div>
+    </button>
+  );
+};
+
+/** Quita los segundos de un 'HH:mm[:ss]' para poblar un <input type="time">. */
+const toTimeInput = (v: string | null | undefined): string => (v ? v.slice(0, 5) : '');
+
+/**
+ * Detalle de una tienda: ingresos del mes, hora pico y comisión de plataforma. Un ADMIN puede
+ * editar la comisión y la hora pico aquí mismo, con vista previa del neto proyectado antes de
+ * guardar. Un ANALYST (canEdit=false) solo ve los valores vigentes.
+ */
+const StoreEarningsPopup: React.FC<{
+  store: StoreT;
+  earnings?: StoreEarnings;
+  canEdit: boolean;
+  userId: string;
+  onClose: () => void;
+  onSaved: () => void;
+}> = ({ store, earnings, canEdit, userId, onClose, onSaved }) => {
+  const [commission, setCommission] = useState<StoreCommissionInfo | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  const [platformFeePercent, setPlatformFeePercent] = useState('');
+  const [peakFeePercent, setPeakFeePercent] = useState('');
+  const [start, setStart] = useState('');
+  const [end, setEnd] = useState('');
+  const [days, setDays] = useState<string[]>([]);
+
+  useEffect(() => {
+    let cancel = false;
+    setLoading(true);
+    getStoreCommission(store.id, userId)
+      .then((c) => {
+        if (cancel) return;
+        setCommission(c);
+        setPlatformFeePercent(String(c.platformFeePercent ?? 0));
+        setPeakFeePercent(String(c.peakFeePercent ?? 0));
+        setStart(toTimeInput(c.peakHoursStart));
+        setEnd(toTimeInput(c.peakHoursEnd));
+        setDays(c.peakDays ?? []);
+      })
+      .catch((err) => toast.error(err instanceof Error ? err.message : 'No se pudo cargar la comisión'))
+      .finally(() => { if (!cancel) setLoading(false); });
+    return () => { cancel = true; };
+  }, [store.id, userId]);
+
+  const toggleDay = (code: string) =>
+    setDays((prev) => (prev.includes(code) ? prev.filter((d) => d !== code) : [...prev, code]));
+
+  const grossAmount = earnings?.totals.grossAmount ?? 0;
+  const currentNet = earnings?.totals.netAmount ?? 0;
+  const previewFee = Number(platformFeePercent);
+  const projectedNet = Number.isFinite(previewFee)
+    ? Math.round(grossAmount * (1 - Math.min(100, Math.max(0, previewFee)) / 100))
+    : currentNet;
+
+  const save = async () => {
+    const fee = Number(platformFeePercent);
+    const peakFee = Number(peakFeePercent);
+    if (!Number.isFinite(fee) || fee < 0 || fee > 100) {
+      toast.error('La comisión de plataforma debe estar entre 0 y 100.');
+      return;
+    }
+    if (!Number.isFinite(peakFee) || peakFee < 0 || peakFee > 100) {
+      toast.error('El recargo de hora pico debe estar entre 0 y 100.');
+      return;
+    }
+    if ((start && !end) || (!start && end)) {
+      toast.error('Indica hora de inicio y fin de la franja pico.');
+      return;
+    }
+    setSaving(true);
+    try {
+      const dto: UpdateCommissionConfigDto = {
+        platformFeePercent: fee,
+        peakFeePercent: peakFee,
+        peakHoursStart: start || undefined,
+        peakHoursEnd: end || undefined,
+        peakDays: days,
+      };
+      await updateCommissionConfig(store.id, userId, dto);
+      toast.success('Comisión y hora pico actualizadas.');
+      onSaved();
+      onClose();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'No se pudo guardar');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+      <div className="w-full max-w-xl rounded-3xl bg-white p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-start justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full border border-gray-100 bg-gray-50">
+              {store.imageUrl
+                ? <img src={store.imageUrl} alt={store.name} className="h-full w-full object-cover" />
+                : <Store size={18} className="text-gray-400" />}
+            </div>
+            <h3 className="text-lg font-bold text-gray-900">{store.name}</h3>
+          </div>
+          <button onClick={onClose} className="rounded-full p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700"><X size={18} /></button>
+        </div>
+
+        {loading ? (
+          <div className="flex h-40 items-center justify-center text-gray-400"><Loader2 className="animate-spin" size={22} /></div>
+        ) : (
+          <div className="mt-4 space-y-5">
+            {/* Ingresos del mes */}
+            <div>
+              <div className="mb-2 flex items-center gap-2">
+                <TrendingUp size={15} className="text-amber-500" />
+                <h4 className="text-sm font-semibold text-gray-800">Ingresos {earnings ? `(${earnings.month})` : 'del mes'}</h4>
+              </div>
+              {earnings ? (
+                <div className="grid grid-cols-3 gap-2 text-sm">
+                  <div className="rounded-xl bg-gray-50 p-3 ring-1 ring-gray-100">
+                    <p className="text-[11px] font-semibold text-gray-500">Bruto</p>
+                    <p className="font-bold text-gray-800 tabular-nums">{formatCOP(earnings.totals.grossAmount)}</p>
+                  </div>
+                  <div className="rounded-xl bg-amber-50 p-3 ring-1 ring-amber-100">
+                    <p className="text-[11px] font-semibold text-amber-700">Comisión</p>
+                    <p className="font-bold text-amber-800 tabular-nums">− {formatCOP(earnings.totals.platformFeeAmount)}</p>
+                  </div>
+                  <div className="rounded-xl bg-green-50 p-3 ring-1 ring-green-100">
+                    <p className="text-[11px] font-semibold text-green-700">Neto</p>
+                    <p className="font-bold text-green-800 tabular-nums">{formatCOP(earnings.totals.netAmount)}</p>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-gray-400">Sin pedidos este mes.</p>
+              )}
+            </div>
+
+            {/* Comisión + hora pico */}
+            <div className="border-t border-gray-100 pt-4">
+              <div className="mb-1 flex items-center gap-2">
+                <Percent size={15} className="text-amber-500" />
+                <h4 className="text-sm font-semibold text-gray-800">Comisión de plataforma</h4>
+              </div>
+              {canEdit ? (
+                <>
+                  <div className="flex flex-wrap items-end gap-3">
+                    <label className="flex flex-col gap-1">
+                      <span className="text-[11px] font-semibold text-gray-500">Comisión ECIExpress (%)</span>
+                      <input
+                        type="number" min={0} max={100} step={0.5}
+                        value={platformFeePercent}
+                        onChange={(e) => setPlatformFeePercent(e.target.value)}
+                        className="w-32 rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-300"
+                      />
+                    </label>
+                    {grossAmount > 0 && (
+                      <p className="text-xs text-gray-500">
+                        Neto actual: <b className="text-gray-800">{formatCOP(currentNet)}</b>
+                        {' → '}proyectado: <b className={projectedNet >= currentNet ? 'text-green-700' : 'text-red-700'}>{formatCOP(projectedNet)}</b>
+                        <span className="block text-[11px] text-gray-400">Si esta comisión hubiera aplicado a los pedidos de este mes. No cambia lo ya cobrado.</span>
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="mt-4 flex items-center gap-2">
+                    <Clock size={15} className="text-amber-500" />
+                    <h4 className="text-sm font-semibold text-gray-800">Hora pico</h4>
+                    {commission?.isPeakHour && (
+                      <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[11px] font-semibold">Activa ahora</span>
+                    )}
+                  </div>
+                  <p className="mb-2 text-xs text-gray-400">Recargo que paga el comprador dentro de la franja.</p>
+                  <div className="flex flex-wrap gap-2">
+                    {PEAK_DAY_CODES.map((code) => {
+                      const active = days.includes(code);
+                      return (
+                        <button
+                          key={code}
+                          type="button"
+                          onClick={() => toggleDay(code)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                            active ? 'bg-yellow-400 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                          }`}
+                        >
+                          {getPeakDayLabel(code)}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div className="mt-3 grid grid-cols-3 gap-3">
+                    <label className="flex flex-col gap-1">
+                      <span className="text-[11px] font-semibold text-gray-500">Recargo (%)</span>
+                      <input
+                        type="number" min={0} max={100} step={0.5}
+                        value={peakFeePercent}
+                        onChange={(e) => setPeakFeePercent(e.target.value)}
+                        className="rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-300"
+                      />
+                    </label>
+                    <label className="flex flex-col gap-1">
+                      <span className="text-[11px] font-semibold text-gray-500">Inicio</span>
+                      <input
+                        type="time"
+                        value={start}
+                        onChange={(e) => setStart(e.target.value)}
+                        className="rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-300"
+                      />
+                    </label>
+                    <label className="flex flex-col gap-1">
+                      <span className="text-[11px] font-semibold text-gray-500">Fin</span>
+                      <input
+                        type="time"
+                        value={end}
+                        onChange={(e) => setEnd(e.target.value)}
+                        className="rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-300"
+                      />
+                    </label>
+                  </div>
+
+                  <div className="mt-5 flex items-center justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={onClose}
+                      disabled={saving}
+                      className="rounded-xl px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 disabled:opacity-50"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={save}
+                      disabled={saving}
+                      className="inline-flex items-center gap-2 rounded-xl bg-yellow-400 px-4 py-2 text-sm font-semibold text-white hover:bg-yellow-500 disabled:opacity-50"
+                    >
+                      {saving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
+                      Guardar
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div className="space-y-3 text-sm">
+                  <p className="text-gray-700">Comisión vigente: <b>{commission?.platformFeePercent ?? 0}%</b></p>
+                  <div>
+                    <p className="mb-1 font-semibold text-gray-800">Hora pico</p>
+                    {commission && (commission.peakDays?.length ?? 0) > 0 ? (
+                      <>
+                        <div className="flex flex-wrap gap-2">
+                          {PEAK_DAY_CODES.map((code) => {
+                            const active = (commission.peakDays ?? []).includes(code);
+                            return (
+                              <span key={code} className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${active ? 'bg-yellow-400 text-white' : 'bg-gray-100 text-gray-400'}`}>
+                                {getPeakDayLabel(code)}
+                              </span>
+                            );
+                          })}
+                        </div>
+                        <p className="mt-2 text-gray-500">
+                          Recargo: <b className="text-gray-900">{commission.peakFeePercent}%</b> · Franja: <b className="text-gray-900">{toTimeInput(commission.peakHoursStart) || '—'} – {toTimeInput(commission.peakHoursEnd) || '—'}</b>
+                        </p>
+                      </>
+                    ) : (
+                      <p className="text-gray-400">Sin hora pico configurada.</p>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-400">Solo un administrador puede editar la comisión y la hora pico.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
   );
 };
 
