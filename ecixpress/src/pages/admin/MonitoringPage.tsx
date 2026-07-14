@@ -327,7 +327,7 @@ const MonitoringPage: React.FC = () => {
                   <div className="relative">
                     <div
                       ref={earningsScrollRef}
-                      className="flex gap-4 overflow-x-auto scroll-smooth snap-x snap-mandatory pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                      className="flex gap-4 overflow-x-auto scroll-smooth snap-x snap-mandatory p-3 -m-3 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                     >
                       {stores.map((s) => (
                         <StoreEarningsCard
