@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Trash2 } from 'lucide-react';
 
 interface CartProduct {
@@ -22,6 +22,7 @@ const CartItem: React.FC<CartItemProps> = ({
   onRemove
 }) => {
   const { id, name, description, imageUrl, price, quantity } = product;
+  const [editingValue, setEditingValue] = useState<string | null>(null);
   return (
     <div className="flex items-center gap-4 p-4 rounded-2xl bg-white border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300">
       {/* Image */}
@@ -52,8 +53,21 @@ const CartItem: React.FC<CartItemProps> = ({
         </button>
         <input
           type="number"
-          value={quantity}
-          onChange={(e) => onQuantityChange(id, Math.max(1, parseInt(e.target.value) || 1))}
+          value={editingValue ?? quantity}
+          onChange={(e) => {
+            const raw = e.target.value;
+            if (raw === '') {
+              setEditingValue('');
+              return;
+            }
+            const parsed = parseInt(raw);
+            if (!isNaN(parsed) && parsed >= 1) {
+              setEditingValue(String(parsed));
+              onQuantityChange(id, parsed);
+            }
+          }}
+          onFocus={() => setEditingValue(String(quantity))}
+          onBlur={() => setEditingValue(null)}
           min={1}
           className="w-8 text-center font-semibold text-gray-900 text-sm bg-transparent [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
         />

@@ -87,6 +87,8 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName,
   const [viewerSrc, setViewerSrc] = useState<string | null>(null);
   const [viewerTitle, setViewerTitle] = useState('');
   const [scheduledPickupAt, setScheduledPickupAt] = useState<string>('');
+  // Valor del input de cantidad mientras el usuario está escribiendo (permite string vacío).
+  const [editingQty, setEditingQty] = useState<Record<string, string>>({});
   const todayCloseTime = useMemo(() => {
     const today = new Date().getDay();
     const s = schedules?.find((s) => s.isActive && s.dayOfWeek === today);
@@ -599,8 +601,28 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName,
                     </button>
           <input
                             type="number"
-                            value={qty}
-                            onChange={(e) => cartProduct && changeQuantity(cartProduct, parseInt(e.target.value) || 0)}
+                            value={editingQty[id] ?? qty}
+                            onChange={(e) => {
+                              const raw = e.target.value;
+                              if (!cartProduct) return;
+                              if (raw === '') {
+                                setEditingQty((prev) => ({ ...prev, [id]: '' }));
+                                return;
+                              }
+                              const parsed = parseInt(raw);
+                              if (!isNaN(parsed) && parsed >= 0) {
+                                setEditingQty((prev) => ({ ...prev, [id]: String(parsed) }));
+                                changeQuantity(cartProduct, parsed);
+                              }
+                            }}
+                            onFocus={() => setEditingQty((prev) => ({ ...prev, [id]: String(qty) }))}
+                            onBlur={() => {
+                              setEditingQty((prev) => {
+                                const next = { ...prev };
+                                delete next[id];
+                                return next;
+                              });
+                            }}
                             min={1}
                             className="w-10 text-center text-xs font-semibold text-gray-900 bg-transparent [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                           />
@@ -928,8 +950,27 @@ const StoreCatalogCart: React.FC<StoreCatalogCartProps> = ({ storeId, storeName,
                           </button>
                           <input
                             type="number"
-                            value={qty}
-                            onChange={(e) => changeQuantity(product, parseInt(e.target.value) || 0)}
+                            value={editingQty[product.id] ?? qty}
+                            onChange={(e) => {
+                              const raw = e.target.value;
+                              if (raw === '') {
+                                setEditingQty((prev) => ({ ...prev, [product.id]: '' }));
+                                return;
+                              }
+                              const parsed = parseInt(raw);
+                              if (!isNaN(parsed) && parsed >= 0) {
+                                setEditingQty((prev) => ({ ...prev, [product.id]: String(parsed) }));
+                                changeQuantity(product, parsed);
+                              }
+                            }}
+                            onFocus={() => setEditingQty((prev) => ({ ...prev, [product.id]: String(qty) }))}
+                            onBlur={() => {
+                              setEditingQty((prev) => {
+                                const next = { ...prev };
+                                delete next[product.id];
+                                return next;
+                              });
+                            }}
                             min={1}
                             max={available}
                             className="w-12 text-center text-sm font-bold text-white bg-transparent border-x border-amber-300/40 py-2 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"

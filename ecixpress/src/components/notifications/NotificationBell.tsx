@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useNavigate } from 'react-router-dom';
 import { motion, useDragControls } from 'framer-motion';
 import { Bell, Check, CheckCheck, GripVertical, X } from 'lucide-react';
 import { useNotifications } from '../../context/NotificationsContext';
@@ -34,7 +35,8 @@ const HOVER_READ_DELAY_MS = 600;
 const NotificationItem: React.FC<{
   n: InboxNotification;
   onMarkRead: (id: string) => void;
-}> = ({ n, onMarkRead }) => {
+  onClick?: () => void;
+}> = ({ n, onMarkRead, onClick }) => {
   const timer = useRef<number | null>(null);
 
   const clear = () => {
@@ -52,13 +54,24 @@ const NotificationItem: React.FC<{
     timer.current = window.setTimeout(() => onMarkRead(n.id), HOVER_READ_DELAY_MS);
   };
 
+  const handleClick = () => {
+    clear();
+    if (n.read) { onClick?.(); return; }
+    onMarkRead(n.id);
+    onClick?.();
+  };
+
   useEffect(() => clear, []);
 
   return (
     <div
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleClick(); }}
+      onClick={handleClick}
       onMouseEnter={handleEnter}
       onMouseLeave={clear}
-      className={`w-full text-left px-4 py-3 flex gap-3 transition-colors border-b border-gray-50 cursor-default
+      className={`w-full text-left px-4 py-3 flex gap-3 transition-colors border-b border-gray-50 cursor-pointer
         ${n.read ? 'opacity-70' : 'bg-yellow-50/40 hover:bg-yellow-50'}`}
     >
       <span
@@ -88,6 +101,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
   variant = 'sidebar',
   onOpenChange,
 }) => {
+  const navigate = useNavigate();
   const { notifications, unreadCount, loading, markRead, markAllRead, refresh } =
     useNotifications();
   const [open, setOpen] = useState(false);
@@ -99,6 +113,20 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
     setOpen(next);
     onOpenChange?.(next);
     if (next) void refresh();
+  };
+
+  const handleNotificationClick = (n: InboxNotification) => {
+    setPanelOpen(false);
+    const orderId = n.data?.orderId as string | undefined;
+    const isVendorNotification =
+      n.type.startsWith('store.') ||
+      n.type.startsWith('payout.') ||
+      n.type.startsWith('inventory.');
+    if (isVendorNotification) {
+      navigate('/vendor/orders');
+    } else if (orderId) {
+      navigate(`/orders?orderId=${orderId}`);
+    }
   };
 
   // Cerrar al hacer click fuera del botón y del panel (el panel vive en un portal).
@@ -190,6 +218,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
               key={n.id}
               n={n}
               onMarkRead={(id) => void markRead(id)}
+              onClick={() => handleNotificationClick(n)}
             />
           ))
         )}

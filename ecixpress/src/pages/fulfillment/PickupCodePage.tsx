@@ -169,7 +169,23 @@ const PickupCodePage: React.FC<PickupCodePageProps> = ({ onBack }) => {
             </div>
           )}
 
-          {!loading && !error && code && (
+          {!loading && !error && code && code.status === 'EXPIRED' && (
+            <div className="space-y-4">
+              <div className="rounded-2xl border border-red-200 bg-gradient-to-br from-red-50 to-orange-50 p-6 text-center">
+                <AlertTriangle className="mx-auto mb-3 text-red-500" size={40} />
+                <h2 className="text-xl font-black text-red-800">QR vencido — producto no reclamado</h2>
+                <p className="mt-2 text-sm text-red-700">
+                  El código de retiro venció el {formatDateTime(code.expiresAt)} sin usarse.
+                </p>
+                <p className="mt-1 text-sm text-red-800">
+                  Si crees que hay un error, comunícate con la tienda.
+                </p>
+              </div>
+              {status && <FulfillmentStatusCard status={status} />}
+            </div>
+          )}
+
+          {!loading && !error && code && code.status !== 'EXPIRED' && (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Tarjeta del QR */}
               <section className="rounded-2xl bg-white/70 backdrop-blur-xl border border-white/60 shadow-sm p-6 flex flex-col items-center text-center">

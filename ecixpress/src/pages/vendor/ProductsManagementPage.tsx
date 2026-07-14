@@ -220,7 +220,7 @@ const ProductsManagementPage: React.FC = () => {
     }
   };
 
-  useEffect(() => { void load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [storeId, showInactive]);
+  useEffect(() => { void load();   }, [storeId, showInactive]);
 
   useEffect(() => {
     const hasProcessing = products.some((p) => p.modelGenerationStatus === 'PROCESSING');
