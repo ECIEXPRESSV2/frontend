@@ -11,7 +11,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useWallet } from '../../context/WalletContext';
 import { useOrdersApi } from '../../hooks/useOrdersApi';
 import { useRefreshOnScrollTop } from '../../hooks/useRefreshOnScrollTop';
-import { ORDERS_WS_URL, type OrderResponse, type OrderStatus } from '../../lib/orders-api';
+import { ORDERS_WS_URL, type OrderResponse, type OrderStatus, type RequestReturnRequest } from '../../lib/orders-api';
 import { formatCOP, formatDateTime } from '../../lib/format';
 import { isCancellable, isPayable, isRateable, isReorderable, isReturnable, orderDisplayName, statusLabel, statusTone } from '../../lib/orders-ui';
 
@@ -57,7 +57,8 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
   const [page, setPage] = useState(1);
 
   const [rating, setRating] = useState<{ open: boolean; score: number; comment: string }>({ open: false, score: 5, comment: '' });
-  const [returnModal, setReturnModal] = useState<{ open: boolean; full: boolean; qty: Record<string, number> }>({ open: false, full: true, qty: {} });
+  const [returnModal, setReturnModal] = useState<{ open: boolean; full: boolean; qty: Record<string, number>; reason: string; photos: File[] }>({ open: false, full: true, qty: {}, reason: '', photos: [] });
+  const [submittingReturn, setSubmittingReturn] = useState(false);
   const [actionMsg, setActionMsg] = useState<string | null>(null);
   // Mensaje de éxito (banner verde) para recreación de pedidos.
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -274,31 +275,50 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
     }
   };
 
+  // Devoluciones post-recogida (pedido ya entregado o con una devolución previa) pasan por
+  // revisión de la tienda: ahí sí tiene sentido pedir motivo + fotos de evidencia.
+  const returnNeedsEvidence = (status?: OrderStatus) => status === 'DELIVERED' || status === 'PARTIALLY_RETURNED';
+
   const openReturn = () => {
     if (!selected) return;
-    setReturnModal({ open: true, full: true, qty: Object.fromEntries(selected.items.map((i) => [i.productId, 0])) });
+    setReturnModal({ open: true, full: true, qty: Object.fromEntries(selected.items.map((i) => [i.productId, 0])), reason: '', photos: [] });
   };
 
   const submitReturn = async () => {
     if (!selected) return;
+    const payload: RequestReturnRequest = returnModal.full
+      ? { full: true }
+      : {
+          full: false,
+          items: Object.entries(returnModal.qty)
+            .filter(([, q]) => q > 0)
+            .map(([productId, quantity]) => ({ productId, quantity })),
+        };
+    if (!returnModal.full && (!payload.items || payload.items.length === 0)) {
+      setActionMsg('Selecciona al menos un producto a devolver');
+      return;
+    }
+    const needsEvidence = returnNeedsEvidence(selected.status);
+    if (needsEvidence && returnModal.reason.trim()) payload.reason = returnModal.reason.trim();
+
+    setSubmittingReturn(true);
     try {
-      const payload = returnModal.full
-        ? { full: true }
-        : {
-            full: false,
-            items: Object.entries(returnModal.qty)
-              .filter(([, q]) => q > 0)
-              .map(([productId, quantity]) => ({ productId, quantity })),
-          };
-      if (!returnModal.full && (!payload.items || payload.items.length === 0)) {
-        setActionMsg('Selecciona al menos un producto a devolver');
-        return;
+      if (needsEvidence && returnModal.photos.length > 0) {
+        const refundId = crypto.randomUUID();
+        await api.uploadReturnEvidence(selected.id, refundId, returnModal.photos);
+        payload.refundId = refundId;
       }
       await api.requestReturn(selected.id, payload);
-      setReturnModal({ open: false, full: true, qty: {} });
-      setActionMsg('Devolución solicitada. Se reembolsará a tu billetera al confirmarse.');
+      setReturnModal({ open: false, full: true, qty: {}, reason: '', photos: [] });
+      setActionMsg(
+        needsEvidence
+          ? 'Devolución solicitada. La tienda la revisará antes de reembolsar (te avisamos por el chat del pedido).'
+          : 'Devolución solicitada. Se reembolsará a tu billetera al confirmarse.',
+      );
     } catch (e) {
       setActionMsg(e instanceof Error ? e.message : 'No se pudo solicitar la devolución');
+    } finally {
+      setSubmittingReturn(false);
     }
   };
 
@@ -768,8 +788,60 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
               </ul>
             )}
 
-            <button onClick={submitReturn} className="w-full py-3 rounded-xl bg-gradient-to-r from-purple-500 to-purple-600 text-white font-semibold hover:from-purple-600 hover:to-purple-700 transition-all">
-              Confirmar devolución
+            {returnNeedsEvidence(selected.status) && (
+              <div className="space-y-3 rounded-xl bg-amber-50 border border-amber-100 p-3">
+                <p className="text-xs text-amber-700">
+                  Este pedido ya se recogió: la tienda revisará tu solicitud antes de reembolsar. Cuéntanos qué pasó y, si puedes, adjunta fotos.
+                </p>
+                <textarea
+                  value={returnModal.reason}
+                  onChange={(e) => setReturnModal((r) => ({ ...r, reason: e.target.value }))}
+                  placeholder="Motivo (ej. producto en mal estado)"
+                  rows={2}
+                  maxLength={500}
+                  className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:border-purple-300 focus:ring-2 focus:ring-purple-100"
+                />
+                <div>
+                  <div className="flex flex-wrap gap-2">
+                    {returnModal.photos.map((file, i) => (
+                      <div key={i} className="relative h-16 w-16 overflow-hidden rounded-lg border border-gray-200">
+                        <img src={URL.createObjectURL(file)} alt="" className="h-full w-full object-cover" />
+                        <button
+                          onClick={() => setReturnModal((r) => ({ ...r, photos: r.photos.filter((_, idx) => idx !== i) }))}
+                          className="absolute right-0.5 top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-white"
+                        >
+                          <X size={12} />
+                        </button>
+                      </div>
+                    ))}
+                    {returnModal.photos.length < 3 && (
+                      <label className="flex h-16 w-16 cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-gray-300 text-gray-400 hover:border-purple-300 hover:text-purple-400">
+                        <Plus size={20} />
+                        <input
+                          type="file"
+                          accept="image/png,image/jpeg,image/webp"
+                          multiple
+                          className="hidden"
+                          onChange={(e) => {
+                            const picked = Array.from(e.target.files ?? []);
+                            setReturnModal((r) => ({ ...r, photos: [...r.photos, ...picked].slice(0, 3) }));
+                            e.target.value = '';
+                          }}
+                        />
+                      </label>
+                    )}
+                  </div>
+                  <p className="mt-1 text-[11px] text-gray-400">Hasta 3 fotos, opcional.</p>
+                </div>
+              </div>
+            )}
+
+            <button
+              onClick={submitReturn}
+              disabled={submittingReturn}
+              className="w-full py-3 rounded-xl bg-gradient-to-r from-purple-500 to-purple-600 text-white font-semibold hover:from-purple-600 hover:to-purple-700 transition-all disabled:opacity-50"
+            >
+              {submittingReturn ? 'Enviando…' : 'Confirmar devolución'}
             </button>
           </div>
         )}
