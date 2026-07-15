@@ -224,6 +224,14 @@ const MessagesPage: React.FC<MessagesPageProps> = ({ onBack }) => {
           return;
         }
         patchConversation(conv);
+        // `conversation:updated` llega siempre (sala personal `user:<id>`, unida al conectar
+        // el socket), a diferencia de `message:new` que depende de haberse unido a tiempo a
+        // la sala de ESA conversación (carrera real si se navega directo al chat justo cuando
+        // se está generando el mensaje, p. ej. la tarjeta de reembolso). Si cambió justo la
+        // conversación abierta, refrescamos sus mensajes por si el `message:new` se perdió.
+        if (conv.id === selectedIdRef.current) {
+          api.getMessages(conv.id).then((res) => setMessages(res.items)).catch(() => undefined);
+        }
       });
       // El otro participante leyó: pinta doble check en mis mensajes.
       socket.on('conversation:read', (p: { readerId: string; messageIds: string[] }) => {
