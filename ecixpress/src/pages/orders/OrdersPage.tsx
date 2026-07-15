@@ -310,11 +310,14 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
       }
       await api.requestReturn(selected.id, payload);
       setReturnModal({ open: false, full: true, qty: {}, reason: '', photos: [] });
-      setActionMsg(
-        needsEvidence
-          ? 'Devolución solicitada. La tienda la revisará antes de reembolsar (te avisamos por el chat del pedido).'
-          : 'Devolución solicitada. Se reembolsará a tu billetera al confirmarse.',
-      );
+      if (needsEvidence) {
+        // Post-recogida: el backend ya reabrió el chat (síncrono, en requestReturn) antes de
+        // responder — llevamos al comprador directo ahí para que vea la tarjeta apenas la
+        // tienda cotice el reembolso, sin tener que ir a buscarla manualmente.
+        navigate(`/messages?orderId=${selected.id}`);
+      } else {
+        setActionMsg('Devolución solicitada. Se reembolsará a tu billetera al confirmarse.');
+      }
     } catch (e) {
       setActionMsg(e instanceof Error ? e.message : 'No se pudo solicitar la devolución');
     } finally {
