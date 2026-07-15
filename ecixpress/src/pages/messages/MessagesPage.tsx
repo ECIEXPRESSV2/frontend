@@ -4,10 +4,12 @@ import { io, Socket } from 'socket.io-client';
 import { ArrowLeft, Check, CheckCheck, ChevronDown, ChevronRight, MessageSquare, ReceiptText, Send } from 'lucide-react';
 import Sidebar from '../../components/home/Sidebar';
 import OrderDetailModal from '../../components/orders/OrderDetailModal';
+import RefundCard from '../../components/messages/RefundCard';
+import RefundDetailModal from '../../components/messages/RefundDetailModal';
 import { useAuth } from '../../context/AuthContext';
 import { useOrdersApi } from '../../hooks/useOrdersApi';
 import { getMyStores } from '../../services/storeService';
-import { ORDERS_WS_URL, type ConversationResponse, type MessageResponse } from '../../lib/orders-api';
+import { ORDERS_WS_URL, parseRefundMessage, type ConversationResponse, type MessageResponse } from '../../lib/orders-api';
 import { formatDateTime } from '../../lib/format';
 
 interface MessagesPageProps {
@@ -81,6 +83,8 @@ const MessagesPage: React.FC<MessagesPageProps> = ({ onBack }) => {
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   // Pedido cuyo detalle (recibo) se está viendo en el modal; null = cerrado.
   const [detailOrderId, setDetailOrderId] = useState<string | null>(null);
+  // Tarjeta de reembolso cuyo detalle se está viendo; null = cerrado.
+  const [refundDetail, setRefundDetail] = useState<MessageResponse | null>(null);
   const [messages, setMessages] = useState<MessageResponse[]>([]);
   const [draft, setDraft] = useState('');
   const [otherTyping, setOtherTyping] = useState(false);
@@ -92,6 +96,10 @@ const MessagesPage: React.FC<MessagesPageProps> = ({ onBack }) => {
 
   const upsertMessage = (msg: MessageResponse) =>
     setMessages((current) => (current.some((m) => m.id === msg.id) ? current : [...current, msg]));
+
+  /** Reemplaza un mensaje existente en el hilo (p. ej. la tarjeta de reembolso al resolverse). */
+  const patchMessage = (msg: MessageResponse) =>
+    setMessages((current) => current.map((m) => (m.id === msg.id ? msg : m)));
 
   /** Inserta o actualiza una conversación en la lista (para eventos en vivo). */
   const patchConversation = (conv: ConversationResponse) =>
@@ -196,6 +204,11 @@ const MessagesPage: React.FC<MessagesPageProps> = ({ onBack }) => {
         if (msg.conversationId !== selectedIdRef.current) return;
         upsertMessage(msg);
         if (msg.senderId !== userProfile?.id) void markRead(msg.conversationId);
+      });
+      // Una tarjeta de reembolso cambió de estado (aprobada/rechazada) en el mismo mensaje.
+      socket.on('message:updated', (msg: MessageResponse) => {
+        if (msg.conversationId !== selectedIdRef.current) return;
+        patchMessage(msg);
       });
       // Actualización de la lista en vivo (preview, hora, no leídos, archivado). Si el
       // pedido se entregó o canceló, el chat se cierra para siempre: se saca de la lista
@@ -506,6 +519,14 @@ const MessagesPage: React.FC<MessagesPageProps> = ({ onBack }) => {
 
                     <div className="flex-1 overflow-y-auto scrollbar-auto-hide p-5 space-y-2.5">
                       {messages.map((m) => {
+                        const refundPayload = parseRefundMessage(m);
+                        if (refundPayload) {
+                          return (
+                            <div key={m.id} className="flex justify-start animate-[fadeIn_0.25s_ease]">
+                              <RefundCard kind={refundPayload.kind} requestedAt={m.createdAt} onOpenDetail={() => setRefundDetail(m)} />
+                            </div>
+                          );
+                        }
                         const mine = m.senderId === userProfile?.id;
                         return (
                           <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'} animate-[fadeIn_0.25s_ease]`}>
@@ -574,6 +595,20 @@ const MessagesPage: React.FC<MessagesPageProps> = ({ onBack }) => {
       </main>
 
       <OrderDetailModal open={!!detailOrderId} orderId={detailOrderId} onClose={() => setDetailOrderId(null)} />
+
+      {refundDetail && selected && (
+        <RefundDetailModal
+          open={!!refundDetail}
+          onClose={() => setRefundDetail(null)}
+          orderId={selected.orderId}
+          message={refundDetail}
+          payload={parseRefundMessage(refundDetail) ?? { orderId: selected.orderId, amount: 0, full: true, kind: 'requested' }}
+          requesterName={selected.customerName}
+          requesterAvatar={selected.customerAvatarUrl}
+          canResolve={vendor}
+          onResolved={(updated) => { patchMessage(updated); setRefundDetail(updated); }}
+        />
+      )}
     </div>
   );
 };

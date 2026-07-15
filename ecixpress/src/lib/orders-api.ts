@@ -72,6 +72,8 @@ export interface RequestReturnRequest {
   full?: boolean;
   items?: ReturnItem[];
   reason?: string;
+  /** Carpeta de evidencia (ver uploadReturnEvidence); se omite si no se adjuntaron fotos. */
+  refundId?: string;
 }
 
 export interface OrderHistoryItem {
@@ -177,11 +179,45 @@ export interface MessageResponse {
   senderId: string;
   senderRole: ParticipantRole;
   content: string;
-  messageType: 'text' | 'system' | 'status-update';
+  messageType: 'text' | 'system' | 'status-update' | 'refund';
   status: 'sent' | 'delivered' | 'read' | 'deleted';
   readStatuses: MessageReadStatus[];
   createdAt: string;
   updatedAt: string;
+}
+
+/** Estado de la tarjeta de reembolso en el chat (`MessageResponse.content`, como JSON, cuando `messageType === 'refund'`). */
+export type RefundMessageKind = 'requested' | 'approved' | 'rejected';
+
+export interface RefundMessageItem {
+  productId: string;
+  name: string;
+  imageUrl?: string;
+  quantity: number;
+  /** Centavos COP. */
+  amount: number;
+}
+
+export interface RefundMessagePayload {
+  orderId: string;
+  /** Centavos COP. */
+  amount: number;
+  full: boolean;
+  kind: RefundMessageKind;
+  reason?: string;
+  /** Carpeta de evidencia; si está presente, hay fotos para pedir con getReturnEvidence. */
+  refundId?: string;
+  items?: RefundMessageItem[];
+}
+
+/** Parsea `MessageResponse.content` como `RefundMessagePayload`; null si no es un mensaje de reembolso válido. */
+export function parseRefundMessage(message: MessageResponse): RefundMessagePayload | null {
+  if (message.messageType !== 'refund') return null;
+  try {
+    return JSON.parse(message.content) as RefundMessagePayload;
+  } catch {
+    return null;
+  }
 }
 
 export interface FrequentProduct {
@@ -339,6 +375,49 @@ export const ordersApi = {
 
   requestReturn: (orderId: string, payload: RequestReturnRequest, token?: string | null) =>
     requestJson<OrderResponse>(`/orders/${orderId}/returns`, token, { method: 'POST', body: JSON.stringify(payload) }),
+
+  /** Vendedor (staff de la tienda del pedido): aprueba una devolución post-recogida pendiente. */
+  approveReturn: (orderId: string, token?: string | null) =>
+    requestJson<OrderResponse>(`/orders/${orderId}/returns/approve`, token, { method: 'POST' }),
+
+  /** Vendedor: rechaza una devolución post-recogida pendiente (el pedido vuelve a su estado anterior). */
+  rejectReturn: (orderId: string, payload: { reason?: string }, token?: string | null) =>
+    requestJson<OrderResponse>(`/orders/${orderId}/returns/reject`, token, { method: 'POST', body: JSON.stringify(payload) }),
+
+  /** Comprador: sube hasta 3 fotos de evidencia (antes de requestReturn) a la carpeta `refundId`. */
+  uploadReturnEvidence: async (
+    orderId: string,
+    refundId: string,
+    files: File[],
+    token?: string | null,
+  ): Promise<{ urls: string[] }> => {
+    const form = new FormData();
+    form.set('refundId', refundId);
+    files.forEach((file) => form.append('files', file));
+    const response = await fetch(`${ORDERS_API_BASE_URL}/orders/${orderId}/returns/evidence`, {
+      method: 'POST',
+      headers: {
+        ...(ordersUserId ? { 'x-user-id': ordersUserId } : {}),
+        ...(ordersUserRole ? { 'x-user-role': ordersUserRole } : {}),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: form,
+    });
+    if (!response.ok) {
+      let message = `Request failed with status ${response.status}`;
+      try {
+        const payload = (await response.json()) as { message?: string | string[] };
+        if (Array.isArray(payload.message)) message = payload.message.join(', ');
+        else if (payload.message) message = payload.message;
+      } catch { /* keep fallback */ }
+      throw new Error(message);
+    }
+    return response.json();
+  },
+
+  /** Comprador o staff de la tienda: URLs frescas (SAS) de la evidencia de un reembolso. */
+  getReturnEvidence: (orderId: string, refundId: string, token?: string | null) =>
+    requestJson<{ urls: string[] }>(`/orders/${orderId}/returns/evidence/${refundId}`, token),
 
   getOrders: (token?: string | null, params?: { customerId?: string; storeId?: string; status?: string }) => {
     const q = new URLSearchParams();
