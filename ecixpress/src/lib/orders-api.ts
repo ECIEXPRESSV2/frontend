@@ -11,7 +11,8 @@ export type OrderStatus =
   | 'CANCELLED'
   | 'FAILED'
   | 'PARTIALLY_RETURNED'
-  | 'RETURNED';
+  | 'RETURNED'
+  | 'RETURN_PENDING_APPROVAL';
 
 export interface OrderItemInput {
   productId: string;
