@@ -34,6 +34,13 @@ export function useOrdersApi() {
       ordersApi.checkout(orderId, await getToken(), body),
     requestReturn: async (orderId: string, payload: RequestReturnRequest) =>
       ordersApi.requestReturn(orderId, payload, await getToken()),
+    approveReturn: async (orderId: string) => ordersApi.approveReturn(orderId, await getToken()),
+    rejectReturn: async (orderId: string, payload: { reason?: string }) =>
+      ordersApi.rejectReturn(orderId, payload, await getToken()),
+    uploadReturnEvidence: async (orderId: string, refundId: string, files: File[]) =>
+      ordersApi.uploadReturnEvidence(orderId, refundId, files, await getToken()),
+    getReturnEvidence: async (orderId: string, refundId: string) =>
+      ordersApi.getReturnEvidence(orderId, refundId, await getToken()),
     cancelOrder: async (id: string, payload: { actorType?: string; reason?: string }) =>
       ordersApi.cancelOrder(id, payload, await getToken()),
     deleteOrder: async (id: string) => ordersApi.deleteOrder(id, await getToken()),
