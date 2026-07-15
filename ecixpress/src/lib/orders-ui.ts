@@ -15,6 +15,7 @@ export const statusTone: Record<OrderStatus, string> = {
   FAILED: 'bg-rose-100 text-rose-700',
   PARTIALLY_RETURNED: 'bg-purple-100 text-purple-700',
   RETURNED: 'bg-fuchsia-100 text-fuchsia-700',
+  RETURN_PENDING_APPROVAL: 'bg-amber-100 text-amber-700',
 };
 
 export const statusLabel: Record<OrderStatus, string> = {
@@ -31,6 +32,7 @@ export const statusLabel: Record<OrderStatus, string> = {
   FAILED: 'Fallido',
   PARTIALLY_RETURNED: 'Devolución parcial',
   RETURNED: 'Devuelto',
+  RETURN_PENDING_APPROVAL: 'Devolución en revisión',
 };
 
 /** Flujo "feliz" para la línea de seguimiento (RF-08). */
@@ -45,8 +47,13 @@ export const ORDER_FLOW: OrderStatus[] = [
   'DELIVERED',
 ];
 
+/**
+ * ¿El pedido admite cancelación? A partir de READY_FOR_PICKUP el negocio ya preparó el
+ * pedido: el backend rechaza la cancelación desde ahí en adelante (solo el vencimiento del
+ * QR lo cancela, sin reembolso — ver notification qr_expiring_soon).
+ */
 export const isCancellable = (status: OrderStatus): boolean =>
-  !['DELIVERED', 'CANCELLED', 'FAILED'].includes(status);
+  !['READY_FOR_PICKUP', 'DELIVERED', 'CANCELLED', 'FAILED', 'PARTIALLY_RETURNED', 'RETURNED', 'RETURN_PENDING_APPROVAL'].includes(status);
 
 export const isRateable = (status: OrderStatus): boolean =>
   status === 'DELIVERED' || status === 'READY_FOR_PICKUP';
@@ -58,9 +65,14 @@ export const isRateable = (status: OrderStatus): boolean =>
 export const hasPickupCode = (status: OrderStatus): boolean =>
   ['CONFIRMED', 'IN_PREPARATION', 'READY_FOR_PICKUP', 'DELIVERED'].includes(status);
 
-/** ¿El pedido admite solicitar una devolución (total o parcial)? */
+/**
+ * ¿El pedido admite solicitar una devolución (total o parcial)? Desde READY_FOR_PICKUP ya
+ * no se admite (el negocio preparó el pedido; para eso está cancelar, ver isCancellable,
+ * bloqueado también desde ese estado). DELIVERED/PARTIALLY_RETURNED (post-recogida) pasan
+ * por aprobación de un admin antes de reembolsar.
+ */
 export const isReturnable = (status: OrderStatus): boolean =>
-  ['CONFIRMED', 'READY_FOR_PICKUP', 'DELIVERED', 'PARTIALLY_RETURNED'].includes(status);
+  ['CONFIRMED', 'DELIVERED', 'PARTIALLY_RETURNED'].includes(status);
 
 /**
  * ¿El pedido admite "reordenar"? Solo tiene sentido sobre pedidos ya cerrados
