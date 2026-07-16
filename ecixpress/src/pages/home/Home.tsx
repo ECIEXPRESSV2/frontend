@@ -103,7 +103,7 @@ const Home: React.FC<HomeProps> = ({ onUserClick, onCartClick, onOrdersClick, on
 
   return (
     // data-theme en el RAÍZ: al elegir "Tienda" toda la página (incluidos Sidebar y la
-    // cápsula superior, hijos DOM de este div) pasa del amarillo al azul vía los tokens
+    // cápsula superior, hijos DOM de este div) pasa del ámbar al oro vía los tokens
     // --accent-* y las variables yellow/amber redefinidas en index.css.
     <div
       className="theme-surface min-h-screen bg-gradient-to-br from-yellow-50 via-white to-yellow-100"
