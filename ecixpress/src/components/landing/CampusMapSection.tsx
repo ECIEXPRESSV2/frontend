@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Loader2, MapPin, Rotate3d } from 'lucide-react';
 import type { Map as MapLibreMap, Marker as MapLibreMarker } from 'maplibre-gl';
+import { applyBuildingTextures } from '../../services/buildingTextures';
 
 // ─── Tipos (mismos contratos que StoreMapModal) ─────────────────────────────
 type CampusGeometry = {
@@ -132,6 +133,7 @@ const CampusMapSection: React.FC = () => {
               ).forEach((c) => bounds.extend(c as [number, number]))
             );
             currentMap.fitBounds(bounds, { padding: 60, bearing: -18, pitch: 60, maxZoom: 17.6, duration: 0 });
+            applyBuildingTextures(currentMap).catch(() => {});
 
             campus.features
               .filter((f) => f.properties.tipo && PICKUP_TYPES.has(f.properties.tipo) && f.properties.name)
