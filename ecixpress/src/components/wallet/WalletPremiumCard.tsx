@@ -11,7 +11,7 @@ const WalletPremiumCard: React.FC<WalletPremiumCardProps> = ({ className = '' })
 
   return (
     <div
-      className={`relative aspect-[16/10] min-h-[218px] w-full max-w-[420px] overflow-hidden rounded-[26px] bg-[linear-gradient(135deg,#E9B44A_0%,#F5C94A_42%,#F7E2AA_100%)] p-5 text-white shadow-[0_18px_40px_-12px_rgba(245,158,11,0.42)] ring-1 ring-white/30 sm:p-6 ${className}`}
+      className={`relative aspect-[16/10] min-h-[218px] w-full max-w-[420px] overflow-hidden rounded-[26px] bg-[linear-gradient(135deg,var(--wallet-card-from)_0%,var(--wallet-card-via)_42%,var(--wallet-card-to)_100%)] p-5 text-white shadow-[0_18px_40px_-12px_var(--wallet-card-shadow)] ring-1 ring-white/30 sm:p-6 ${className}`}
       role="group"
       aria-label="Billetera ECIEXPRESS"
     >

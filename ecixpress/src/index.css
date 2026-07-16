@@ -33,7 +33,7 @@ html {
 /* ── Tokens semánticos de acento ──────────────────────────────────────────────
    Rampa del color de acento de la app. Por defecto (sección "Comida") replica la rampa
    ámbar de Tailwind, así el resto de páginas queda idéntico; bajo [data-theme="tienda"]
-   toda la rampa pasa al oro equivalente. El código nuevo del Home consume SIEMPRE estos
+   toda la rampa pasa al terracota equivalente. El código nuevo del Home consume SIEMPRE estos
    tokens (via valores arbitrarios, p. ej. bg-[var(--accent-400)]) en vez de utilidades
    yellow/amber con opacidad, para no depender de la lista de parches de más abajo.
    --accent-rgb permite sombras/tintes con cualquier alpha: rgb(var(--accent-rgb) / 0.3). */
@@ -53,28 +53,41 @@ html {
   /* Tintes translúcidos del gradiente del sidebar (hoy amber-50/86% y amber-100/68%). */
   --accent-surface-soft: rgba(255, 251, 235, 0.86);
   --accent-surface: rgba(254, 243, 199, 0.68);
+  /* Tarjeta virtual premium (WalletPremiumCard): su gradiente dorado es un "oro de marca"
+     propio, no sale de la rampa amber de Tailwind, así que necesita tokens dedicados para
+     poder recolorearse bajo el tema Tienda sin alterar ni un pixel el look de Comida. */
+  --wallet-card-from: #e9b44a;
+  --wallet-card-via: #f5c94a;
+  --wallet-card-to: #f7e2aa;
+  --wallet-card-shadow: rgba(245, 158, 11, 0.42);
 }
 
-/* Tienda = "oro comercio": mostaza/bronce profundo (matiz ~47°, más frío que el ámbar de
-   Comida, que ronda 43° y tira a naranja). Toda la rampa va un escalón más oscura que el
-   ámbar a propósito, para que el cambio de sección sea evidente: el 400 (#d1a70d) es un oro
-   viejo claramente más denso que el #fbbf24 de Comida (ratio de luminancia 1.36 entre ambos)
-   y los oscuros bajan a bronce de ferretería. Contrastes verificados: 600 sobre blanco 4.8:1
-   (AA texto normal), 700 sobre blanco 7.1:1, texto gray-950 sobre 400 8.9:1 (AAA). */
+/* Tienda = terracota: arcilla cálida (matiz ~20°, tierra cocida), claramente separada del
+   ámbar de Comida (~43°) sin salirse de la familia cálida de la marca. Identidad APROBADA
+   por el usuario tras descartar azul, oro oscuro y chartreuse #C5DA2C. Los oscuros bajan a
+   barro/ladrillo (700 = #7a3a21). OJO: no confundir con --color-danger (#E2725B, coral
+   ~10°): el terracota es más profundo y anaranjado; el danger queda para errores/destructivo.
+   Contrastes verificados: 600 sobre blanco 6.3:1 (AA), 700 sobre blanco 8.6:1 (AAA),
+   texto gray-950 sobre 400 6.1:1 (AA). */
 [data-theme="tienda"] {
-  --accent-50: #fbf7dc;
-  --accent-100: #f5ecae;
-  --accent-200: #eeda67;
-  --accent-300: #e3c22a;
-  --accent-400: #d1a70d;
-  --accent-500: #b18a08;
-  --accent-600: #8f6d07;
-  --accent-700: #6f540a;
-  --accent-rgb: 209 167 13;
-  --accent-ring: #e3c22a;
-  --accent-soft-to: #c79a10;
-  --accent-surface-soft: rgba(251, 247, 220, 0.86);
-  --accent-surface: rgba(245, 236, 174, 0.68);
+  --accent-50: #fdf4ee;
+  --accent-100: #f9e2d4;
+  --accent-200: #f2c4ab;
+  --accent-300: #e59a75;
+  --accent-400: #d1764a;
+  --accent-500: #b95c33;
+  --accent-600: #9a4826;
+  --accent-700: #7a3a21;
+  --accent-rgb: 209 118 74;
+  --accent-ring: #e59a75;
+  --accent-soft-to: #c56a3f;
+  --accent-surface-soft: rgba(253, 244, 238, 0.86);
+  --accent-surface: rgba(249, 226, 212, 0.68);
+  /* Tarjeta virtual en terracota: misma progresión oscuro→claro del oro de Comida. */
+  --wallet-card-from: #bf6136;
+  --wallet-card-via: #d1764a;
+  --wallet-card-to: #f2c4ab;
+  --wallet-card-shadow: rgba(185, 92, 51, 0.42);
 }
 
 @keyframes scrollVertical {
@@ -384,48 +397,57 @@ html {
 /* ── Tema "Tienda": todo lo amarillo/ámbar del Home pasa a la rampa "oro comercio" ──
    Tailwind v4 genera las utilidades de color como var(--color-<nombre>-<tono>). Redefiniendo
    esas variables dentro de este alcance, TODAS las utilidades (incluidas las de opacidad y los
-   degradados from/via/to) que usan amarillo/ámbar pasan al oro automáticamente, sin tocar
-   cada clase. El atributo data-theme="tienda" vive en el div RAÍZ del Home, así que cubre
-   también al Sidebar y a la cápsula superior (hijos DOM del raíz aunque sean fixed). El resto
-   de páginas nunca pone el atributo y queda intacto. */
+   degradados from/via/to) que usan amarillo/ámbar pasan al terracota automáticamente, sin tocar
+   cada clase. El atributo data-theme="tienda" vive en <html> (lo pone src/lib/sectionTheme.ts
+   según el toggle Comida/Tienda del Home, y persiste en localStorage): el tema es GLOBAL y
+   cubre todas las páginas, modales y portales de la app. */
 [data-theme="tienda"] {
-  --color-yellow-50: #fbf7dc;
-  --color-yellow-100: #f5ecae;
-  --color-yellow-200: #eeda67;
-  --color-yellow-300: #e3c22a;
-  --color-yellow-400: #d1a70d;
-  --color-yellow-500: #b18a08;
-  --color-yellow-600: #8f6d07;
-  --color-yellow-700: #6f540a;
-  --color-yellow-800: #55400c;
-  --color-amber-50: #fbf7dc;
-  --color-amber-100: #f5ecae;
-  --color-amber-200: #eeda67;
-  --color-amber-300: #e3c22a;
-  --color-amber-400: #d1a70d;
-  --color-amber-500: #b18a08;
-  --color-amber-600: #8f6d07;
-  --color-amber-700: #6f540a;
-  --color-amber-800: #55400c;
+  /* Colores de marca del @theme: primary es el ámbar corporativo que usan landing y
+     páginas de vendedor/admin (bg-primary, ring-primary…); los a11y-yellow-* son sus
+     variantes oscuras AA para texto sobre blanco. Bajo Tienda pasan al terracota. */
+  --color-primary: #d1764a;
+  --color-a11y-yellow-dark: #7a3a21;
+  --color-a11y-yellow-darker: #5e2f1d;
+  --color-yellow-50: #fdf4ee;
+  --color-yellow-100: #f9e2d4;
+  --color-yellow-200: #f2c4ab;
+  --color-yellow-300: #e59a75;
+  --color-yellow-400: #d1764a;
+  --color-yellow-500: #b95c33;
+  --color-yellow-600: #9a4826;
+  --color-yellow-700: #7a3a21;
+  --color-yellow-800: #5e2f1d;
+  --color-amber-50: #fdf4ee;
+  --color-amber-100: #f9e2d4;
+  --color-amber-200: #f2c4ab;
+  --color-amber-300: #e59a75;
+  --color-amber-400: #d1764a;
+  --color-amber-500: #b95c33;
+  --color-amber-600: #9a4826;
+  --color-amber-700: #7a3a21;
+  --color-amber-800: #5e2f1d;
 }
 
-/* El logo del sidebar es un PNG amarillo (~38° de matiz): bajo el tema Tienda se nudgea al
-   oro de la rampa (~48°) con un giro corto de matiz y algo más de saturación. El blanco del
-   fondo no se ve afectado. */
+/* El logo del sidebar es un PNG amarillo (~38° de matiz): bajo el tema Tienda se gira al
+   terracota de la rampa (~20°). OJO: nada de brightness() aquí — apaga los triángulos
+   BLANCOS del logo, que deben quedar blancos puros igual que en Comida; hue-rotate/saturate
+   no afectan al blanco. */
 [data-theme="tienda"] .sidebar-eci-logo {
-  filter: hue-rotate(10deg) saturate(1.15) brightness(0.92);
+  filter: hue-rotate(-20deg) saturate(1.05);
 }
 
-/* Las utilidades con opacidad (p. ej. bg-amber-50/70) Tailwind las precompila a un hex fijo, así
-   que no pasan por la variable: se reemplazan aquí una a una con el oro equivalente. El código
-   nuevo del Home debe usar los tokens --accent-* y NO engrosar esta lista. */
-[data-theme="tienda"] .bg-amber-50\/40 { background-color: #fbf7dc66; }
-[data-theme="tienda"] .bg-amber-50\/50 { background-color: #fbf7dc80; }
-[data-theme="tienda"] .bg-amber-50\/70 { background-color: #fbf7dcb3; }
-[data-theme="tienda"] .bg-yellow-400\/20 { background-color: #d1a70d33; }
-[data-theme="tienda"] .border-yellow-200\/80 { border-color: #eeda67cc; }
-[data-theme="tienda"] .shadow-yellow-200\/40 { --tw-shadow-color: #eeda6766; }
-[data-theme="tienda"] .shadow-yellow-200\/60 { --tw-shadow-color: #eeda6799; }
+/* Utilidades con opacidad (p. ej. bg-amber-50/70): Tailwind v4 emite DOS reglas — un hex fijo
+   de fallback y, en @supports, color-mix(var(--color-amber-50)…) que sí pasa por la variable y
+   gana en cualquier navegador moderno. O sea que estas utilidades ya se remapean solas; los
+   parches de abajo solo cubren navegadores sin color-mix para las superficies del Home. El
+   código nuevo debe preferir los tokens --accent-* y NO engrosar esta lista. */
+[data-theme="tienda"] .bg-amber-50\/40 { background-color: #fdf4ee66; }
+[data-theme="tienda"] .bg-amber-50\/50 { background-color: #fdf4ee80; }
+[data-theme="tienda"] .bg-amber-50\/70 { background-color: #fdf4eeb3; }
+[data-theme="tienda"] .bg-yellow-400\/20 { background-color: #d1764a33; }
+[data-theme="tienda"] .border-yellow-200\/80 { border-color: #f2c4abcc; }
+[data-theme="tienda"] .shadow-yellow-200\/40 { --tw-shadow-color: #f2c4ab66; }
+[data-theme="tienda"] .shadow-yellow-200\/60 { --tw-shadow-color: #f2c4ab99; }
 
 .building-pin {
   pointer-events: none;
