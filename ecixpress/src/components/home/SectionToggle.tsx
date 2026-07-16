@@ -9,7 +9,7 @@ interface SectionToggleProps {
 /**
  * Toggle "Comida / Tienda" integrado con el lenguaje del Home: base glass sin borde visible
  * y un "thumb" deslizante que usa los MISMOS tokens de acento que las demás píldoras
- * (--accent-300/400), así que en Comida es ámbar suave y en Tienda oro, igual que el
+ * (--accent-300/400), así que en Comida es ámbar suave y en Tienda terracota, igual que el
  * resto de la página. El thumb se desliza a la mitad activa y su color cruza con el tema.
  */
 const SectionToggle: React.FC<SectionToggleProps> = ({ active, onChange }) => {

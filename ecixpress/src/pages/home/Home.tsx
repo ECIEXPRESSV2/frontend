@@ -18,6 +18,7 @@ import type { OrderResponse } from '../../lib/orders-api';
 import { getAvailableStores, type Store } from '../../services/storeService';
 import { useFavorites } from '../../hooks/useFavorites';
 import { useRefreshOnScrollTop } from '../../hooks/useRefreshOnScrollTop';
+import { applySectionTheme, getStoredSection } from '../../lib/sectionTheme';
 
 const StoreMapModal = lazy(() => import('../../components/store/StoreMapModal'));
 
@@ -33,7 +34,13 @@ const Home: React.FC<HomeProps> = ({ onUserClick, onCartClick, onOrdersClick, on
   const navigate = useNavigate();
   const { getToken, userProfile } = useAuth();
   const ordersApi = useOrdersApi();
-  const [activeSection, setActiveSection] = useState<SectionId>('comida');
+  // La sección es un TEMA GLOBAL: se restaura de localStorage y, al cambiarla, se aplica a
+  // toda la app (data-theme en <html> vía sectionTheme) — no solo a esta página.
+  const [activeSection, setActiveSection] = useState<SectionId>(getStoredSection);
+  const handleSectionChange = useCallback((next: SectionId) => {
+    setActiveSection(next);
+    applySectionTheme(next);
+  }, []);
   const [activeSidebarItem, setActiveSidebarItem] = useState('home');
   const [stores, setStores] = useState<Store[]>([]);
   const [loadingStores, setLoadingStores] = useState(true);
@@ -102,13 +109,10 @@ const Home: React.FC<HomeProps> = ({ onUserClick, onCartClick, onOrdersClick, on
   };
 
   return (
-    // data-theme en el RAÍZ: al elegir "Tienda" toda la página (incluidos Sidebar y la
-    // cápsula superior, hijos DOM de este div) pasa del ámbar al oro vía los tokens
+    // El tema Comida/Tienda ya NO se pone aquí: vive en <html> (lo aplica sectionTheme.ts),
+    // así toda la app —esta página incluida— pasa del ámbar al terracota vía los tokens
     // --accent-* y las variables yellow/amber redefinidas en index.css.
-    <div
-      className="theme-surface min-h-screen bg-gradient-to-br from-yellow-50 via-white to-yellow-100"
-      data-theme={activeSection === 'tienda' ? 'tienda' : undefined}
-    >
+    <div className="theme-surface min-h-screen bg-gradient-to-br from-yellow-50 via-white to-yellow-100">
       <Sidebar
         activeItem={activeSidebarItem}
         onItemClick={setActiveSidebarItem}
@@ -122,7 +126,7 @@ const Home: React.FC<HomeProps> = ({ onUserClick, onCartClick, onOrdersClick, on
           la cápsula del avatar ocupa esa franja, así que el toggle se renderiza DENTRO del hero
           (slot sectionToggle) y esta versión fija solo existe desde md. */}
       <div className="app-shift fixed left-0 top-3 z-[56] hidden pl-3 md:block md:pl-6">
-        <SectionToggle active={activeSection} onChange={setActiveSection} />
+        <SectionToggle active={activeSection} onChange={handleSectionChange} />
       </div>
 
       {/* Barra de búsqueda de tiendas — fluye con el contenido (desaparece al scrollear). */}
@@ -148,7 +152,7 @@ const Home: React.FC<HomeProps> = ({ onUserClick, onCartClick, onOrdersClick, on
             <HeroBanner
               userName={firstName}
               onNewOrder={() => setMapOpen(true)}
-              sectionToggle={<SectionToggle active={activeSection} onChange={setActiveSection} />}
+              sectionToggle={<SectionToggle active={activeSection} onChange={handleSectionChange} />}
             />
 
             <OurStoresSection

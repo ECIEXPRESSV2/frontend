@@ -328,17 +328,34 @@ const MessagesPage: React.FC<MessagesPageProps> = ({ onBack }) => {
       return next;
     });
 
+  // Al abrir un chat, su grupo se despliega UNA sola vez (para que se vea cuál quedó
+  // seleccionado), pero el estado sigue siendo manual: el usuario puede recogerlo aunque
+  // el chat abierto viva dentro. La ref evita re-desplegarlo con cada actualización en
+  // vivo de la lista (mensajes nuevos, previews) mientras siga seleccionado el mismo chat.
+  const lastAutoExpandedFor = useRef<string>('');
+  useEffect(() => {
+    if (!selectedId || lastAutoExpandedFor.current === selectedId) return;
+    const conv = conversations.find((c) => c.id === selectedId);
+    if (!conv) return;
+    lastAutoExpandedFor.current = selectedId;
+    const key = (vendor ? conv.customerId : conv.storeId) || conv.id;
+    setExpandedGroups((prev) => (prev.has(key) ? prev : new Set(prev).add(key)));
+  }, [selectedId, conversations, vendor]);
+
   // Etiqueta corta del pedido para distinguir chats dentro de un mismo grupo.
   const orderLabel = (c: ConversationResponse) => `Pedido ${c.orderId.slice(0, 8)}…`;
 
   const selected = conversations.find((c) => c.id === selectedId);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-white to-yellow-100">
+    // Layout estilo WhatsApp: la página ocupa exactamente el viewport y NO scrollea
+    // (h-dvh + overflow-hidden); lo único que scrollea es la lista de conversaciones
+    // (y el hilo de mensajes dentro del panel). El chat queda siempre fijo en pantalla.
+    <div className="h-dvh overflow-hidden bg-gradient-to-br from-yellow-50 via-white to-yellow-100">
       <Sidebar activeItem="messages" />
 
-      <main className="app-shift px-4 pb-24 pt-20 md:px-8 md:pb-8 lg:px-10">
-        <div className="relative mx-auto w-full max-w-7xl space-y-6">
+      <main className="app-shift flex h-full min-h-0 flex-col px-4 pb-24 pt-20 md:px-8 md:pb-8 lg:px-10">
+        <div className="relative mx-auto flex min-h-0 w-full max-w-7xl flex-1 flex-col gap-6">
           <div className="flex items-center gap-3">
             <button onClick={() => (onBack ? onBack() : navigate('/home'))} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/55 backdrop-blur-xl border border-white/50 text-gray-700 font-medium text-sm shadow-sm shadow-gray-200/40 hover:bg-white/80 hover:text-yellow-600 hover:shadow-md transition-all duration-300">
               <ArrowLeft size={16} /> Volver
@@ -354,12 +371,13 @@ const MessagesPage: React.FC<MessagesPageProps> = ({ onBack }) => {
             </div>
           )}
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-12 gap-6">
             {/* Lista de conversaciones — en mobile se oculta mientras hay un chat abierto,
-                para que el chat use la pantalla completa en vez de apilarse debajo. */}
-            <section className={`lg:col-span-4 ${selectedId ? 'hidden lg:block' : ''}`}>
-              <div className="rounded-3xl bg-white/45 backdrop-blur-2xl border border-white/50 shadow-xl shadow-gray-200/40 p-2.5">
-                <div className="space-y-1.5">
+                para que el chat use la pantalla completa en vez de apilarse debajo.
+                Es la ÚNICA zona con scroll de página: la lista desborda hacia adentro. */}
+            <section className={`min-h-0 lg:col-span-4 ${selectedId ? 'hidden lg:block' : ''}`}>
+              <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-3xl bg-white/45 backdrop-blur-2xl border border-white/50 shadow-xl shadow-gray-200/40 p-2.5">
+                <div className="min-h-0 flex-1 space-y-1.5 overflow-y-auto scrollbar-auto-hide">
                   {groups.length === 0 && (
                     <div className="rounded-2xl p-6 text-center text-gray-500 text-sm">
                       No tienes conversaciones. Crea un pedido para chatear con la tienda.
@@ -410,9 +428,10 @@ const MessagesPage: React.FC<MessagesPageProps> = ({ onBack }) => {
                     }
 
                     // Varios pedidos con la misma persona: cabecera de grupo desplegable.
-                    // Se abre manualmente o de forma automática si el chat abierto es de este grupo.
+                    // El abrir/recoger es SIEMPRE manual (aunque el chat abierto esté dentro);
+                    // al seleccionar un chat, un efecto lo despliega una única vez.
                     const activeInGroup = g.convs.some((c) => c.id === selectedId);
-                    const isOpen = expandedGroups.has(g.key) || activeInGroup;
+                    const isOpen = expandedGroups.has(g.key);
                     return (
                       <div key={g.key} className="space-y-1">
                         <div
@@ -494,9 +513,11 @@ const MessagesPage: React.FC<MessagesPageProps> = ({ onBack }) => {
             </section>
 
             {/* Chat — en mobile solo se muestra cuando hay una conversación seleccionada
-                (ver `selectedId` arriba); en lg+ va siempre junto a la lista, sin cambios. */}
-            <section className={`lg:col-span-8 ${selectedId ? '' : 'hidden lg:block'}`}>
-              <div className="glass-spotlight glass-spotlight-soft rounded-3xl bg-white/45 backdrop-blur-2xl border border-white/50 shadow-xl shadow-gray-200/40 flex flex-col h-[calc(100dvh-13rem)] lg:h-[70vh] overflow-hidden">
+                (ver `selectedId` arriba); en lg+ va siempre junto a la lista. Llena la fila
+                del grid (que ya está acotada al viewport), así queda fijo en pantalla y solo
+                su hilo de mensajes scrollea. */}
+            <section className={`min-h-0 lg:col-span-8 ${selectedId ? '' : 'hidden lg:block'}`}>
+              <div className="glass-spotlight glass-spotlight-soft rounded-3xl bg-white/45 backdrop-blur-2xl border border-white/50 shadow-xl shadow-gray-200/40 flex flex-col h-full overflow-hidden">
                 {selected ? (
                   <>
                     <div className="px-5 py-4 border-b border-white/50 bg-white/30 backdrop-blur-xl flex items-center gap-3">
