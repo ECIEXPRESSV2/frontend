@@ -148,7 +148,10 @@ export async function applyBuildingTextures(map: MapLibreMap): Promise<void> {
 
   const buildColorMatch = (colors: Record<string, RGB>): unknown => {
     if (names.length === 0) return FALLBACK_COLOR;
-    const expr: (string | number)[] = ['match', ['get', 'name']];
+    // Las expresiones de MapLibre son arrays recursivos heterogéneos (strings, sub-expresiones
+    // como ['get', 'name'], etc.) -- unknown[] en vez de (string|number)[] para no chocar con
+    // el elemento ['get', 'name'], que es un array, no un string ni un number.
+    const expr: unknown[] = ['match', ['get', 'name']];
     for (const name of names) {
       const [r, g, b] = colors[name];
       expr.push(name, `rgb(${r},${g},${b})`);
