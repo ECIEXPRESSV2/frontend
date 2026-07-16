@@ -57,6 +57,7 @@ export async function catalogFetch<T>(
   const token = await getFirebaseIdToken();
   const headers = new Headers(init?.headers);
   if (!isFormData) headers.set('Content-Type', 'application/json');
+  if (!headers.has('Accept')) headers.set('Accept', 'application/json');
   if (token) headers.set('Authorization', `Bearer ${token}`);
   if (catalogUserId) headers.set('x-user-id', catalogUserId);
   if (catalogUserRole) headers.set('x-user-role', catalogUserRole);
