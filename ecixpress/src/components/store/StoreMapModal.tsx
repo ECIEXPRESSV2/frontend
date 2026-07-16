@@ -12,6 +12,7 @@ import {
 } from '../../services/storeService';
 import { isFavorite } from '../../services/favoritesStore';
 import GalleryCarousel from './GalleryCarousel';
+import { applyBuildingTextures } from '../../services/buildingTextures';
 
 /** Escapa texto para insertarlo con innerHTML sin riesgo de inyección. */
 const escapeHtml = (s: string): string =>
@@ -287,6 +288,7 @@ const StoreMapModal: React.FC<Props> = ({ open, onClose, onSelect }) => {
           );
           map.fitBounds(b, { padding: 50, bearing: -18, pitch: 55, maxZoom: 18, duration: 0 });
           map.resize();
+          applyBuildingTextures(map).catch(() => {});
           setMapReady(true);
         })
         .catch(() => {
