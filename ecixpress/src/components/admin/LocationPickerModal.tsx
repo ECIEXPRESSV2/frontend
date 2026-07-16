@@ -4,6 +4,7 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import { X, MapPin, Check, Loader2, Building2, ChevronUp, ChevronDown } from 'lucide-react';
 import GalleryCarousel from '../store/GalleryCarousel';
 import { getBuildingImages } from '../../services/buildingImages';
+import { applyBuildingTextures } from '../../services/buildingTextures';
 
 type CampusGeometry = {
   type: 'Polygon' | 'MultiPolygon';
@@ -194,6 +195,7 @@ const LocationPickerModal: React.FC<Props> = ({ open, initial, onClose, onSelect
           );
           map.fitBounds(b, { padding: 50, bearing: -18, pitch: 55, maxZoom: 18, duration: 0 });
           map.resize();
+          applyBuildingTextures(map).catch(() => {});
           buildingHoverPin = createBuildingHoverPin(map);
           // Al editar (ubicación previa), resalta ese edificio en rojo y muestra su panel.
           if (initial) {
