@@ -315,6 +315,7 @@ async function requestJson<T>(path: string, token?: string | null, init?: Reques
     ...init,
     headers: {
       'Content-Type': 'application/json',
+      Accept: 'application/json',
       ...(ordersUserId ? { 'x-user-id': ordersUserId } : {}),
       ...(ordersUserRole ? { 'x-user-role': ordersUserRole } : {}),
       // Se conserva el Bearer por compatibilidad; en modo gateway orders lo ignora.

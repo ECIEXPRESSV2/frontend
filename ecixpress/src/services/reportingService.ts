@@ -59,6 +59,7 @@ async function reportingFetch<T>(path: string): Promise<T> {
   const token = await getFirebaseIdToken();
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
+    Accept: 'application/json',
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
   const sessionId = sessionStorage.getItem('sessionId');

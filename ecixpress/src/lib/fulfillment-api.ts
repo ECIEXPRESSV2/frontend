@@ -145,6 +145,7 @@ async function requestJson<T>(
   const response = await fetch(`${FULFILLMENT_API_BASE_URL}${API_PREFIX}${path}`, {
     headers: {
       'Content-Type': 'application/json',
+      Accept: 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...gatewayHeaders(identity),
       ...(init?.headers ?? {}),
