@@ -1,6 +1,6 @@
 import React, { Suspense, lazy, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
-import { Activity, RefreshCw, Play, Store, Gauge, Loader2, X, Radio, Send, Inbox, AlertTriangle, Layers, GitBranch, ExternalLink, TrendingUp, Clock, Percent, Save, PiggyBank, ChevronLeft, ChevronRight, Terminal, Pause, ShieldAlert } from 'lucide-react';
+import { Activity, RefreshCw, Play, Store, Gauge, Loader2, X, Radio, Send, Inbox, AlertTriangle, GitBranch, ExternalLink, TrendingUp, Clock, Percent, Save, PiggyBank, ChevronLeft, ChevronRight, Terminal, Pause, ShieldAlert } from 'lucide-react';
 import Sidebar from '../../components/home/Sidebar';
 import { CardSkeleton } from '../../components/common/LoadingSkeleton';
 import TrianglePattern from '../../components/home/TrianglePattern';
@@ -24,7 +24,6 @@ import {
   getLatency,
   getEventFlow,
   getServiceDeploy,
-  getServiceBusBacklog,
   getServiceLogs,
   ReportingError,
   type ServiceHealth,
@@ -34,7 +33,6 @@ import {
   type LatencyPoint,
   type EventFlowResponse,
   type ServiceDeploy,
-  type ServiceBusBacklog,
   type ServiceLogLine,
 } from '../../services/reportingService';
 
@@ -86,7 +84,6 @@ const MonitoringPage: React.FC = () => {
   const [healthAt, setHealthAt] = useState<Date | null>(null);
   const [latency, setLatency] = useState<LatencyResponse | null>(null);
   const [events, setEvents] = useState<EventFlowResponse | null>(null);
-  const [bus, setBus] = useState<ServiceBusBacklog | null>(null);
 
   // Ganancias por tienda: tarjeta por tienda (logo + nombre) coloreada por margen.
   const [stores, setStores] = useState<StoreT[]>([]);
@@ -129,10 +126,6 @@ const MonitoringPage: React.FC = () => {
     try { setEvents(await getEventFlow(60)); } catch { /* App Insights puede no estar */ }
   }, []);
 
-  const loadBus = useCallback(async () => {
-    try { setBus(await getServiceBusBacklog()); } catch { /* Azure metrics puede no estar */ }
-  }, []);
-
   const loadStoreEarnings = useCallback(async () => {
     const uid = userProfile?.id;
     if (!uid) return;
@@ -165,7 +158,7 @@ const MonitoringPage: React.FC = () => {
         const cat = await getQuickCatalog();
         setCatalog(cat);
         setSelectedKey((prev) => prev || cat[0]?.key || '');
-        await Promise.all([pollHealth(), pollLatency(), loadEvents(), loadBus()]);
+        await Promise.all([pollHealth(), pollLatency(), loadEvents()]);
       } catch (err) {
         setBootError(errMsg(err));
         toast.error(errMsg(err));
@@ -255,7 +248,7 @@ const MonitoringPage: React.FC = () => {
                 )}
               </div>
               <button
-                onClick={() => { pollHealth(); pollLatency(); loadEvents(); loadBus(); loadStoreEarnings(); }}
+                onClick={() => { pollHealth(); pollLatency(); loadEvents(); loadStoreEarnings(); }}
                 className="inline-flex min-h-11 items-center gap-2 rounded-2xl border border-white/70 bg-white/80 px-4 py-2 text-sm font-bold text-gray-700 shadow-sm backdrop-blur transition hover:bg-white hover:text-gray-950"
               >
                 <RefreshCw size={16} /> Actualizar
@@ -310,9 +303,6 @@ const MonitoringPage: React.FC = () => {
 
               {/* ── Flujo de eventos ── */}
               <EventsSection data={events} />
-
-              {/* ── Backlog del Service Bus ── */}
-              <ServiceBusSection data={bus} />
 
               {/* ── Ganancias por tienda ── */}
               <section className="rounded-3xl border border-white/70 bg-white/85 p-5 shadow-lg shadow-gray-200/50 backdrop-blur-xl">
@@ -557,46 +547,6 @@ const EventCountPanel: React.FC<{ title: string; icon: React.ReactNode; rows: { 
       </div>
     )}
   </div>
-);
-
-/** Backlog del Service Bus: mensajes activos y dead-letter por entidad. */
-const ServiceBusSection: React.FC<{ data: ServiceBusBacklog | null }> = ({ data }) => (
-  <section className="rounded-3xl border border-white/70 bg-white/85 p-5 shadow-lg shadow-gray-200/50 backdrop-blur-xl">
-    <div className="mb-4 flex items-center gap-2">
-      <Layers size={18} className="text-amber-500" />
-      <h2 className="text-base font-bold text-gray-900">Service Bus · backlog</h2>
-    </div>
-    {!data || !data.available ? (
-      <p className="py-6 text-center text-sm text-gray-400">
-        {data?.note ?? 'Solo en el entorno desplegado (Azure Monitor metrics).'}
-      </p>
-    ) : data.entities.length === 0 ? (
-      <p className="py-6 text-center text-sm text-gray-400">Sin mensajes en el bus</p>
-    ) : (
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-gray-100 text-left text-gray-500">
-              <th className="px-3 py-2 font-semibold">Entidad / suscripción</th>
-              <th className="px-3 py-2 text-right font-semibold">Activos</th>
-              <th className="px-3 py-2 text-right font-semibold">Dead-letter</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.entities.map((e) => (
-              <tr key={e.entity} className="border-b border-gray-50 hover:bg-yellow-50/30">
-                <td className="px-3 py-2 font-mono text-xs text-gray-700">{e.entity}</td>
-                <td className="px-3 py-2 text-right tabular-nums text-gray-700">{e.active.toLocaleString('es-CO')}</td>
-                <td className={`px-3 py-2 text-right font-bold tabular-nums ${e.deadLettered > 0 ? 'text-red-600' : 'text-gray-400'}`}>
-                  {e.deadLettered.toLocaleString('es-CO')}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    )}
-  </section>
 );
 
 /** Popup con la gráfica de latencia promedio histórica de un servicio + filtro de tiempo. */
