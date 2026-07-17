@@ -18,6 +18,9 @@ interface SidebarProps {
   showProfile?: boolean;
   showNotifications?: boolean;
   showTopbar?: boolean;
+  /** Oculta el bottom nav móvil (<md). Lo usa el chat abierto en MessagesPage para dar
+      pantalla completa estilo WhatsApp y evitar toques accidentales en "Inicio". */
+  hideMobileBottomNav?: boolean;
   onItemClick?: (item: string) => void;
   onExpandedChange?: (expanded: boolean) => void;
   onUserClick?: () => void;
@@ -34,6 +37,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   showProfile = false,
   showNotifications = false,
   showTopbar = true,
+  hideMobileBottomNav = false,
   onItemClick,
   onExpandedChange,
   onUserClick,
@@ -468,7 +472,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           acción central elevada, y las secciones de vendedor/admin/monitoreo (si aplican)
           se agrupan en la pestaña "Más". ── */}
       <nav
-        className="fixed inset-x-0 bottom-0 z-[60] flex items-stretch justify-around border-t border-white/60 bg-[linear-gradient(180deg,rgba(255,255,255,0.92)_0%,var(--accent-surface-soft)_100%)] backdrop-blur-2xl [box-shadow:0_-8px_24px_rgba(0,0,0,0.08)] [transform:translateZ(0)] [-webkit-transform:translateZ(0)] [backface-visibility:hidden] will-change-transform pb-[env(safe-area-inset-bottom)] md:hidden"
+        className={`fixed inset-x-0 bottom-0 z-[60] ${hideMobileBottomNav ? 'hidden' : 'flex'} items-stretch justify-around border-t border-white/60 bg-[linear-gradient(180deg,rgba(255,255,255,0.92)_0%,var(--accent-surface-soft)_100%)] backdrop-blur-2xl [box-shadow:0_-8px_24px_rgba(0,0,0,0.08)] [transform:translateZ(0)] [-webkit-transform:translateZ(0)] [backface-visibility:hidden] will-change-transform pb-[env(safe-area-inset-bottom)] md:hidden`}
         aria-label="Navegación principal"
       >
         <button
