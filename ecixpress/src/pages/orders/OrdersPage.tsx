@@ -11,6 +11,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useWallet } from '../../context/WalletContext';
 import { useOrdersApi } from '../../hooks/useOrdersApi';
 import { useRefreshOnScrollTop } from '../../hooks/useRefreshOnScrollTop';
+import { useRefreshOnFocus } from '../../hooks/useRefreshOnFocus';
 import { ORDERS_WS_URL, type OrderResponse, type OrderStatus, type RequestReturnRequest } from '../../lib/orders-api';
 import { formatCOP, formatDateTime } from '../../lib/format';
 import { isCancellable, isPayable, isRateable, isReorderable, isReturnable, orderDisplayName, statusLabel, statusTone } from '../../lib/orders-ui';
@@ -152,6 +153,7 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
   };
 
   useRefreshOnScrollTop(load, { disabled: loading });
+  useRefreshOnFocus(load, loading || !userProfile?.id);
 
   // Carga inicial
   useEffect(() => {
