@@ -612,7 +612,7 @@ const PqrsAdminSection: React.FC<{ getToken: () => Promise<string> }> = ({ getTo
               <button
                 key={t.id}
                 onClick={() => setSelectedId(t.id)}
-                className="flex w-full items-center justify-between gap-3 rounded-2xl border border-gray-100 bg-gray-50/60 px-4 py-3 text-left transition hover:bg-yellow-50/60"
+                className="flex w-full items-center justify-between gap-3 rounded-2xl border border-yellow-200 bg-gray-50/60 px-4 py-3 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-yellow-300 hover:bg-yellow-50/60 hover:shadow-md"
               >
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
