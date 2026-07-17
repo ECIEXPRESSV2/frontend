@@ -42,6 +42,7 @@ const StoreMapModal = lazy(() => import('../../components/store/StoreMapModal'))
 
 const HEALTH_POLL_MS = 5000;
 const LATENCY_POLL_MS = 15000;
+const EVENTS_POLL_MS = 5000;
 const POPUP_RANGES = [10, 30, 60] as const;
 
 // La salud de microservicios identifica cada servicio con una clave corta (identity, orders...),
@@ -175,8 +176,9 @@ const MonitoringPage: React.FC = () => {
   useEffect(() => {
     const h = setInterval(pollHealth, HEALTH_POLL_MS);
     const l = setInterval(pollLatency, LATENCY_POLL_MS);
-    return () => { clearInterval(h); clearInterval(l); };
-  }, [pollHealth, pollLatency]);
+    const e = setInterval(loadEvents, EVENTS_POLL_MS);
+    return () => { clearInterval(h); clearInterval(l); clearInterval(e); };
+  }, [pollHealth, pollLatency, loadEvents]);
 
   // Punto de latencia del minuto más reciente por servicio (avg + rpm para la tarjeta).
   const latestByService = useMemo(() => {
