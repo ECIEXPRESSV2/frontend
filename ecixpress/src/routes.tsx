@@ -9,7 +9,7 @@ import AccountLayout from './pages/user/account/AccountLayout';
 import ResumenSection from './pages/user/account/sections/ResumenSection';
 import PagosSection from './pages/user/account/sections/PagosSection';
 import SeguridadSection from './pages/user/account/sections/SeguridadSection';
-import PlaceholderSection from './pages/user/account/sections/PlaceholderSection';
+import AyudaSection from './pages/user/account/sections/AyudaSection';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import UsersPage from './pages/admin/UsersPage';
 import StoresPage from './pages/admin/StoresPage';
@@ -53,7 +53,7 @@ const AppRoutes: React.FC = () => {
         <Route path="pedidos" element={<Navigate to="/orders" replace />} />
         <Route path="notificaciones" element={<Navigate to="/profile/resumen" replace />} />
         <Route path="seguridad" element={<SeguridadSection />} />
-        <Route path="ayuda" element={<PlaceholderSection titulo="Ayuda" />} />
+        <Route path="ayuda" element={<AyudaSection />} />
       </Route>
       <Route path="/cart" element={<ProtectedRoute><CartPage onBack={goHome} onOrdersClick={openOrdersDemo} onMessagesClick={openMessagesDemo} /></ProtectedRoute>} />
       <Route path="/orders" element={<ProtectedRoute><OrdersPage onBack={goHome} /></ProtectedRoute>} />
