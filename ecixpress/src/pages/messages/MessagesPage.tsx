@@ -356,9 +356,11 @@ const MessagesPage: React.FC<MessagesPageProps> = ({ onBack }) => {
     // (h-dvh + overflow-hidden); lo único que scrollea es la lista de conversaciones
     // (y el hilo de mensajes dentro del panel). El chat queda siempre fijo en pantalla.
     <div className="h-dvh overflow-hidden bg-gradient-to-br from-yellow-50 via-white to-yellow-100">
-      <Sidebar activeItem="messages" />
+      {/* Con un chat abierto en móvil, el bottom nav se oculta (pantalla completa estilo
+          WhatsApp) y el padding inferior se reduce al mínimo. */}
+      <Sidebar activeItem="messages" hideMobileBottomNav={!!selectedId} />
 
-      <main className="app-shift flex h-full min-h-0 flex-col px-4 pb-24 pt-20 md:px-8 md:pb-8 lg:px-10">
+      <main className={`app-shift flex h-full min-h-0 flex-col px-4 pt-20 md:px-8 md:pb-8 lg:px-10 ${selectedId ? 'pb-3' : 'pb-24'}`}>
         <div className="relative mx-auto flex min-h-0 w-full max-w-7xl flex-1 flex-col gap-6">
           <div className="flex items-center gap-3">
             <button onClick={() => (onBack ? onBack() : navigate('/home'))} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/55 backdrop-blur-xl border border-white/50 text-gray-700 font-medium text-sm shadow-sm shadow-gray-200/40 hover:bg-white/80 hover:text-yellow-600 hover:shadow-md transition-all duration-300">
@@ -375,7 +377,13 @@ const MessagesPage: React.FC<MessagesPageProps> = ({ onBack }) => {
             </div>
           )}
 
-          <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* auto-rows-[minmax(0,1fr)]: en móvil (grid-cols-1) cada sección cae en una fila
+              implícita; sin esto la fila mide `auto` (alto del contenido), el h-full de los
+              paneles no resuelve contra nada, la lista no scrollea internamente y el chat
+              crecía por debajo del bottom nav fijo — tocar el input terminaba pulsando
+              "Inicio" y expulsaba al Home. Con filas 1fr, el panel visible llena exactamente
+              el alto disponible en móvil y escritorio. */}
+          <div className="grid min-h-0 flex-1 auto-rows-[minmax(0,1fr)] grid-cols-1 lg:grid-cols-12 gap-6">
             {/* Lista de conversaciones — en mobile se oculta mientras hay un chat abierto,
                 para que el chat use la pantalla completa en vez de apilarse debajo.
                 Es la ÚNICA zona con scroll de página: la lista desborda hacia adentro. */}

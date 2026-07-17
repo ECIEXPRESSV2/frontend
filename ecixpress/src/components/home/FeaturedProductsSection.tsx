@@ -114,8 +114,9 @@ const FeaturedProductsSection: React.FC<FeaturedProductsSectionProps> = ({
           con aire a los lados en vez de tarjetas de borde a borde. */}
       <div className="relative z-10 mx-auto w-full max-w-7xl space-y-4">
         <div className="flex flex-wrap items-end justify-between gap-3">
+          {/* En Comida se "prueba" (sabores); en Tienda se "compra" (productos). */}
           <h2 className="font-display text-xl font-semibold text-gray-900 md:text-2xl">
-            ¿Y si pruebas algo nuevo?
+            {section.id === 'tienda' ? '¿Y si compras algo nuevo?' : '¿Y si pruebas algo nuevo?'}
           </h2>
 
           {featured && (
