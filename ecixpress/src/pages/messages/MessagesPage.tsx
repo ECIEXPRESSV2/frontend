@@ -209,6 +209,10 @@ const MessagesPage: React.FC<MessagesPageProps> = ({ onBack }) => {
       socket.on('message:updated', (msg: MessageResponse) => {
         if (msg.conversationId !== selectedIdRef.current) return;
         patchMessage(msg);
+        // El modal de detalle guarda su propia copia del mensaje al abrirse (`refundDetail`);
+        // si está mostrando justo este reembolso, se queda con el estado viejo (pendiente)
+        // aunque la tarjeta del chat sí se actualice -- se refresca también.
+        setRefundDetail((prev) => (prev && prev.id === msg.id ? msg : prev));
       });
       // Actualización de la lista en vivo (preview, hora, no leídos, archivado). Si el
       // pedido se entregó o canceló, el chat se cierra para siempre: se saca de la lista

@@ -157,6 +157,7 @@ async function financialFetch<T>(
   const token = await getFirebaseIdToken();
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
+    Accept: 'application/json',
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     'x-user-id': userId,
     ...(options.headers as Record<string, string>),

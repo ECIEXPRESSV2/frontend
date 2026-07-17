@@ -14,6 +14,7 @@ export async function apiFetch<T>(
   options: RequestInit = {}
 ): Promise<T> {
   const headers: Record<string, string> = {
+    Accept: 'application/json',
     ...(options.headers as Record<string, string>),
   };
   // Con FormData el navegador fija el Content-Type (incluye el boundary); no lo forzamos a JSON.
