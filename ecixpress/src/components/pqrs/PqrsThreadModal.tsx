@@ -50,7 +50,7 @@ const PqrsThreadModal: React.FC<Props> = ({ id, isAdmin, getToken, onClose, onCh
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ block: 'end' });
-  }, [thread?.messages.length]);
+  }, [thread?.messages?.length]);
 
   const handleSend = async () => {
     const body = reply.trim();
@@ -127,7 +127,7 @@ const PqrsThreadModal: React.FC<Props> = ({ id, isAdmin, getToken, onClose, onCh
         <div className="flex-1 overflow-y-auto px-5 py-4">
           {loading ? (
             <div className="flex h-full items-center justify-center text-gray-400"><Loader2 className="animate-spin" size={22} /></div>
-          ) : !thread || thread.messages.length === 0 ? (
+          ) : !thread || (thread.messages ?? []).length === 0 ? (
             <p className="py-6 text-center text-sm text-gray-400">Sin mensajes.</p>
           ) : (
             <div className="space-y-3">
