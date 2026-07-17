@@ -1,6 +1,6 @@
 import React, { Suspense, lazy, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
-import { Activity, RefreshCw, Play, Store, Gauge, Loader2, X, Radio, Send, Inbox, AlertTriangle, Layers, GitBranch, ExternalLink, TrendingUp, Clock, Percent, Save, PiggyBank, ChevronLeft, ChevronRight, Terminal, Pause, ShieldAlert } from 'lucide-react';
+import { Activity, RefreshCw, Play, Store, Gauge, Loader2, X, Radio, Send, Inbox, AlertTriangle, Layers, GitBranch, ExternalLink, TrendingUp, Clock, Percent, Save, PiggyBank, ChevronLeft, ChevronRight, Terminal, Pause, ShieldAlert, Trash2 } from 'lucide-react';
 import Sidebar from '../../components/home/Sidebar';
 import { CardSkeleton } from '../../components/common/LoadingSkeleton';
 import TrianglePattern from '../../components/home/TrianglePattern';
@@ -654,7 +654,7 @@ const LatencyPopup: React.FC<{ service: { key: string; label: string }; onClose:
               className="inline-flex items-center gap-1.5 rounded-xl border border-gray-200 bg-gray-900 px-3 py-1.5 text-xs font-bold text-green-400 shadow-sm transition hover:bg-gray-800"
               title="Ver logs en vivo de este microservicio"
             >
-              <Terminal size={14} /> Consola
+              <Terminal size={14} /> Logs
             </button>
             <button onClick={onClose} className="rounded-full p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700"><X size={18} /></button>
           </div>
@@ -793,7 +793,7 @@ const ConsolePopup: React.FC<{ service: { key: string; label: string }; onClose:
         <div className="flex items-center justify-between border-b border-white/10 bg-gray-900 px-4 py-3">
           <div className="flex items-center gap-2 text-gray-200">
             <Terminal size={16} className="text-green-400" />
-            <span className="font-mono text-sm font-semibold">Consola · {service.label}</span>
+            <span className="font-mono text-sm font-semibold">Logs · {service.label}</span>
             {service.key === 'gateway' && (
               <span className="inline-flex items-center gap-1 rounded-full bg-red-500/10 px-2 py-0.5 text-[10px] font-bold text-red-300 ring-1 ring-red-500/30">
                 <ShieldAlert size={10} /> incluye WAF/AppGw
@@ -801,6 +801,13 @@ const ConsolePopup: React.FC<{ service: { key: string; label: string }; onClose:
             )}
           </div>
           <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => setLines([])}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-white/5 px-2.5 py-1 text-xs font-bold text-gray-300 transition hover:bg-white/10"
+              title="Borrar los logs mostrados (sigue recibiendo los nuevos)"
+            >
+              <Trash2 size={12} /> Borrar
+            </button>
             <button
               onClick={() => setPaused((p) => !p)}
               className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-bold transition ${paused ? 'bg-amber-500/20 text-amber-300' : 'bg-white/5 text-gray-300 hover:bg-white/10'}`}
