@@ -366,10 +366,6 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
                 <button onClick={load} className="inline-flex min-h-11 items-center gap-2 rounded-2xl border border-white/70 bg-white/80 px-4 py-2 text-sm font-bold text-gray-700 shadow-sm backdrop-blur transition hover:bg-white hover:text-gray-950 focus:outline-none focus:ring-2 focus:ring-white">
                   <RefreshCw size={16} /> Actualizar
                 </button>
-                <span title={connected ? 'Conectado en tiempo real' : 'Sin conexión en tiempo real'} className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider ${connected ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
-                  <span className={`inline-block h-2 w-2 rounded-full ${connected ? 'bg-emerald-500' : 'bg-red-500'}`} />
-                  {connected ? 'EN VIVO' : 'SIN CONEXIÓN'}
-                </span>
                 <button onClick={() => setMapOpen(true)} className="inline-flex min-h-11 items-center gap-2 rounded-2xl bg-white px-4 py-2 text-sm font-bold text-amber-700 shadow-sm transition hover:bg-yellow-50 focus:outline-none focus:ring-2 focus:ring-white">
                   <Plus size={16} /> Nuevo pedido
                 </button>

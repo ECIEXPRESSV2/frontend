@@ -53,10 +53,14 @@ const StoreDetail: React.FC<StoreDetailProps> = ({ storeId: storeIdProp, onBack 
   // Al bajar, el banner se "recoge" hacia arriba y se oscurece (queda fijo como barra compacta).
   // Recoger el banner reduce su alto (es sticky); antes eso encogía el alto scrollable de la página
   // y realimentaba el scroll → o parpadeaba, o directamente no se recogía si había poco contenido.
-  // Se resuelve con:
+  // Se resuelve con TRES piezas (las tres hacen falta):
   //   1) histéresis (COLLAPSE_AT / EXPAND_AT): zona muerta que evita el titileo cerca del umbral;
-  //   2) el <main> reserva un alto MÍNIMO (min-h abajo) — así recoger el banner NO cambia el alto
-  //      scrollable, y el colapso funciona en cualquier pantalla, incluso con poco contenido.
+  //   2) el <main> reserva un alto MÍNIMO (min-h abajo) que cubre el DELTA COMPLETO del banner
+  //      (~272px en md) — así recogerlo no encoge el alto scrollable ni con poco contenido;
+  //   3) [overflow-anchor:none] en el raíz de la página: Chrome/Edge/Android traen "scroll
+  //      anchoring" y, mientras el banner se encoge animado, reajustan scrollY cada frame para
+  //      anclar el contenido → scrollY recruzaba EXPAND_AT y el banner rebotaba abriéndose y
+  //      cerrándose. Safari no implementa anchoring, por eso en Apple nunca se veía el bug.
   const [scrolled, setScrolled] = useState(false);
   useEffect(() => {
     const COLLAPSE_AT = 96;
@@ -144,7 +148,8 @@ const StoreDetail: React.FC<StoreDetailProps> = ({ storeId: storeIdProp, onBack 
   const logoUrl = store.imageUrl ?? null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-white to-yellow-100">
+    // [overflow-anchor:none]: ver el comentario del efecto `scrolled` (pieza 3 del fix del banner).
+    <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-white to-yellow-100 [overflow-anchor:none]">
       {/* Sidebar */}
       <Sidebar
         activeItem={activeSidebarItem}
@@ -152,8 +157,9 @@ const StoreDetail: React.FC<StoreDetailProps> = ({ storeId: storeIdProp, onBack 
       />
 
       {/* min-h reserva scroll suficiente para que recoger el banner (sticky) no encoja el alto
-          scrollable de la página → el colapso funciona en cualquier pantalla, sin parpadeo. */}
-      <main className="app-shift min-h-[calc(100vh_+_160px)] px-3 pb-28 md:px-6 md:pb-8">
+          scrollable de la página → el colapso funciona en cualquier pantalla, sin parpadeo.
+          Debe cubrir el delta completo del banner: h-80→h-20 = 240px (móvil), 22rem→5rem = 272px (md). */}
+      <main className="app-shift min-h-[calc(100vh_+_288px)] px-3 pb-28 md:px-6 md:pb-8">
         <div className="w-full">
           {/* HERO: banner grande y FIJO. Al bajar se "recoge" hacia arriba y se oscurece, quedando
               como una barra compacta oscura. La barra de búsqueda va superpuesta a la altura de la
