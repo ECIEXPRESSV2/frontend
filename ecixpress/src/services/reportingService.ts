@@ -181,6 +181,44 @@ export interface ServiceDeploy {
 export const getServiceDeploy = (service: string) =>
   reportingFetch<ServiceDeploy>(`/kpis/deploy/${service}`);
 
+// ─── Logs "en vivo" (consola) ──────────────────────────────────────────────────
+
+export type ServiceLogSource = 'app' | 'waf' | 'access';
+
+export interface ServiceLogLine {
+  timestamp: string;
+  source: ServiceLogSource;
+  stream?: string;
+  text: string;
+  clientIp?: string;
+  ruleId?: string;
+  ruleGroup?: string;
+  action?: string;
+  requestUri?: string;
+}
+
+export interface ServiceLogsResult {
+  service: string;
+  /** false cuando el backend corre sin LOG_ANALYTICS_WORKSPACE_ID (local/tests). */
+  enabled: boolean;
+  lines: ServiceLogLine[];
+}
+
+/**
+ * Logs de un microservicio. Sin `since`, trae los últimos `minutes` (primera carga); con
+ * `since` (timestamp ISO de la última línea ya vista), trae solo las líneas nuevas -- así
+ * el frontend puede hacer polling para simular una consola "en vivo" sin duplicar el
+ * historial. Para `gateway`, el backend agrega también el log de WAF/acceso del Application
+ * Gateway (`source: 'waf' | 'access'`).
+ */
+export const getServiceLogs = (service: string, opts: { minutes?: number; since?: string } = {}) => {
+  const params = new URLSearchParams();
+  if (opts.minutes != null) params.set('minutes', String(opts.minutes));
+  if (opts.since) params.set('since', opts.since);
+  const qs = params.toString();
+  return reportingFetch<ServiceLogsResult>(`/kpis/logs/${service}${qs ? `?${qs}` : ''}`);
+};
+
 // ─── Backlog del Service Bus (Azure Monitor metrics; solo desplegado) ──────────
 
 export interface ServiceBusEntity { entity: string; active: number; deadLettered: number }

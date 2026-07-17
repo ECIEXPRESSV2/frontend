@@ -1,6 +1,6 @@
 import React, { Suspense, lazy, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
-import { Activity, RefreshCw, Play, Store, Gauge, Loader2, X, Radio, Send, Inbox, AlertTriangle, Layers, GitBranch, ExternalLink, TrendingUp, Clock, Percent, Save, PiggyBank, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Activity, RefreshCw, Play, Store, Gauge, Loader2, X, Radio, Send, Inbox, AlertTriangle, Layers, GitBranch, ExternalLink, TrendingUp, Clock, Percent, Save, PiggyBank, ChevronLeft, ChevronRight, Terminal, Pause, ShieldAlert } from 'lucide-react';
 import Sidebar from '../../components/home/Sidebar';
 import { CardSkeleton } from '../../components/common/LoadingSkeleton';
 import TrianglePattern from '../../components/home/TrianglePattern';
@@ -25,6 +25,7 @@ import {
   getEventFlow,
   getServiceDeploy,
   getServiceBusBacklog,
+  getServiceLogs,
   ReportingError,
   type ServiceHealth,
   type QuickQueryMeta,
@@ -34,6 +35,7 @@ import {
   type EventFlowResponse,
   type ServiceDeploy,
   type ServiceBusBacklog,
+  type ServiceLogLine,
 } from '../../services/reportingService';
 
 const StoreMapModal = lazy(() => import('../../components/store/StoreMapModal'));
@@ -610,6 +612,7 @@ const LatencyPopup: React.FC<{ service: { key: string; label: string }; onClose:
   const [data, setData] = useState<LatencyResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [deploy, setDeploy] = useState<ServiceDeploy | null>(null);
+  const [consoleOpen, setConsoleOpen] = useState(false);
 
   useEffect(() => {
     let cancel = false;
@@ -645,8 +648,19 @@ const LatencyPopup: React.FC<{ service: { key: string; label: string }; onClose:
             <h3 className="text-lg font-bold text-gray-900">Latencia · {service.label}</h3>
             <p className="text-sm text-gray-500">Promedio por minuto, últimos {minutes} min.</p>
           </div>
-          <button onClick={onClose} className="rounded-full p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700"><X size={18} /></button>
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => setConsoleOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-gray-200 bg-gray-900 px-3 py-1.5 text-xs font-bold text-green-400 shadow-sm transition hover:bg-gray-800"
+              title="Ver logs en vivo de este microservicio"
+            >
+              <Terminal size={14} /> Consola
+            </button>
+            <button onClick={onClose} className="rounded-full p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700"><X size={18} /></button>
+          </div>
         </div>
+
+        {consoleOpen && <ConsolePopup service={service} onClose={() => setConsoleOpen(false)} />}
 
         <div className="mt-4 flex flex-wrap items-center gap-2">
           <div className="inline-flex rounded-xl border border-gray-200 p-1">
@@ -695,6 +709,132 @@ const LatencyPopup: React.FC<{ service: { key: string; label: string }; onClose:
 
         {/* Deploy: GitHub Actions + revisión de Container Apps */}
         <DeployBlock deploy={deploy} />
+      </div>
+    </div>
+  );
+};
+
+const CONSOLE_POLL_MS = 3000;
+const CONSOLE_INITIAL_MINUTES = 15;
+const CONSOLE_MAX_LINES = 500;
+
+const SOURCE_TAG: Record<ServiceLogLine['source'], { label: string; className: string }> = {
+  app: { label: 'APP', className: 'text-sky-400' },
+  waf: { label: 'WAF', className: 'text-red-400' },
+  access: { label: 'APPGW', className: 'text-amber-400' },
+};
+
+/**
+ * Consola simulada con los logs "en vivo" de un microservicio (registros de aplicación de
+ * Container Apps). Para `gateway` también intercala el log de WAF/acceso del Application
+ * Gateway (etiqueta `WAF`/`APPGW`, en rojo/ámbar), para ver de un vistazo qué IP se está
+ * bloqueando y por qué regla, sin salir de la app ni ir al portal de Azure.
+ *
+ * No hay push real: hace polling cada 3s pidiendo solo lo nuevo (`since` = timestamp de la
+ * última línea ya mostrada), para no repetir el historial ya traído.
+ */
+const ConsolePopup: React.FC<{ service: { key: string; label: string }; onClose: () => void }> = ({ service, onClose }) => {
+  const [lines, setLines] = useState<ServiceLogLine[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [enabled, setEnabled] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [paused, setPaused] = useState(false);
+  const lastTimestampRef = useRef<string | null>(null);
+  const bottomRef = useRef<HTMLDivElement | null>(null);
+  const pausedRef = useRef(paused);
+  useEffect(() => { pausedRef.current = paused; }, [paused]);
+
+  useEffect(() => {
+    let active = true;
+    let timer: ReturnType<typeof setInterval> | null = null;
+
+    const appendLines = (incoming: ServiceLogLine[]) => {
+      if (incoming.length === 0) return;
+      lastTimestampRef.current = incoming[incoming.length - 1].timestamp;
+      setLines((prev) => [...prev, ...incoming].slice(-CONSOLE_MAX_LINES));
+    };
+
+    const poll = async () => {
+      if (pausedRef.current) return;
+      try {
+        const res = lastTimestampRef.current
+          ? await getServiceLogs(service.key, { since: lastTimestampRef.current })
+          : await getServiceLogs(service.key, { minutes: CONSOLE_INITIAL_MINUTES });
+        if (!active) return;
+        setEnabled(res.enabled);
+        setError(null);
+        appendLines(res.lines);
+      } catch (e) {
+        if (active) setError(e instanceof Error ? e.message : 'No se pudieron cargar los logs');
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+
+    void poll();
+    timer = setInterval(() => void poll(), CONSOLE_POLL_MS);
+    return () => {
+      active = false;
+      if (timer) clearInterval(timer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [service.key]);
+
+  useEffect(() => {
+    if (!paused) bottomRef.current?.scrollIntoView({ block: 'end' });
+  }, [lines, paused]);
+
+  return (
+    <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
+      <div
+        className="flex h-[80vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-gray-950 shadow-2xl ring-1 ring-white/10"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between border-b border-white/10 bg-gray-900 px-4 py-3">
+          <div className="flex items-center gap-2 text-gray-200">
+            <Terminal size={16} className="text-green-400" />
+            <span className="font-mono text-sm font-semibold">Consola · {service.label}</span>
+            {service.key === 'gateway' && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-red-500/10 px-2 py-0.5 text-[10px] font-bold text-red-300 ring-1 ring-red-500/30">
+                <ShieldAlert size={10} /> incluye WAF/AppGw
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => setPaused((p) => !p)}
+              className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-bold transition ${paused ? 'bg-amber-500/20 text-amber-300' : 'bg-white/5 text-gray-300 hover:bg-white/10'}`}
+            >
+              <Pause size={12} /> {paused ? 'Reanudar' : 'Pausar'}
+            </button>
+            <button onClick={onClose} className="rounded-full p-1.5 text-gray-400 hover:bg-white/10 hover:text-white"><X size={18} /></button>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-4 py-3 font-mono text-[12.5px] leading-relaxed">
+          {loading ? (
+            <div className="flex h-full items-center justify-center text-gray-500"><Loader2 className="animate-spin" size={20} /></div>
+          ) : !enabled ? (
+            <p className="text-gray-500">Sin Log Analytics configurado (solo disponible en el entorno desplegado).</p>
+          ) : error ? (
+            <p className="text-red-400">{error}</p>
+          ) : lines.length === 0 ? (
+            <p className="text-gray-500">Esperando actividad de {service.label}…</p>
+          ) : (
+            lines.map((line, i) => {
+              const tag = SOURCE_TAG[line.source];
+              const blocked = line.action === 'Blocked';
+              return (
+                <div key={i} className={`whitespace-pre-wrap break-all ${blocked ? 'bg-red-500/10' : ''}`}>
+                  <span className="text-gray-600">{new Date(line.timestamp).toLocaleTimeString('es-CO', { hour12: false })}</span>{' '}
+                  <span className={`font-bold ${tag.className}`}>[{tag.label}]</span>{' '}
+                  <span className={blocked ? 'text-red-300' : 'text-gray-300'}>{line.text}</span>
+                </div>
+              );
+            })
+          )}
+          <div ref={bottomRef} />
+        </div>
       </div>
     </div>
   );
