@@ -7,6 +7,7 @@ import TrianglePattern from '../../components/home/TrianglePattern';
 import { useAuth } from '../../context/AuthContext';
 import { useOrdersApi } from '../../hooks/useOrdersApi';
 import { useRefreshOnScrollTop } from '../../hooks/useRefreshOnScrollTop';
+import { useRefreshOnFocus } from '../../hooks/useRefreshOnFocus';
 import { getMyStores } from '../../services/storeService';
 import { ORDERS_API_BASE_URL, type OrderResponse, type OrderStatus } from '../../lib/orders-api';
 import { fulfillmentApi, type FulfillmentIdentity } from '../../lib/fulfillment-api';
@@ -101,6 +102,7 @@ const VendorOrdersPage: React.FC<VendorOrdersPageProps> = ({ onBack }) => {
   }, [userProfile?.id]);
 
   useRefreshOnScrollTop(load, { disabled: loading || !userProfile?.id });
+  useRefreshOnFocus(load, loading || !userProfile?.id);
 
   // Tiempo real: el socket se une solo a la sala personal `user:<id>` del vendedor;
   // orders-service empuja `order:new` al crearse un pedido y `order:status-updated`
