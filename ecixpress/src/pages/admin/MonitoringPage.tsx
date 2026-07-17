@@ -1,6 +1,6 @@
 import React, { Suspense, lazy, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
-import { Activity, RefreshCw, Play, Store, Gauge, Loader2, X, Radio, Send, Inbox, AlertTriangle, Layers, GitBranch, ExternalLink, TrendingUp, Clock, Percent, Save, PiggyBank, ChevronLeft, ChevronRight, Terminal, Pause, ShieldAlert, Trash2 } from 'lucide-react';
+import { Activity, RefreshCw, Play, Store, Gauge, Loader2, X, Radio, Send, Inbox, AlertTriangle, GitBranch, ExternalLink, TrendingUp, Clock, Percent, Save, PiggyBank, ChevronLeft, ChevronRight, Terminal, Pause, ShieldAlert, Trash2, Mail } from 'lucide-react';
 import Sidebar from '../../components/home/Sidebar';
 import { CardSkeleton } from '../../components/common/LoadingSkeleton';
 import TrianglePattern from '../../components/home/TrianglePattern';
@@ -24,7 +24,6 @@ import {
   getLatency,
   getEventFlow,
   getServiceDeploy,
-  getServiceBusBacklog,
   getServiceLogs,
   ReportingError,
   type ServiceHealth,
@@ -34,14 +33,16 @@ import {
   type LatencyPoint,
   type EventFlowResponse,
   type ServiceDeploy,
-  type ServiceBusBacklog,
   type ServiceLogLine,
 } from '../../services/reportingService';
+import { listPqrs, type PqrsListItem, type PqrsStatus } from '../../services/pqrsService';
+import PqrsThreadModal from '../../components/pqrs/PqrsThreadModal';
 
 const StoreMapModal = lazy(() => import('../../components/store/StoreMapModal'));
 
 const HEALTH_POLL_MS = 5000;
 const LATENCY_POLL_MS = 15000;
+const EVENTS_POLL_MS = 5000;
 const POPUP_RANGES = [10, 30, 60] as const;
 
 // La salud de microservicios identifica cada servicio con una clave corta (identity, orders...),
@@ -86,7 +87,6 @@ const MonitoringPage: React.FC = () => {
   const [healthAt, setHealthAt] = useState<Date | null>(null);
   const [latency, setLatency] = useState<LatencyResponse | null>(null);
   const [events, setEvents] = useState<EventFlowResponse | null>(null);
-  const [bus, setBus] = useState<ServiceBusBacklog | null>(null);
 
   // Ganancias por tienda: tarjeta por tienda (logo + nombre) coloreada por margen.
   const [stores, setStores] = useState<StoreT[]>([]);
@@ -129,10 +129,6 @@ const MonitoringPage: React.FC = () => {
     try { setEvents(await getEventFlow(60)); } catch { /* App Insights puede no estar */ }
   }, []);
 
-  const loadBus = useCallback(async () => {
-    try { setBus(await getServiceBusBacklog()); } catch { /* Azure metrics puede no estar */ }
-  }, []);
-
   const loadStoreEarnings = useCallback(async () => {
     const uid = userProfile?.id;
     if (!uid) return;
@@ -165,7 +161,7 @@ const MonitoringPage: React.FC = () => {
         const cat = await getQuickCatalog();
         setCatalog(cat);
         setSelectedKey((prev) => prev || cat[0]?.key || '');
-        await Promise.all([pollHealth(), pollLatency(), loadEvents(), loadBus()]);
+        await Promise.all([pollHealth(), pollLatency(), loadEvents()]);
       } catch (err) {
         setBootError(errMsg(err));
         toast.error(errMsg(err));
@@ -180,8 +176,9 @@ const MonitoringPage: React.FC = () => {
   useEffect(() => {
     const h = setInterval(pollHealth, HEALTH_POLL_MS);
     const l = setInterval(pollLatency, LATENCY_POLL_MS);
-    return () => { clearInterval(h); clearInterval(l); };
-  }, [pollHealth, pollLatency]);
+    const e = setInterval(loadEvents, EVENTS_POLL_MS);
+    return () => { clearInterval(h); clearInterval(l); clearInterval(e); };
+  }, [pollHealth, pollLatency, loadEvents]);
 
   // Punto de latencia del minuto más reciente por servicio (avg + rpm para la tarjeta).
   const latestByService = useMemo(() => {
@@ -255,7 +252,7 @@ const MonitoringPage: React.FC = () => {
                 )}
               </div>
               <button
-                onClick={() => { pollHealth(); pollLatency(); loadEvents(); loadBus(); loadStoreEarnings(); }}
+                onClick={() => { pollHealth(); pollLatency(); loadEvents(); loadStoreEarnings(); }}
                 className="inline-flex min-h-11 items-center gap-2 rounded-2xl border border-white/70 bg-white/80 px-4 py-2 text-sm font-bold text-gray-700 shadow-sm backdrop-blur transition hover:bg-white hover:text-gray-950"
               >
                 <RefreshCw size={16} /> Actualizar
@@ -311,8 +308,8 @@ const MonitoringPage: React.FC = () => {
               {/* ── Flujo de eventos ── */}
               <EventsSection data={events} />
 
-              {/* ── Backlog del Service Bus ── */}
-              <ServiceBusSection data={bus} />
+              {/* ── PQRS ── */}
+              <PqrsAdminSection getToken={getToken} />
 
               {/* ── Ganancias por tienda ── */}
               <section className="rounded-3xl border border-white/70 bg-white/85 p-5 shadow-lg shadow-gray-200/50 backdrop-blur-xl">
@@ -559,45 +556,96 @@ const EventCountPanel: React.FC<{ title: string; icon: React.ReactNode; rows: { 
   </div>
 );
 
-/** Backlog del Service Bus: mensajes activos y dead-letter por entidad. */
-const ServiceBusSection: React.FC<{ data: ServiceBusBacklog | null }> = ({ data }) => (
-  <section className="rounded-3xl border border-white/70 bg-white/85 p-5 shadow-lg shadow-gray-200/50 backdrop-blur-xl">
-    <div className="mb-4 flex items-center gap-2">
-      <Layers size={18} className="text-amber-500" />
-      <h2 className="text-base font-bold text-gray-900">Service Bus · backlog</h2>
-    </div>
-    {!data || !data.available ? (
-      <p className="py-6 text-center text-sm text-gray-400">
-        {data?.note ?? 'Solo en el entorno desplegado (Azure Monitor metrics).'}
-      </p>
-    ) : data.entities.length === 0 ? (
-      <p className="py-6 text-center text-sm text-gray-400">Sin mensajes en el bus</p>
-    ) : (
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-gray-100 text-left text-gray-500">
-              <th className="px-3 py-2 font-semibold">Entidad / suscripción</th>
-              <th className="px-3 py-2 text-right font-semibold">Activos</th>
-              <th className="px-3 py-2 text-right font-semibold">Dead-letter</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.entities.map((e) => (
-              <tr key={e.entity} className="border-b border-gray-50 hover:bg-yellow-50/30">
-                <td className="px-3 py-2 font-mono text-xs text-gray-700">{e.entity}</td>
-                <td className="px-3 py-2 text-right tabular-nums text-gray-700">{e.active.toLocaleString('es-CO')}</td>
-                <td className={`px-3 py-2 text-right font-bold tabular-nums ${e.deadLettered > 0 ? 'text-red-600' : 'text-gray-400'}`}>
-                  {e.deadLettered.toLocaleString('es-CO')}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+const PQRS_FILTERS: { key: PqrsStatus | 'ALL'; label: string }[] = [
+  { key: 'ALL', label: 'Todas' },
+  { key: 'OPEN', label: 'Abiertas' },
+  { key: 'CLOSED', label: 'Cerradas' },
+];
+
+/** PQRS (peticiones, quejas, reclamos, sugerencias) enviadas por los usuarios. */
+const PqrsAdminSection: React.FC<{ getToken: () => Promise<string> }> = ({ getToken }) => {
+  const [filter, setFilter] = useState<PqrsStatus | 'ALL'>('OPEN');
+  const [tickets, setTickets] = useState<PqrsListItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    try {
+      const token = await getToken();
+      setTickets(await listPqrs(token, filter === 'ALL' ? undefined : filter));
+    } catch { /* se muestra vacío si falla */ }
+    finally { setLoading(false); }
+  }, [getToken, filter]);
+
+  useEffect(() => { setLoading(true); void load(); }, [load]);
+
+  return (
+    <section className="rounded-3xl border border-white/70 bg-white/85 p-5 shadow-lg shadow-gray-200/50 backdrop-blur-xl">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <Mail size={18} className="text-amber-500" />
+          <h2 className="text-base font-bold text-gray-900">PQRS</h2>
+        </div>
+        <div className="inline-flex rounded-xl border border-gray-200 p-1">
+          {PQRS_FILTERS.map((f) => (
+            <button
+              key={f.key}
+              onClick={() => setFilter(f.key)}
+              className={`rounded-lg px-3 py-1 text-xs font-semibold transition ${filter === f.key ? 'bg-amber-500 text-white' : 'text-gray-600 hover:text-gray-900'}`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
       </div>
-    )}
-  </section>
-);
+
+      {loading ? (
+        <div className="flex justify-center py-8 text-gray-400"><Loader2 className="animate-spin" size={20} /></div>
+      ) : tickets.length === 0 ? (
+        <p className="py-6 text-center text-sm text-gray-400">Sin PQRS en este filtro.</p>
+      ) : (
+        <div className="space-y-2">
+          {tickets.map((t) => {
+            const last = t.messages[0];
+            const isClosed = t.status === 'CLOSED';
+            return (
+              <button
+                key={t.id}
+                onClick={() => setSelectedId(t.id)}
+                className="flex w-full items-center justify-between gap-3 rounded-2xl border border-gray-100 bg-gray-50/60 px-4 py-3 text-left transition hover:bg-yellow-50/60"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="truncate text-sm font-semibold text-gray-900">{t.subject}</span>
+                    <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${isClosed ? 'bg-gray-200 text-gray-500' : 'bg-green-100 text-green-700'}`}>
+                      {isClosed ? 'Cerrada' : 'Abierta'}
+                    </span>
+                  </div>
+                  <p className="mt-0.5 truncate text-xs text-gray-400">
+                    {t.user.fullName} · {last ? `${last.senderRole === 'ADMIN' ? 'Tú: ' : ''}${last.body}` : 'Sin mensajes'}
+                  </p>
+                </div>
+                <span className="shrink-0 text-xs text-gray-400">
+                  {new Date(t.updatedAt).toLocaleDateString('es-CO', { day: '2-digit', month: 'short' })}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {selectedId && (
+        <PqrsThreadModal
+          id={selectedId}
+          isAdmin
+          getToken={getToken}
+          onClose={() => setSelectedId(null)}
+          onChanged={load}
+        />
+      )}
+    </section>
+  );
+};
 
 /** Popup con la gráfica de latencia promedio histórica de un servicio + filtro de tiempo. */
 type Metric = 'avgMs' | 'requests';
