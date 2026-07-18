@@ -1,5 +1,5 @@
 import React from 'react';
-import { MessageCircle, PackageCheck, Store as StoreIcon } from 'lucide-react';
+import { ChevronRight, MessageCircle, PackageCheck, Store as StoreIcon } from 'lucide-react';
 import { OrderProgressTimeline } from '../orders/OrderProgressTimeline';
 import type { OrderResponse } from '../../lib/orders-api';
 import { formatCOP } from '../../lib/format';
@@ -9,13 +9,15 @@ interface ActiveOrderBannerProps {
   order: OrderResponse;
   onOpen: () => void;
   onChat: () => void;
+  /** Si se provee, muestra un enlace "Ver más pedidos" que lleva a la lista completa. */
+  onSeeAll?: () => void;
 }
 
 /**
  * Banner del pedido activo: se muestra inmediatamente debajo de "Nuestras tiendas".
  * Versión compacta y tokenizada del antiguo ActiveOrderCard que vivía dentro de Home.tsx.
  */
-const ActiveOrderBanner: React.FC<ActiveOrderBannerProps> = ({ order, onOpen, onChat }) => {
+const ActiveOrderBanner: React.FC<ActiveOrderBannerProps> = ({ order, onOpen, onChat, onSeeAll }) => {
   const firstItem = order.items[0];
   const itemCount = order.items.reduce((sum, item) => sum + item.quantity, 0);
 
@@ -34,9 +36,21 @@ const ActiveOrderBanner: React.FC<ActiveOrderBannerProps> = ({ order, onOpen, on
                 <p className="mt-0.5 text-sm text-gray-500">Pedido #{order.orderNumber.slice(-4)} · {itemCount} producto{itemCount === 1 ? '' : 's'}</p>
               </div>
             </div>
-            <span className={`inline-flex rounded-full px-3 py-1.5 text-xs font-black ${statusTone[order.status]}`}>
-              {statusLabel[order.status]}
-            </span>
+            <div className="flex flex-col items-end gap-2">
+              {onSeeAll && (
+                <button
+                  type="button"
+                  onClick={onSeeAll}
+                  className="group inline-flex items-center gap-1 rounded-lg text-xs font-bold text-[var(--accent-700)] transition hover:text-[var(--accent-800)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-ring)]"
+                >
+                  Ver más pedidos
+                  <ChevronRight size={14} aria-hidden="true" className="transition-transform group-hover:translate-x-0.5" />
+                </button>
+              )}
+              <span className={`inline-flex rounded-full px-3 py-1.5 text-xs font-black ${statusTone[order.status]}`}>
+                {statusLabel[order.status]}
+              </span>
+            </div>
           </div>
 
           <OrderProgressTimeline order={order} variant="compact" />

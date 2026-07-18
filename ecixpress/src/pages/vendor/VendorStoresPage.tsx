@@ -60,12 +60,8 @@ const VendorStoresPage: React.FC = () => {
             <div aria-hidden="true" className="theme-surface absolute -right-16 -top-24 h-72 w-72 rounded-full bg-[rgb(var(--accent-rgb)/0.32)] blur-3xl" />
             <div aria-hidden="true" className="theme-surface absolute -bottom-28 left-1/4 h-64 w-64 rounded-full bg-[rgb(var(--accent-rgb)/0.20)] blur-3xl" />
             <TrianglePattern className="absolute inset-0 pointer-events-none" />
-            <div className="relative flex flex-col gap-5 p-5 lg:flex-row lg:items-start lg:justify-between md:p-6">
+            <div className="relative flex min-h-[112px] flex-col gap-5 p-5 md:min-h-[132px] lg:flex-row lg:items-center lg:justify-between md:p-6">
               <div className="max-w-3xl">
-                <nav className="mb-3 inline-flex items-center rounded-xl border border-white/70 bg-white/80 px-3 py-1.5 text-sm font-semibold text-gray-700 shadow-sm backdrop-blur" aria-label="Ruta de navegacion">
-                  Vendedor <span className="mx-2 text-gray-400">/</span>
-                  <span className="text-gray-950">Mis tiendas</span>
-                </nav>
                 <h1 className="font-display text-3xl font-bold tracking-normal text-gray-900 md:text-4xl">Mis puntos de venta</h1>
               </div>
               <div className="flex flex-wrap items-center gap-2">
