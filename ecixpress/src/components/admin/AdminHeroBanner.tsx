@@ -2,20 +2,16 @@ import React from 'react';
 import TrianglePattern from '../home/TrianglePattern';
 
 type AdminHeroBannerProps = {
-  section: string;
   title: string;
   accent: string;
   description?: string;
-  rootLabel?: string;
   sidebarExpanded: boolean;
 };
 
 const AdminHeroBanner: React.FC<AdminHeroBannerProps> = ({
-  section,
   title,
   accent,
   description,
-  rootLabel = 'Administracion',
   sidebarExpanded,
 }) => (
   <header
