@@ -283,6 +283,73 @@ const PEAK_DAY_LABELS: Record<PeakDayCode, string> = {
 };
 export const getPeakDayLabel = (code: string) => PEAK_DAY_LABELS[code as PeakDayCode] ?? code;
 
+// ─── Cuenta de desembolso y retiros ─────────────────────────────────────────────
+// Todos resueltos por la tienda del vendedor autenticado (header x-store-id que
+// inyecta el gateway); ningún endpoint de esta sección lleva storeId en la ruta.
+
+export type PayoutType = 'NEQUI' | 'DAVIPLATA' | 'BANK_ACCOUNT';
+
+export interface UpdatePayoutAccountDto {
+  type: PayoutType;
+  /** Número de celular (Nequi/Daviplata) o número de cuenta (BANK_ACCOUNT). */
+  accountNumber: string;
+  /** Código del banco. Solo aplica (y es obligatorio) para BANK_ACCOUNT. */
+  bankCode?: string;
+  holderName: string;
+}
+
+/** Cuenta de desembolso configurada de la tienda (subconjunto del Store de financial-service). */
+export interface StorePayoutAccountInfo {
+  id: string;
+  payoutType: PayoutType | null;
+  payoutAccountNumber: string | null;
+  payoutBankCode: string | null;
+  payoutHolderName: string | null;
+}
+
+export type StorePayoutType = 'AUTOMATIC' | 'ON_DEMAND';
+export type StorePayoutStatus = 'COMPLETED' | 'FAILED';
+
+/** Un giro ya ejecutado (automático de fin de mes u on-demand) hacia la tienda. */
+export interface StorePayout {
+  id: string;
+  storeId: string;
+  type: StorePayoutType;
+  status: StorePayoutStatus;
+  /** Centavos COP. */
+  amount: number;
+  destinationType: PayoutType;
+  destinationAccountNumber: string;
+  destinationBankCode?: string | null;
+  destinationHolderName: string;
+  reference: string;
+  executedAt: string;
+  createdAt: string;
+}
+
+/** Cuenta de desembolso configurada actualmente (null en los campos si aún no se configuró). */
+export const getPayoutAccount = (userId: string) =>
+  financialFetch<StorePayoutAccountInfo>('/stores/payout-account', userId);
+
+/** Registra o actualiza la cuenta donde la tienda recibe sus giros. */
+export const updatePayoutAccount = (userId: string, dto: UpdatePayoutAccountDto) =>
+  financialFetch<StorePayoutAccountInfo>('/stores/payout-account', userId, {
+    method: 'PATCH',
+    body: JSON.stringify(dto),
+  });
+
+/** Saldo disponible (centavos COP) para retirar: RELEASED aún no incluido en ningún giro. */
+export const getPayoutBalance = (userId: string) =>
+  financialFetch<{ availableBalance: number }>('/stores/payouts/balance', userId);
+
+/** Historial de giros (automáticos + a demanda) de la tienda, más reciente primero. */
+export const getPayoutHistory = (userId: string) =>
+  financialFetch<StorePayout[]>('/stores/payouts/history', userId);
+
+/** Retiro anticipado a demanda: liquida el 100% del saldo disponible. Simulado (sandbox). */
+export const withdrawPayout = (userId: string) =>
+  financialFetch<StorePayout>('/stores/payouts/withdraw', userId, { method: 'POST' });
+
 // ─── Tokenización de tarjeta (Wompi, directo desde el navegador) ───────────────
 // La tarjeta NUNCA pasa por nuestro backend: se tokeniza contra Wompi con la
 // llave pública y solo enviamos el token resultante en paymentData.token.
