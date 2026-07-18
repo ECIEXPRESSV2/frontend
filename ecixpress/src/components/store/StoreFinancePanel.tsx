@@ -5,12 +5,16 @@ import { useAuth } from '../../context/AuthContext';
 import {
   getStoreEarnings,
   getStoreCommission,
+  getPayoutAccount,
   formatCOP,
   PEAK_DAY_CODES,
   getPeakDayLabel,
   type StoreEarnings,
   type StoreCommissionInfo,
+  type StorePayoutAccountInfo,
 } from '../../services/financialService';
+import PayoutAccountForm from './PayoutAccountForm';
+import StoreWithdrawSection from './StoreWithdrawSection';
 
 interface StoreFinancePanelProps {
   storeId: string;
@@ -30,18 +34,21 @@ const StoreFinancePanel: React.FC<StoreFinancePanelProps> = ({ storeId }) => {
 
   const [earnings, setEarnings] = useState<StoreEarnings | null>(null);
   const [commission, setCommission] = useState<StoreCommissionInfo | null>(null);
+  const [payoutAccount, setPayoutAccount] = useState<StorePayoutAccountInfo | null>(null);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     if (!userId) return;
     setLoading(true);
     try {
-      const [e, c] = await Promise.all([
+      const [e, c, a] = await Promise.all([
         getStoreEarnings(storeId, userId),
         getStoreCommission(storeId, userId),
+        getPayoutAccount(userId),
       ]);
       setEarnings(e);
       setCommission(c);
+      setPayoutAccount(a);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'No se pudo cargar la información financiera');
     } finally {
@@ -159,6 +166,16 @@ const StoreFinancePanel: React.FC<StoreFinancePanelProps> = ({ storeId }) => {
         ) : (
           <p className="text-gray-400 text-sm">Sin hora pico configurada.</p>
         )}
+      </div>
+
+      {/* ── Cuenta de desembolso ──────────────────────────────────────── */}
+      <div className="border-t border-gray-100 pt-5">
+        <PayoutAccountForm account={payoutAccount} onSaved={setPayoutAccount} />
+      </div>
+
+      {/* ── Retirar dinero ────────────────────────────────────────────── */}
+      <div className="border-t border-gray-100 pt-5">
+        <StoreWithdrawSection hasPayoutAccount={!!payoutAccount?.payoutType} />
       </div>
     </div>
   );
