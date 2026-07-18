@@ -152,6 +152,89 @@ const StockRing: React.FC<{ stock: number; minStock: number }> = ({ stock, minSt
   );
 };
 
+type AssetState = typeof emptyAssetState;
+
+/** Oculta una imagen si su URL falla, sin dejar el ícono roto del navegador. */
+const hideBrokenImage = (e: React.SyntheticEvent<HTMLImageElement>) => {
+  e.currentTarget.style.display = 'none';
+};
+
+/** Selector "Una foto / Tres fotos" — mismo control en alta y en edición. */
+const PhotoModeSelector: React.FC<{ multiView: boolean; onChange: (v: boolean) => void }> = ({ multiView, onChange }) => (
+  <div className="flex gap-2">
+    {[
+      { multi: false, title: 'Una foto', help: 'Modelo rápido, menos preciso' },
+      { multi: true, title: 'Tres fotos', help: 'Modelo más preciso' },
+    ].map((opt) => (
+      <button
+        key={opt.title}
+        type="button"
+        onClick={() => onChange(opt.multi)}
+        className={`flex-1 rounded-xl border p-3 text-left transition ${
+          opt.multi === multiView
+            ? 'border-primary bg-primary/5 ring-1 ring-primary'
+            : 'border-gray-200 bg-white hover:border-gray-300'
+        }`}
+      >
+        <p className="text-sm font-semibold text-gray-900">{opt.title}</p>
+        <p className="text-[11px] text-gray-500 mt-0.5">{opt.help}</p>
+      </button>
+    ))}
+  </div>
+);
+
+/** Grilla de slots de imagen (frontal/lateral/trasera). En edición permite quitar una imagen ya
+ * cargada; en alta todas son obligatorias. Antes estaba duplicada entre ambos modos del modal. */
+const AssetSlotsGrid: React.FC<{
+  multiView: boolean;
+  assets: AssetState;
+  onPick: (slot: AssetSlot, file: File | null) => void;
+  allowRemove?: boolean;
+}> = ({ multiView, assets, onPick, allowRemove = false }) => (
+  <div className={`grid gap-3 ${multiView ? 'md:grid-cols-3' : 'md:grid-cols-1'}`}>
+    {ASSET_SLOTS.filter((s) => multiView || s.key === 'front').map((slot) => {
+      const preview = assets[`${slot.key}Preview` as const];
+      return (
+        <label key={slot.key} className="group block rounded-2xl border border-dashed border-gray-200 bg-white/70 p-3 transition hover:border-primary/40 hover:bg-primary/5">
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <p className="text-sm font-semibold text-gray-900">{slot.label}</p>
+              <p className="text-[11px] text-gray-500">{slot.help}</p>
+            </div>
+            {allowRemove && preview ? (
+              <button
+                type="button"
+                onClick={() => onPick(slot.key, null)}
+                className="rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-semibold text-red-600 hover:bg-red-100"
+              >
+                Quitar
+              </button>
+            ) : (
+              <span className="rounded-full bg-primary/10 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-primary">Obligatoria</span>
+            )}
+          </div>
+          <div className={`mt-3 flex items-center justify-center overflow-hidden rounded-xl border border-gray-100 bg-gray-50 ${multiView ? 'min-h-32' : 'aspect-square'}`}>
+            {preview ? (
+              <img src={preview} alt={slot.label} className="h-full w-full object-cover" />
+            ) : (
+              <div className={`flex flex-col items-center gap-2 text-center text-gray-400 ${multiView ? 'py-8' : 'py-16'}`}>
+                <Upload size={18} />
+                <span className="text-xs font-medium">Subir imagen</span>
+              </div>
+            )}
+          </div>
+          <input
+            type="file"
+            accept="image/jpeg,image/png"
+            className="sr-only"
+            onChange={(e) => { void onPick(slot.key, e.target.files?.[0] ?? null); }}
+          />
+        </label>
+      );
+    })}
+  </div>
+);
+
 /** Capa decorativa muy sutil con los triángulos del logo ECI, dimensionada para el fondo
  * de cada tarjeta de producto (la versión de Home es demasiado grande para estas cards). */
 const CardTriangles: React.FC = () => (
@@ -475,7 +558,7 @@ const ProductsManagementPage: React.FC = () => {
                 alt=""
                 aria-hidden="true"
                 className="absolute inset-0 h-full w-full scale-110 object-cover blur-[2px]"
-                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                onError={hideBrokenImage}
               />
             )}
             {/* Velo translúcido: más opaco a la izquierda (donde va el título) para máxima legibilidad. */}
@@ -490,7 +573,7 @@ const ProductsManagementPage: React.FC = () => {
                     src={store.imageUrl}
                     alt={store.name}
                     className="h-14 w-14 shrink-0 rounded-2xl border border-white/70 bg-white object-cover shadow-md"
-                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                    onError={hideBrokenImage}
                   />
                 ) : (
                   <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-white/70 bg-white/80 text-primary shadow-md">
@@ -587,7 +670,7 @@ const ProductsManagementPage: React.FC = () => {
                     <div className="p-4 space-y-3">
                     <div className="flex items-start gap-3">
                       {p.frontImageUrl ?? p.imageUrl ? (
-                        <img src={p.frontImageUrl ?? p.imageUrl ?? ''} alt={p.name} className="w-12 h-12 rounded-xl object-cover shrink-0" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                        <img src={p.frontImageUrl ?? p.imageUrl ?? ''} alt={p.name} className="w-12 h-12 rounded-xl object-cover shrink-0" onError={hideBrokenImage} />
                       ) : (
                         <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0"><Package size={18} /></div>
                       )}
@@ -696,75 +779,8 @@ const ProductsManagementPage: React.FC = () => {
                 <FormInput label="URL de imagen principal (opcional)" value={form.imageUrl} onChange={(v) => setForm((f) => ({ ...f, imageUrl: v }))} />
                 {editingProduct && (
                   <>
-                    {/* Selector modo foto */}
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setMultiViewMode(false)}
-                        className={`flex-1 rounded-xl border p-3 text-left transition ${
-                          !multiViewMode
-                            ? 'border-primary bg-primary/5 ring-1 ring-primary'
-                            : 'border-gray-200 bg-white hover:border-gray-300'
-                        }`}
-                      >
-                        <p className="text-sm font-semibold text-gray-900">Una foto</p>
-                        <p className="text-[11px] text-gray-500 mt-0.5">Modelo rápido, menos preciso</p>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setMultiViewMode(true)}
-                        className={`flex-1 rounded-xl border p-3 text-left transition ${
-                          multiViewMode
-                            ? 'border-primary bg-primary/5 ring-1 ring-primary'
-                            : 'border-gray-200 bg-white hover:border-gray-300'
-                        }`}
-                      >
-                        <p className="text-sm font-semibold text-gray-900">Tres fotos</p>
-                        <p className="text-[11px] text-gray-500 mt-0.5">Modelo más preciso</p>
-                      </button>
-                    </div>
-                    <div className={`grid gap-3 ${multiViewMode ? 'md:grid-cols-3' : 'md:grid-cols-1'}`}>
-                      {ASSET_SLOTS.filter((s) => multiViewMode || s.key === 'front').map((slot) => {
-                        const previewKey = `${slot.key}Preview` as const;
-                        return (
-                          <label key={slot.key} className="group block rounded-2xl border border-dashed border-gray-200 bg-white/70 p-3 transition hover:border-primary/40 hover:bg-primary/5">
-                            <div className="flex items-center justify-between gap-2">
-                              <div>
-                                <p className="text-sm font-semibold text-gray-900">{slot.label}</p>
-                                <p className="text-[11px] text-gray-500">{slot.help}</p>
-                              </div>
-                              {assets[previewKey] ? (
-                                <button
-                                  type="button"
-                                  onClick={() => setAssetFile(slot.key, null)}
-                                  className="rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-semibold text-red-600 hover:bg-red-100"
-                                >
-                                  Quitar
-                                </button>
-                              ) : (
-                                <span className="rounded-full bg-primary/10 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-primary">Obligatoria</span>
-                              )}
-                            </div>
-                            <div className={`mt-3 flex items-center justify-center overflow-hidden rounded-xl border border-gray-100 bg-gray-50 ${multiViewMode ? 'min-h-32' : 'aspect-square'}`}>
-                              {assets[previewKey] ? (
-<img src={assets[previewKey]} alt={slot.label} className="h-full w-full object-cover" />
-                          ) : (
-                            <div className={`flex flex-col items-center gap-2 text-center text-gray-400 ${multiViewMode ? 'py-8' : 'py-16'}`}>
-                                  <Upload size={18} />
-                                  <span className="text-xs font-medium">Subir imagen</span>
-                                </div>
-                              )}
-                            </div>
-                            <input
-                              type="file"
-                              accept="image/jpeg,image/png"
-                              className="sr-only"
-                              onChange={(e) => { void setAssetFile(slot.key, e.target.files?.[0] ?? null); }}
-                            />
-                          </label>
-                        );
-                      })}
-                    </div>
+                    <PhotoModeSelector multiView={multiViewMode} onChange={setMultiViewMode} />
+                    <AssetSlotsGrid multiView={multiViewMode} assets={assets} onPick={setAssetFile} allowRemove />
                     <div className="rounded-2xl border border-gray-100 bg-white p-3">
                       <div className="flex items-center justify-between gap-3">
                         <div className="flex min-w-0 items-center gap-3">
@@ -801,65 +817,8 @@ const ProductsManagementPage: React.FC = () => {
               </div>
             ) : (
               <div className="space-y-3">
-                {/* Selector modo foto */}
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setMultiViewMode(false)}
-                    className={`flex-1 rounded-xl border p-3 text-left transition ${
-                      !multiViewMode
-                        ? 'border-primary bg-primary/5 ring-1 ring-primary'
-                        : 'border-gray-200 bg-white hover:border-gray-300'
-                    }`}
-                  >
-                    <p className="text-sm font-semibold text-gray-900">Una foto</p>
-                    <p className="text-[11px] text-gray-500 mt-0.5">Modelo rápido, menos preciso</p>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setMultiViewMode(true)}
-                    className={`flex-1 rounded-xl border p-3 text-left transition ${
-                      multiViewMode
-                        ? 'border-primary bg-primary/5 ring-1 ring-primary'
-                        : 'border-gray-200 bg-white hover:border-gray-300'
-                    }`}
-                  >
-                    <p className="text-sm font-semibold text-gray-900">Tres fotos</p>
-                    <p className="text-[11px] text-gray-500 mt-0.5">Modelo más preciso</p>
-                  </button>
-                </div>
-                <div className={`grid gap-3 ${multiViewMode ? 'md:grid-cols-3' : 'md:grid-cols-1'}`}>
-                  {ASSET_SLOTS.filter((s) => multiViewMode || s.key === 'front').map((slot) => {
-                    const previewKey = `${slot.key}Preview` as const;
-                    return (
-                      <label key={slot.key} className="group block rounded-2xl border border-dashed border-gray-200 bg-white/70 p-3 transition hover:border-primary/40 hover:bg-primary/5">
-                        <div className="flex items-center justify-between gap-2">
-                          <div>
-                            <p className="text-sm font-semibold text-gray-900">{slot.label}</p>
-                            <p className="text-[11px] text-gray-500">{slot.help}</p>
-                          </div>
-                          <span className="rounded-full bg-primary/10 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-primary">Obligatoria</span>
-                        </div>
-                        <div className={`mt-3 flex items-center justify-center overflow-hidden rounded-xl border border-gray-100 bg-gray-50 ${multiViewMode ? 'min-h-32' : 'aspect-square'}`}>
-                          {assets[previewKey] ? (
-                            <img src={assets[previewKey]} alt={slot.label} className="h-full w-full object-cover" />
-                          ) : (
-                            <div className={`flex flex-col items-center gap-2 text-center text-gray-400 ${multiViewMode ? 'py-8' : 'py-16'}`}>
-                              <Upload size={18} />
-                              <span className="text-xs font-medium">Subir imagen</span>
-                            </div>
-                          )}
-                        </div>
-                        <input
-                          type="file"
-                          accept="image/jpeg,image/png"
-                          className="sr-only"
-                          onChange={(e) => { void setAssetFile(slot.key, e.target.files?.[0] ?? null); }}
-                        />
-                      </label>
-                    );
-                  })}
-                </div>
+                <PhotoModeSelector multiView={multiViewMode} onChange={setMultiViewMode} />
+                <AssetSlotsGrid multiView={multiViewMode} assets={assets} onPick={setAssetFile} />
               </div>
             )}
           </div>
