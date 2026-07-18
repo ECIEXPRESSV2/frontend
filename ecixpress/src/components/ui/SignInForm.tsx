@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { toast } from 'react-toastify';
+import { AlertCircle } from 'lucide-react';
 import AuthLayout from './AuthLayout';
 import FormInput from './FormInput';
 import PasswordInput from './PasswordInput';
@@ -25,6 +25,9 @@ const SignInForm: React.FC<SignInProps> = ({ onSignUpClick, onLoginSuccess }) =>
   const [resetLoading, setResetLoading] = useState(false);
 
   const [errors, setErrors] = useState({ email: '', password: '' });
+  // Error del intento de autenticación (credenciales, Google): se muestra inline dentro del
+  // formulario, no como toast, para que quede claro dónde falló.
+  const [authError, setAuthError] = useState('');
 
   useEffect(() => {
     setErrors(prev => ({ ...prev, email: validateEmail(email) }));
@@ -41,13 +44,14 @@ const SignInForm: React.FC<SignInProps> = ({ onSignUpClick, onLoginSuccess }) =>
     const passwordError = validatePassword(password);
     setErrors({ email: emailError, password: passwordError });
     if (emailError || passwordError) return;
+    setAuthError('');
     setIsLoading(true);
     try {
       await signIn(email.trim(), password);
       onLoginSuccess?.();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Error al iniciar sesión';
-      toast.error(msg.includes('invalid-credential') ? 'Correo o contraseña incorrectos' : msg);
+      setAuthError(msg.includes('invalid-credential') ? 'Correo o contraseña incorrectos' : msg);
     } finally {
       setIsLoading(false);
     }
@@ -69,6 +73,7 @@ const SignInForm: React.FC<SignInProps> = ({ onSignUpClick, onLoginSuccess }) =>
   };
 
   const handleGoogleSignIn = async () => {
+    setAuthError('');
     setIsLoading(true);
     try {
       await signInWithGoogle();
@@ -76,7 +81,7 @@ const SignInForm: React.FC<SignInProps> = ({ onSignUpClick, onLoginSuccess }) =>
     } catch (err: unknown) {
       if (isFirebasePopupCancelled(err)) return;
       const msg = err instanceof Error ? err.message : 'Error con Google';
-      toast.error(msg);
+      setAuthError(msg);
     } finally {
       setIsLoading(false);
     }
@@ -155,11 +160,18 @@ const SignInForm: React.FC<SignInProps> = ({ onSignUpClick, onLoginSuccess }) =>
       </div>
 
       <form onSubmit={handleSignIn} noValidate className="space-y-4">
+        {authError && (
+          <div role="alert" className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+            <AlertCircle size={18} className="mt-0.5 shrink-0" aria-hidden="true" />
+            <span>{authError}</span>
+          </div>
+        )}
+
         <FormInput
           label="Correo electrónico"
           type="email"
           value={email}
-          onChange={setEmail}
+          onChange={(v) => { setEmail(v); if (authError) setAuthError(''); }}
           onBlur={() => setTouched(prev => ({ ...prev, email: true }))}
           placeholder="ejemplo@empresa.com"
           error={errors.email}
@@ -171,7 +183,7 @@ const SignInForm: React.FC<SignInProps> = ({ onSignUpClick, onLoginSuccess }) =>
           <PasswordInput
             label="Contraseña"
             value={password}
-            onChange={setPassword}
+            onChange={(v) => { setPassword(v); if (authError) setAuthError(''); }}
             onBlur={() => setTouched(prev => ({ ...prev, password: true }))}
             error={errors.password}
             touched={touched.password}

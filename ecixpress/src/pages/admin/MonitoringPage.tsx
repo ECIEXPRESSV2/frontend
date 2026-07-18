@@ -237,12 +237,8 @@ const MonitoringPage: React.FC = () => {
         <div className="relative mx-auto max-w-7xl space-y-6">
           <header className="theme-surface relative overflow-hidden rounded-[32px] border border-white/60 bg-[linear-gradient(140deg,rgb(var(--accent-rgb)/0.32)_0%,rgba(255,255,255,0.62)_42%,rgb(var(--accent-rgb)/0.14)_72%,rgb(var(--accent-rgb)/0.36)_100%)] backdrop-blur-2xl [box-shadow:0_28px_50px_-28px_rgb(var(--accent-rgb)/0.45)] p-5 md:p-6">
             <TrianglePattern className="absolute inset-0 pointer-events-none" />
-            <div className="relative flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+            <div className="relative flex min-h-[72px] flex-col gap-5 md:min-h-[84px] lg:flex-row lg:items-center lg:justify-between">
               <div className="max-w-3xl">
-                <nav className="mb-3 inline-flex items-center rounded-xl border border-white/70 bg-white/80 px-3 py-1.5 text-sm font-semibold text-gray-700 shadow-sm backdrop-blur">
-                  Monitoreo <span className="mx-2 text-gray-400">/</span>
-                  <span className="text-gray-950">Centro de monitoreo</span>
-                </nav>
                 <h1 className="font-display text-3xl font-bold tracking-normal text-gray-900 md:text-4xl">Centro de monitoreo</h1>
                 {total > 0 && (
                   <p className="mt-2 text-sm font-medium text-gray-600">

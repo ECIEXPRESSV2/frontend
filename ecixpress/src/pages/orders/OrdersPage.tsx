@@ -1,7 +1,7 @@
 ﻿import React, { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { io, Socket } from 'socket.io-client';
-import { ArrowLeft, RefreshCw, MessageCircle, RotateCcw, XCircle, Star, Plus, Undo2, X, Trash2, CreditCard, Loader2, Store as StoreIcon, ChevronLeft, ChevronRight, Search, ShoppingCart } from 'lucide-react';
+import { ArrowLeft, MessageCircle, RotateCcw, XCircle, Star, Plus, Undo2, X, Trash2, CreditCard, Loader2, Store as StoreIcon, ChevronLeft, ChevronRight, Search, ShoppingCart } from 'lucide-react';
 import Sidebar from '../../components/home/Sidebar';
 import TrianglePattern from '../../components/home/TrianglePattern';
 import ModalShell from '../../components/wallet/ModalShell';
@@ -40,7 +40,7 @@ const PAYMENT_LABEL: Record<OrderResponse['paymentMethod'], string> = {
   transfer: 'Transferencia',
 };
 
-const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
+const OrdersPage: React.FC<OrdersPageProps> = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { userProfile, getToken } = useAuth();
@@ -348,24 +348,11 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ onBack }) => {
             <div aria-hidden="true" className="theme-surface absolute -right-16 -top-24 h-72 w-72 rounded-full bg-[rgb(var(--accent-rgb)/0.32)] blur-3xl" />
             <div aria-hidden="true" className="theme-surface absolute -bottom-28 left-1/4 h-64 w-64 rounded-full bg-[rgb(var(--accent-rgb)/0.20)] blur-3xl" />
             <TrianglePattern className="absolute inset-0 pointer-events-none" />
-            <div className="relative flex flex-col gap-5 p-5 lg:flex-row lg:items-start lg:justify-between md:p-6">
+            <div className="relative flex min-h-[112px] flex-col gap-5 p-5 md:min-h-[132px] lg:flex-row lg:items-center lg:justify-between md:p-6">
               <div className="max-w-3xl">
-                <nav className="mb-3 inline-flex items-center rounded-xl border border-white/70 bg-white/80 px-3 py-1.5 text-sm font-semibold text-gray-700 shadow-sm backdrop-blur" aria-label="Ruta de navegacion">
-                  ECIxpress <span className="mx-2 text-gray-400">/</span>
-                  <span className="text-gray-950">Pedidos</span>
-                </nav>
                 <h1 className="font-display text-3xl font-bold tracking-normal text-gray-900 md:text-4xl">Mis pedidos</h1>
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                <button
-                  onClick={() => (onBack ? onBack() : navigate('/home'))}
-                  className="inline-flex min-h-11 items-center gap-2 rounded-2xl border border-white/70 bg-white/80 px-4 py-2 text-sm font-bold text-gray-700 shadow-sm backdrop-blur transition hover:bg-white hover:text-gray-950 focus:outline-none focus:ring-2 focus:ring-white"
-                >
-                  <ArrowLeft size={16} /> Volver
-                </button>
-                <button onClick={load} className="inline-flex min-h-11 items-center gap-2 rounded-2xl border border-white/70 bg-white/80 px-4 py-2 text-sm font-bold text-gray-700 shadow-sm backdrop-blur transition hover:bg-white hover:text-gray-950 focus:outline-none focus:ring-2 focus:ring-white">
-                  <RefreshCw size={16} /> Actualizar
-                </button>
                 <button onClick={() => setMapOpen(true)} className="inline-flex min-h-11 items-center gap-2 rounded-2xl bg-white px-4 py-2 text-sm font-bold text-amber-700 shadow-sm transition hover:bg-yellow-50 focus:outline-none focus:ring-2 focus:ring-white">
                   <Plus size={16} /> Nuevo pedido
                 </button>
