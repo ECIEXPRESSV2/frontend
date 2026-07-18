@@ -176,6 +176,7 @@ const Home: React.FC<HomeProps> = ({ onUserClick, onCartClick, onOrdersClick, on
               order={activeOrder}
               onOpen={() => navigate(`/orders?orderId=${activeOrder.id}`)}
               onChat={() => navigate(`/messages?orderId=${activeOrder.id}`)}
+              onSeeAll={orders.length > 1 ? () => navigate('/orders') : undefined}
             />
           ) : null}
 

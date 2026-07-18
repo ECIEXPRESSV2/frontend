@@ -183,10 +183,6 @@ const ResumenSection: React.FC = () => {
               )}
             </div>
             <div>
-              <nav className="mb-2 inline-flex items-center rounded-xl border border-white/70 bg-white/80 px-3 py-1.5 text-sm font-semibold text-gray-700 shadow-sm backdrop-blur" aria-label="Ruta de navegacion">
-                Mi cuenta <span className="mx-2 text-gray-400">/</span>
-                <span className="text-gray-950">Perfil</span>
-              </nav>
               <h1 className="font-display text-2xl font-semibold leading-tight text-gray-900 md:text-[clamp(1.6rem,2.6vw,2.4rem)]">{userProfile?.fullName || '-'}</h1>
               <p className="text-sm font-medium text-gray-600">{userProfile?.email}</p>
               <div className="mt-3 flex flex-wrap items-center gap-1.5">

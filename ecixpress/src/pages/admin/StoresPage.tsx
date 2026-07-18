@@ -1087,36 +1087,20 @@ const StoresPage: React.FC<StoresPageProps> = ({ vendorMode = false }) => {
     }
 
     return (
-      <div className="space-y-4">
-        <div className="rounded-2xl border border-yellow-100 bg-yellow-50/70 p-5">
-          <div className="flex items-start gap-3">
-            <span className="inline-flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-white text-amber-700 shadow-sm">
-              <Tag size={18} aria-hidden="true" />
-            </span>
-            <div>
-              <h4 className="text-sm font-bold text-gray-950">Menú de {selectedStore.name}</h4>
-              <p className="mt-1 text-sm leading-6 text-gray-600">
-                Los productos, precios, inventario y disponibilidad se gestionan en el módulo de productos conectado para vendedores.
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => navigate(`/vendor/stores/${selectedStore.id}/products`)}
-            className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-yellow-400 px-4 py-2 text-sm font-bold text-gray-950 transition hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-300"
-          >
-            <Tag size={16} aria-hidden="true" />
-            Gestionar menú
-          </button>
-        </div>
-
-        <div className="rounded-2xl border border-gray-100 bg-white p-4">
-          <p className="text-xs font-bold uppercase tracking-wide text-gray-500">Vista administrativa</p>
-          <p className="mt-2 text-sm leading-6 text-gray-600">
-            Este perfil conserva la gestión de tienda en administración y abre el catálogo solo cuando necesitas editar productos.
-          </p>
-        </div>
-      </div>
+      <button
+        type="button"
+        onClick={() => navigate(`/vendor/stores/${selectedStore.id}/products`)}
+        className="group flex w-full items-center gap-4 rounded-2xl border border-yellow-100 bg-yellow-50/70 p-5 text-left transition hover:border-yellow-300 hover:bg-yellow-50 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-yellow-300"
+      >
+        <span className="inline-flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-yellow-400 text-gray-950 shadow-sm transition group-hover:bg-yellow-500">
+          <Tag size={20} aria-hidden="true" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-base font-bold text-gray-950">Gestionar menú</span>
+          <span className="block text-sm text-gray-600">Menú de {selectedStore.name}</span>
+        </span>
+        <ChevronRight size={20} className="flex-shrink-0 text-amber-600 transition group-hover:translate-x-0.5" aria-hidden="true" />
+      </button>
     );
   };
 
@@ -1138,12 +1122,8 @@ const StoresPage: React.FC<StoresPageProps> = ({ vendorMode = false }) => {
                 <div aria-hidden="true" className="theme-surface absolute -right-16 -top-24 h-72 w-72 rounded-full bg-[rgb(var(--accent-rgb)/0.32)] blur-3xl" />
                 <div aria-hidden="true" className="theme-surface absolute -bottom-28 left-1/4 h-64 w-64 rounded-full bg-[rgb(var(--accent-rgb)/0.20)] blur-3xl" />
                 <TrianglePattern className="absolute inset-0 pointer-events-none" />
-                <div className="relative flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+                <div className="relative flex min-h-[72px] flex-col gap-5 md:min-h-[84px] lg:flex-row lg:items-center lg:justify-between">
                   <div className="max-w-3xl">
-                    <nav className="mb-3 inline-flex items-center rounded-xl border border-white/70 bg-white/80 px-3 py-1.5 text-sm font-semibold text-gray-700 shadow-sm backdrop-blur" aria-label="Ruta de navegación">
-                      {vendorMode ? 'Vendedor' : 'Administración'} <span className="mx-2 text-gray-400">/</span>
-                      <span className="text-gray-950">{vendorMode ? 'Mis tiendas' : 'Tiendas'}</span>
-                    </nav>
                     <h1 className="font-display text-3xl font-bold tracking-normal text-gray-900 md:text-4xl">
                       {vendorMode ? 'Mis tiendas' : 'Gestión de tiendas'}
                     </h1>
