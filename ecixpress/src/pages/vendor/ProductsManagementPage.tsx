@@ -20,6 +20,7 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import Sidebar from '../../components/home/Sidebar';
+import TrianglePattern, { TriangleGlyph } from '../../components/home/TrianglePattern';
 import ModalShell from '../../components/wallet/ModalShell';
 import FormInput from '../../components/ui/FormInput';
 import CategoryManager from '../../components/vendor/CategoryManager';
@@ -150,6 +151,19 @@ const StockRing: React.FC<{ stock: number; minStock: number }> = ({ stock, minSt
     </div>
   );
 };
+
+/** Capa decorativa muy sutil con los triángulos del logo ECI, dimensionada para el fondo
+ * de cada tarjeta de producto (la versión de Home es demasiado grande para estas cards). */
+const CardTriangles: React.FC = () => (
+  <div
+    aria-hidden="true"
+    className="pointer-events-none absolute inset-0 z-0 overflow-hidden rounded-[inherit] text-[rgb(var(--accent-rgb))]"
+  >
+    <TriangleGlyph size={96} rotate={-14} pair className="absolute -right-5 -top-4 opacity-[0.07]" />
+    <TriangleGlyph size={62} rotate={22} className="absolute left-[6%] bottom-[16%] opacity-[0.06]" />
+    <TriangleGlyph size={44} rotate={-34} className="absolute left-[46%] top-[20%] opacity-[0.05]" />
+  </div>
+);
 
 const ProductsManagementPage: React.FC = () => {
   const { storeId = '' } = useParams<{ storeId: string }>();
@@ -452,19 +466,50 @@ const ProductsManagementPage: React.FC = () => {
       <Sidebar activeItem="vendor-stores" />
       <main className="app-shift px-4 pb-28 pt-20 md:px-8 md:pb-8 lg:px-10">
         <div className="relative mx-auto max-w-7xl space-y-6">
-          {/* Header */}
-          <div className="flex items-center justify-between gap-3 flex-wrap">
-            <div>
-              <h1 className="text-2xl font-display font-semibold text-gray-900">Productos</h1>
-              <p className="text-sm text-gray-500">{store?.name ?? 'Tienda'}</p>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <button onClick={() => navigate(`/vendor/stores/${storeId}/promotions`)} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-white/60 bg-white/60 text-gray-700 font-semibold shadow-sm backdrop-blur-md transition hover:bg-white/80 hover:shadow-md">
-                <BadgePercent size={16} /> Promociones
-              </button>
-              <button onClick={openCreate} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-white font-semibold shadow-[0_10px_24px_-8px_rgb(var(--accent-rgb)/0.55)] transition hover:bg-primary/90 hover:shadow-[0_14px_30px_-8px_rgb(var(--accent-rgb)/0.6)]">
-                <Plus size={16} /> Nuevo producto
-              </button>
+          {/* Header — mini banner con el logo/banner de la tienda; una capa translúcida
+              lo atenúa para que el título "Productos" resalte por encima. */}
+          <div className="relative overflow-hidden rounded-3xl border border-white/60 shadow-[0_18px_44px_-26px_rgb(var(--accent-rgb)/0.5)]">
+            {(store?.bannerUrl || store?.imageUrl) && (
+              <img
+                src={store?.bannerUrl || store?.imageUrl}
+                alt=""
+                aria-hidden="true"
+                className="absolute inset-0 h-full w-full scale-110 object-cover blur-[2px]"
+                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+              />
+            )}
+            {/* Velo translúcido: más opaco a la izquierda (donde va el título) para máxima legibilidad. */}
+            <div className="absolute inset-0 bg-gradient-to-r from-white/85 via-white/65 to-white/45 backdrop-blur-md" />
+            <div className="absolute inset-0 bg-[linear-gradient(115deg,rgb(var(--accent-rgb)/0.30),transparent_58%)]" />
+            <TrianglePattern className="opacity-40" />
+
+            <div className="relative z-10 flex flex-wrap items-center justify-between gap-3 p-5 md:px-7 md:py-6">
+              <div className="flex items-center gap-4">
+                {store?.imageUrl ? (
+                  <img
+                    src={store.imageUrl}
+                    alt={store.name}
+                    className="h-14 w-14 shrink-0 rounded-2xl border border-white/70 bg-white object-cover shadow-md"
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                  />
+                ) : (
+                  <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-white/70 bg-white/80 text-primary shadow-md">
+                    <Package size={24} />
+                  </div>
+                )}
+                <div>
+                  <h1 className="font-display text-2xl md:text-3xl font-semibold text-gray-900 drop-shadow-sm">Productos</h1>
+                  <p className="text-sm font-semibold text-gray-600">{store?.name ?? 'Tienda'}</p>
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <button onClick={() => navigate(`/vendor/stores/${storeId}/promotions`)} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-white/60 bg-white/70 text-gray-700 font-semibold shadow-sm backdrop-blur-md transition hover:bg-white/90 hover:shadow-md">
+                  <BadgePercent size={16} /> Promociones
+                </button>
+                <button onClick={openCreate} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-white font-semibold shadow-[0_10px_24px_-8px_rgb(var(--accent-rgb)/0.55)] transition hover:bg-primary/90 hover:shadow-[0_14px_30px_-8px_rgb(var(--accent-rgb)/0.6)]">
+                  <Plus size={16} /> Nuevo producto
+                </button>
+              </div>
             </div>
           </div>
 
@@ -537,7 +582,9 @@ const ProductsManagementPage: React.FC = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {visibleProducts.map((p) => (
                 <div key={p.id} className={`glass-spotlight glass-spotlight-soft relative overflow-hidden rounded-2xl border border-white/60 bg-white/55 shadow-[0_12px_34px_-18px_rgba(15,23,42,0.28)] backdrop-blur-xl transition duration-300 hover:-translate-y-0.5 hover:bg-white/70 hover:shadow-[0_20px_44px_-18px_rgba(15,23,42,0.35)] ${!p.isActive ? 'opacity-60' : ''}`}>
-                  <div className="relative z-10 p-4 space-y-3">
+                  <CardTriangles />
+                  <div className="relative z-10">
+                    <div className="p-4 space-y-3">
                     <div className="flex items-start gap-3">
                       {p.frontImageUrl ?? p.imageUrl ? (
                         <img src={p.frontImageUrl ?? p.imageUrl ?? ''} alt={p.name} className="w-12 h-12 rounded-xl object-cover shrink-0" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
@@ -578,19 +625,21 @@ const ProductsManagementPage: React.FC = () => {
                         )}
                       </div>
                     </div>
+                    </div>
 
-                    <div className="flex items-center justify-between gap-2 pt-2 border-t border-dashed border-gray-200 flex-wrap">
+                    {/* Banda inferior de inventario — tinte ámbar sutil para dar contraste y color. */}
+                    <div className="flex items-center justify-between gap-2 px-4 py-3 border-t border-dashed border-[rgb(var(--accent-rgb)/0.35)] bg-[rgb(var(--accent-rgb)/0.10)] flex-wrap">
                       <div className="flex items-center gap-1">
-                        <button onClick={() => quickStock(p, -1)} disabled={p.stock <= 0} className="w-7 h-7 rounded-lg bg-gray-50 border border-gray-200 flex items-center justify-center hover:bg-gray-100 disabled:opacity-40"><Minus size={13} /></button>
-                        <button onClick={() => setStockModal({ open: true, product: p, value: String(p.stock) })} title="Fijar stock exacto" className="px-2 py-1 rounded-lg bg-gray-100 text-xs font-semibold text-gray-700 tabular-nums hover:bg-gray-200">
+                        <button onClick={() => quickStock(p, -1)} disabled={p.stock <= 0} className="w-7 h-7 rounded-lg bg-white/70 border border-white/70 flex items-center justify-center hover:bg-white disabled:opacity-40"><Minus size={13} /></button>
+                        <button onClick={() => setStockModal({ open: true, product: p, value: String(p.stock) })} title="Fijar stock exacto" className="px-2 py-1 rounded-lg bg-white/70 border border-white/60 text-xs font-semibold text-gray-700 tabular-nums hover:bg-white">
                           <span className="flex items-center gap-1"><Boxes size={11} /> stock</span>
                         </button>
                         <button onClick={() => quickStock(p, 1)} className="w-7 h-7 rounded-lg bg-primary text-white flex items-center justify-center hover:bg-primary/90"><Plus size={13} /></button>
                       </div>
                       <div className="flex items-center gap-1">
-                        <button onClick={() => setHistoryModal({ open: true, product: p })} title="Ver historial de inventario" className="w-7 h-7 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-500"><History size={14} /></button>
-                        <button onClick={() => openEdit(p)} title="Editar" className="w-7 h-7 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-500"><Pencil size={14} /></button>
-                        <button onClick={() => toggleActive(p)} title={p.isActive ? 'Desactivar' : 'Activar'} className="w-7 h-7 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-500">{p.isActive ? <EyeOff size={14} /> : <Eye size={14} />}</button>
+                        <button onClick={() => setHistoryModal({ open: true, product: p })} title="Ver historial de inventario" className="w-7 h-7 rounded-lg hover:bg-white/70 flex items-center justify-center text-gray-500"><History size={14} /></button>
+                        <button onClick={() => openEdit(p)} title="Editar" className="w-7 h-7 rounded-lg hover:bg-white/70 flex items-center justify-center text-gray-500"><Pencil size={14} /></button>
+                        <button onClick={() => toggleActive(p)} title={p.isActive ? 'Desactivar' : 'Activar'} className="w-7 h-7 rounded-lg hover:bg-white/70 flex items-center justify-center text-gray-500">{p.isActive ? <EyeOff size={14} /> : <Eye size={14} />}</button>
                         <button onClick={() => removeProduct(p)} title="Eliminar" className="w-7 h-7 rounded-lg hover:bg-danger/10 flex items-center justify-center text-danger"><Trash2 size={14} /></button>
                       </div>
                     </div>
