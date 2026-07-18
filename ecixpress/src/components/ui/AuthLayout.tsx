@@ -41,11 +41,11 @@ const AuthLayout: React.FC<AuthLayoutProps> = ({ children, dense = false }) => {
   const mainAlign = dense ? 'items-center md:items-start justify-center' : 'items-center justify-center';
   const mainPadding = dense
     ? 'px-4 sm:px-6 pt-6 pb-6'
-    : 'px-4 sm:px-6 pt-3 pb-20 sm:pt-4 sm:pb-24';
+    : 'px-4 sm:px-6 pt-4 pb-6 sm:pt-6 sm:pb-8';
   const contentSpacing = dense ? 'space-y-2.5' : 'space-y-4 sm:space-y-5';
   const contentMaxH = dense
     ? 'max-h-[calc(100vh-5rem)]'
-    : 'max-h-[calc(100vh-11rem)]';
+    : 'max-h-[calc(100vh-6rem)] sm:max-h-[calc(100vh-7rem)]';
 
   return (
     <div className="relative h-screen w-full overflow-hidden font-body bg-gradient-to-br from-yellow-50 via-white to-yellow-100">
