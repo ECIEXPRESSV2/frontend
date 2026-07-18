@@ -2,7 +2,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
-  ArrowLeft,
   Plus,
   Minus,
   Package,
@@ -10,7 +9,6 @@ import {
   Pencil,
   Eye,
   EyeOff,
-  RefreshCw,
   Boxes,
   BadgePercent,
   History,
@@ -450,29 +448,21 @@ const ProductsManagementPage: React.FC = () => {
 
   return (
     <>
-    <div className="min-h-screen bg-background">
+    <div className="theme-surface min-h-screen bg-gradient-to-br from-yellow-50 via-white to-yellow-100">
       <Sidebar activeItem="vendor-stores" />
       <main className="app-shift px-4 pb-28 pt-20 md:px-8 md:pb-8 lg:px-10">
         <div className="relative mx-auto max-w-7xl space-y-6">
           {/* Header */}
           <div className="flex items-center justify-between gap-3 flex-wrap">
-            <div className="flex items-center gap-3">
-              <button onClick={() => navigate(-1)} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-surface border border-gray-200 text-gray-700 font-medium text-sm hover:bg-primary/10">
-                <ArrowLeft size={16} /> Volver
-              </button>
-              <div>
-                <h1 className="text-2xl font-display font-semibold text-gray-900">Productos</h1>
-                <p className="text-sm text-gray-500">{store?.name ?? 'Tienda'}</p>
-              </div>
+            <div>
+              <h1 className="text-2xl font-display font-semibold text-gray-900">Productos</h1>
+              <p className="text-sm text-gray-500">{store?.name ?? 'Tienda'}</p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <button onClick={load} className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-surface border border-gray-200 text-gray-700 font-semibold hover:bg-gray-50">
-                <RefreshCw size={16} /> Actualizar
-              </button>
-              <button onClick={() => navigate(`/vendor/stores/${storeId}/promotions`)} className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-surface border border-gray-200 text-gray-700 font-semibold hover:bg-gray-50">
+              <button onClick={() => navigate(`/vendor/stores/${storeId}/promotions`)} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-white/60 bg-white/60 text-gray-700 font-semibold shadow-sm backdrop-blur-md transition hover:bg-white/80 hover:shadow-md">
                 <BadgePercent size={16} /> Promociones
               </button>
-              <button onClick={openCreate} className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-white font-semibold hover:bg-primary/90">
+              <button onClick={openCreate} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-white font-semibold shadow-[0_10px_24px_-8px_rgb(var(--accent-rgb)/0.55)] transition hover:bg-primary/90 hover:shadow-[0_14px_30px_-8px_rgb(var(--accent-rgb)/0.6)]">
                 <Plus size={16} /> Nuevo producto
               </button>
             </div>
@@ -481,15 +471,15 @@ const ProductsManagementPage: React.FC = () => {
           {/* Resumen rápido */}
           {!loading && products.length > 0 && (
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="rounded-2xl bg-surface border border-gray-100 p-4">
+              <div className="rounded-2xl border border-white/60 bg-white/60 p-4 shadow-[0_10px_30px_-16px_rgba(15,23,42,0.25)] backdrop-blur-md transition hover:bg-white/75">
                 <p className="text-2xl font-display font-semibold text-gray-900 tabular-nums">{activeCount}</p>
                 <p className="text-xs text-gray-500">Productos activos</p>
               </div>
-              <div className="rounded-2xl bg-surface border border-gray-100 p-4">
+              <div className="rounded-2xl border border-white/60 bg-white/60 p-4 shadow-[0_10px_30px_-16px_rgba(15,23,42,0.25)] backdrop-blur-md transition hover:bg-white/75">
                 <p className="text-2xl font-display font-semibold text-gray-900 tabular-nums">{categories.length}</p>
                 <p className="text-xs text-gray-500">Categorías</p>
               </div>
-              <div className={`rounded-2xl border p-4 ${lowStockIds.size > 0 ? 'bg-danger/5 border-danger/20' : 'bg-surface border-gray-100'}`}>
+              <div className={`rounded-2xl border p-4 shadow-[0_10px_30px_-16px_rgba(15,23,42,0.25)] backdrop-blur-md transition ${lowStockIds.size > 0 ? 'bg-danger/10 border-danger/20 hover:bg-danger/15' : 'bg-white/60 border-white/60 hover:bg-white/75'}`}>
                 <p className={`text-2xl font-display font-semibold tabular-nums ${lowStockIds.size > 0 ? 'text-danger' : 'text-gray-900'}`}>{lowStockIds.size}</p>
                 <p className={`text-xs ${lowStockIds.size > 0 ? 'text-danger/80' : 'text-gray-500'}`}>Con stock bajo</p>
               </div>
@@ -504,7 +494,7 @@ const ProductsManagementPage: React.FC = () => {
             <div className="flex items-center gap-2 overflow-x-auto pb-1">
               <button
                 onClick={() => setCategoryFilter('')}
-                className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${categoryFilter === '' ? 'bg-gray-900 text-white' : 'bg-surface border border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+                className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-semibold backdrop-blur-md transition ${categoryFilter === '' ? 'bg-gray-900 text-white shadow-sm' : 'bg-white/60 border border-white/60 text-gray-600 hover:bg-white/80'}`}
               >
                 <LayoutGrid size={13} /> Todas
               </button>
@@ -512,14 +502,14 @@ const ProductsManagementPage: React.FC = () => {
                 <button
                   key={c.id}
                   onClick={() => setCategoryFilter(c.id)}
-                  className={`shrink-0 px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${categoryFilter === c.id ? 'bg-gray-900 text-white' : 'bg-surface border border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+                  className={`shrink-0 px-3 py-1.5 rounded-xl text-sm font-semibold backdrop-blur-md transition ${categoryFilter === c.id ? 'bg-gray-900 text-white shadow-sm' : 'bg-white/60 border border-white/60 text-gray-600 hover:bg-white/80'}`}
                 >
                   {c.name}
                 </button>
               ))}
               <button
                 onClick={() => setShowInactive((v) => !v)}
-                className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${showInactive ? 'bg-danger/10 text-danger border border-danger/30' : 'bg-surface border border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+                className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-semibold backdrop-blur-md transition ${showInactive ? 'bg-danger/10 text-danger border border-danger/30' : 'bg-white/60 border border-white/60 text-gray-600 hover:bg-white/80'}`}
               >
                 {showInactive ? <Eye size={13} /> : <EyeOff size={13} />}
                 {showInactive ? 'Ocultar inactivos' : 'Ver inactivos'}
@@ -531,23 +521,23 @@ const ProductsManagementPage: React.FC = () => {
           {loading ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 animate-pulse">
               {[1, 2, 3, 4, 5, 6].map((i) => (
-                <div key={i} className="h-40 rounded-2xl bg-white border border-gray-100" />
+                <div key={i} className="h-40 rounded-2xl bg-white/50 border border-white/60 backdrop-blur-md" />
               ))}
             </div>
           ) : products.length === 0 ? (
-            <div className="rounded-2xl bg-surface border border-gray-100 shadow-card p-10 text-center text-gray-500">
+            <div className="rounded-2xl border border-white/60 bg-white/60 shadow-[0_18px_40px_-24px_rgb(var(--accent-rgb)/0.35)] backdrop-blur-xl p-10 text-center text-gray-500">
               <Package className="mx-auto mb-2 text-primary" />
               No hay productos en esta tienda. Crea el primero con "Nuevo producto".
             </div>
           ) : visibleProducts.length === 0 ? (
-            <div className="rounded-2xl bg-surface border border-gray-100 shadow-card p-10 text-center text-gray-500">
+            <div className="rounded-2xl border border-white/60 bg-white/60 shadow-[0_18px_40px_-24px_rgb(var(--accent-rgb)/0.35)] backdrop-blur-xl p-10 text-center text-gray-500">
               Esta categoría todavía no tiene productos.
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {visibleProducts.map((p) => (
-                <div key={p.id} className={`relative overflow-hidden rounded-2xl bg-surface border border-gray-100 shadow-card transition-shadow hover:shadow-lg ${!p.isActive ? 'opacity-60' : ''}`}>
-                  <div className="p-4 space-y-3">
+                <div key={p.id} className={`glass-spotlight glass-spotlight-soft relative overflow-hidden rounded-2xl border border-white/60 bg-white/55 shadow-[0_12px_34px_-18px_rgba(15,23,42,0.28)] backdrop-blur-xl transition duration-300 hover:-translate-y-0.5 hover:bg-white/70 hover:shadow-[0_20px_44px_-18px_rgba(15,23,42,0.35)] ${!p.isActive ? 'opacity-60' : ''}`}>
+                  <div className="relative z-10 p-4 space-y-3">
                     <div className="flex items-start gap-3">
                       {p.frontImageUrl ?? p.imageUrl ? (
                         <img src={p.frontImageUrl ?? p.imageUrl ?? ''} alt={p.name} className="w-12 h-12 rounded-xl object-cover shrink-0" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />

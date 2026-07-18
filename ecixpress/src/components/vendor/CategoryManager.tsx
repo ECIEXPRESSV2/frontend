@@ -184,7 +184,7 @@ const CategoryManager: React.FC<CategoryManagerProps> = ({ storeId, categories, 
 
     if (isRoot) {
       return (
-        <div key={node.id} className="relative overflow-hidden rounded-2xl bg-surface border border-gray-100 flex items-stretch transition-shadow hover:shadow-card">
+        <div key={node.id} className="relative overflow-hidden rounded-2xl border border-white/60 bg-white/60 backdrop-blur-md flex items-stretch transition hover:bg-white/75 hover:shadow-[0_12px_30px_-18px_rgba(15,23,42,0.3)]">
           <div className="w-1 shrink-0 rounded-l-2xl" style={{ background: node.isActive ? branchColor : '#D1D5DB' }} />
           <div className="flex-1">
             {row}
@@ -207,13 +207,13 @@ const CategoryManager: React.FC<CategoryManagerProps> = ({ storeId, categories, 
   };
 
   return (
-    <div className="rounded-2xl bg-surface border border-gray-100 shadow-card p-5 space-y-3">
+    <div className="rounded-2xl border border-white/60 bg-white/55 shadow-[0_18px_40px_-24px_rgb(var(--accent-rgb)/0.35)] backdrop-blur-xl p-5 space-y-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Tag size={16} className="text-primary" />
           <h2 className="font-display font-semibold text-gray-900">Categorías</h2>
         </div>
-        <button onClick={openCreate} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary/90">
+        <button onClick={openCreate} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary text-white text-sm font-semibold shadow-[0_10px_24px_-8px_rgb(var(--accent-rgb)/0.55)] transition hover:bg-primary/90">
           <Plus size={14} /> Nueva
         </button>
       </div>
@@ -221,7 +221,7 @@ const CategoryManager: React.FC<CategoryManagerProps> = ({ storeId, categories, 
       {loadingTree ? (
         <div className="space-y-2 animate-pulse">
           {[1, 2].map((i) => (
-            <div key={i} className="h-12 rounded-2xl bg-gray-100" />
+            <div key={i} className="h-12 rounded-2xl bg-white/40" />
           ))}
         </div>
       ) : tree.length === 0 ? (

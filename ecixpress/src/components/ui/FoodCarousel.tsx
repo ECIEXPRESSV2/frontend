@@ -15,6 +15,17 @@ const IMAGES = [
   "/campus-students-group.webp",
   "/campus-sign-night.webp",
   "/campus-community-oswaldo.webp",
+  // Fotos de tiendas del campus
+  "/campus-cafeleyenda.webp",
+  "/campus-cafeleyenda2.webp",
+  "/campus-dicaffe.webp",
+  "/campus-dicaffechairs.webp",
+  "/campus-dicafferestaurant.webp",
+  "/campus-dialiexpress.webp",
+  "/campus-paperflash.webp",
+  "/campus-regio.webp",
+  "/campus-restaurant.webp",
+  "/campus-wakeup.webp",
 ];
 
 const splitIntoRows = (items: string[], rows: number): string[][] =>
